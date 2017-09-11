@@ -17,7 +17,8 @@ int main(void) {
 
   hashtable* ht=NULL;
   int num_tests = 50000000;
-  assert(allocate(&ht, num_tests));
+  int fail = allocate(&ht, num_tests);
+  assert(!fail);
 
   int seed = 2;
   srand(seed);
@@ -29,14 +30,16 @@ int main(void) {
   for (int i = 0; i < num_tests; i += 1) {
     int key = rand();
     int val = rand();
-    assert(put(ht, key, val));
+    fail = put(ht, key, val);
+    assert(!fail);
   }
 
   gettimeofday(&stop, NULL);
   double secs = (double)(stop.tv_usec - start.tv_usec) / 1000000 + (double)(stop.tv_sec - start.tv_sec); 
   printf("50 million insertions took %f seconds\n", secs);
 
-  assert(deallocate(ht));
+  fail = deallocate(ht);
+  assert(fail);
 
   return 0;
 }

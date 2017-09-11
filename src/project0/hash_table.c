@@ -2,7 +2,7 @@
 
 // Initialize the components of a hashtable.
 // The size parameter is the expected number of elements to be inserted.
-// This method returns an error code, 0 for success and 1 otherwise (e.g., if the parameter passed to the method is not null, if malloc fails, etc).
+// This method returns an error code, 0 for success and -1 otherwise (e.g., if the parameter passed to the method is not null, if malloc fails, etc).
 int allocate(hashtable** ht, int size) {
     // The next line tells the compiler that we know we haven't used the variable
     // yet so don't issue a warning. You should remove this line once you use
@@ -13,7 +13,7 @@ int allocate(hashtable** ht, int size) {
 }
 
 // This method inserts a key-value pair into the hash table.
-// It returns an error code, 0 for success and 1 otherwise (e.g., if malloc is called and fails).
+// It returns an error code, 0 for success and -1 otherwise (e.g., if malloc is called and fails).
 int put(hashtable* ht, keyType key, valType value) {
     (void) ht;
     (void) key;
@@ -28,7 +28,7 @@ int put(hashtable* ht, keyType key, valType value) {
 // the number of matching entries using the num_results pointer. If the value of num_results is greater than
 // num_values, the caller can invoke this function again (with a larger buffer)
 // to get values that it missed during the first call. 
-// This method returns an error code, 0 for success and 1 otherwise (e.g., if the hashtable is not allocated).
+// This method returns an error code, 0 for success and -1 otherwise (e.g., if the hashtable is not allocated).
 int get(hashtable* ht, keyType key, valType *values, int num_values, int* num_results) {
     (void) ht;
     (void) key;
@@ -39,7 +39,7 @@ int get(hashtable* ht, keyType key, valType *values, int num_values, int* num_re
 }
 
 // This method erases all key-value pairs with a given key from the hash table.
-// It returns an error code, 0 for success and 1 otherwise (e.g., if the hashtable is not allocated).
+// It returns an error code, 0 for success and -1 otherwise (e.g., if the hashtable is not allocated).
 int erase(hashtable* ht, keyType key) {
     (void) ht;
     (void) key;
@@ -47,7 +47,7 @@ int erase(hashtable* ht, keyType key) {
 }
 
 // This method frees all memory occupied by the hash table.
-// It returns an error code, 0 for success and 1 otherwise.
+// It returns an error code, 0 for success and -1 otherwise.
 int deallocate(hashtable* ht) {
     // This line tells the compiler that we know we haven't used the variable
     // yet so don't issue a warning. You should remove this line once you use

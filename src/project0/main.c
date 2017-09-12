@@ -20,7 +20,7 @@ int main(void) {
 
   valType* values = malloc(1 * sizeof(valType));
 
-  int* num_results = NULL;
+  int num_results = 0;
 
   get(ht, key, values, num_values, num_results);
   if ((*num_results) > num_values) {

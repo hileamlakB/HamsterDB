@@ -34,14 +34,13 @@ int main(void) {
 
   int num_values = 1;
   int results[num_values];
-  int* num_results = NULL;
+  int num_results = 0;
 
   for (int i = 0; i < num_tests; i += 1) {
-    int index = rand() % num_tests;
-    keyType target_key = keys[index];
-    failure = get(ht, target_key, results, num_values, num_results);
+    keyType target_key = keys[i];
+    failure = get(ht, target_key, results, num_values, &num_results);
     assert(!failure);
-    if (results[0] != values[index]) {
+    if (results[0] != values[i]) {
       printf("Test failed with key %d. Got value %d. Expected value %d.\n", target_key, results[0], values[index]);
       return 1;
     } 

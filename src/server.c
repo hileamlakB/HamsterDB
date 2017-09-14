@@ -82,8 +82,12 @@ void handle_client(int client_socket) {
 
             // 2. Handle request
             char* result = execute_DbOperator(query);
+
             send_message.length = strlen(result);
-            strcpy(send_message.payload, result);
+            char send_buffer[send_message.length + 1];
+            strcpy(send_buffer, result);
+            send_message.payload = send_buffer;
+            
             // 3. Send status of the received message (OK, UNKNOWN_QUERY, etc)
             if (send(client_socket, &(send_message), sizeof(message), 0) == -1) {
                 log_err("Failed to send message.");
@@ -173,4 +177,3 @@ int main(void)
 
     return 0;
 }
-

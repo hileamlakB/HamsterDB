@@ -1,25 +1,17 @@
--- Test for creating table with indexes
 --
--- Table tbl4 has a clustered index. 
--- The clustered index has the form of a btree. 
+-- Testing for batching queries
+-- First test is 2 queries with full overlap (subsumption)
 --
--- Loads data from: data4.csv
---
--- Create Table
-create(tbl,"tbl4",db1,4)
-create(col,"col1",db1.tbl4)
-create(col,"col2",db1.tbl4)
-create(col,"col3",db1.tbl4)
-create(col,"col4",db1.tbl4)
--- Create a clustered index on col1 
-create(idx,db1.tbl4.col1,btree,clustered)
--- Create an unclustered btree index on col2
-create(idx,db1.tbl4.col2,sorted,unclustered)
+-- Query in SQL:
+-- SELECT col4 FROM tbl3_batch WHERE col1 >= 810 AND col1 < 820;
+-- SELECT col4 FROM tbl3_batch WHERE col1 >= 800 AND col1 < 830;
 --
 --
--- Load data immediately in the form of a clustered index
-load("../project_tests/data4.csv")
---
--- Testing that the data and their indexes are durable on disk.
-shutdown
-
+batch_queries()
+s1=select(db1.tbl3_batch.col1,810,820)
+s2=select(db1.tbl3_batch.col1,800,830)
+batch_execute()
+f1=fetch(db1.tbl3_batch.col4,s1)
+f2=fetch(db1.tbl3_batch.col4,s2)
+print(f1)
+print(f2)

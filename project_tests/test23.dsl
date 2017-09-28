@@ -1,16 +1,11 @@
--- Testing nested-loop join 1
 --
+-- tbl3 has a secondary b-tree tree index on col2, and a clustered index on col1 with the form of a sorted column
+-- testing for correctness
 --
--- Query in SQL: 
--- SELECT tbl2.col1, tbl3.col2 FROM tbl2,tbl3 WHERE tbl2.col2=tbl3.col3 AND tbl2.col2>=500 AND tbl3.col3<510;
+-- Query in SQL:
+-- SELECT col3 FROM tbl3 WHERE col2 >= 800 and col2 < 810;
 --
---
-p1=select(db1.tbl2.col2,500,null)
-p2=select(db1.tbl3.col3,null,510)
-f1=fetch(db1.tbl2.col2,p1)
-f2=fetch(db1.tbl3.col3,p2)
-t1,t2=join(f1,p1,f2,p2,nested-loop)
-out1=fetch(db1.tbl2.col1,t1)
-out2=fetch(db1.tbl3.col2,t2)
-print(out1,out2)
-
+-- since col2 has a secondary b-tree index, the index is expected to be used by the select operator
+s2=select(db1.tbl3.col2,800,810)
+f2=fetch(db1.tbl3.col3,s2)
+print(f2)

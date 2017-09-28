@@ -19,4 +19,3 @@ print(f3)
 s4=select(db1.tbl2.col4,-1000,1200)
 f4=fetch(db1.tbl2.col1,s4)
 print(f4)
-

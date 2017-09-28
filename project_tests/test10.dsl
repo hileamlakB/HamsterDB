@@ -1,26 +1,16 @@
--- Test for creating table with indexes
+-- Create a table to run batch queries on
 --
--- Table tbl3 has a clustered index with col1 being the leading column. 
--- The clustered index has the form of a sorted column. 
--- The table also has a secondary btree index.
---
--- Loads data from: data3.csv
+-- Loads data from: data3_batch.csv
 --
 -- Create Table
-create(tbl,"tbl3",db1,4)
-create(col,"col1",db1.tbl3)
-create(col,"col2",db1.tbl3)
-create(col,"col3",db1.tbl3)
-create(col,"col4",db1.tbl3)
--- Create a clustered index on col1 
-create(idx,db1.tbl3.col1,sorted,clustered)
--- Create an unclustered btree index on col2
-create(idx,db1.tbl3.col2,btree,unclustered)
+create(tbl,"tbl3_batch",db1,4)
+create(col,"col1",db1.tbl3_batch)
+create(col,"col2",db1.tbl3_batch)
+create(col,"col3",db1.tbl3_batch)
+create(col,"col4",db1.tbl3_batch)
 --
+-- Load data immediately
+load("/home/cs165/cs165-management-scripts/project_tests_2017/data3_batch.csv")
 --
--- Load data immediately in the form of a clustered index
-load("../project_tests/data3.csv")
---
--- Testing that the data and their indexes are durable on disk.
+-- Testing that the data is durable on disk.
 shutdown
-

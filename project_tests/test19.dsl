@@ -1,30 +1,25 @@
--- Needs test10.dsl 
--- Testing for batching queries
--- First test is 5 queries with NO overlap
+-- Test for creating table with indexes
 --
--- Query in SQL:
--- SELECT col4 FROM tbl3 WHERE col1 >= 10 AND col1 < 20;
--- SELECT col4 FROM tbl3 WHERE col1 >= 110 AND col1 < 120;
--- SELECT col4 FROM tbl3 WHERE col1 >= 210 AND col1 < 220;
--- SELECT col4 FROM tbl3 WHERE col1 >= 310 AND col1 < 320;
--- SELECT col4 FROM tbl3 WHERE col1 >= 410 AND col1 < 420;
+-- Table tbl3 has a clustered index with col1 being the leading column.
+-- The clustered index has the form of a sorted column.
+-- The table also has a secondary btree index.
+--
+-- Loads data from: data3.csv
+--
+-- Create Table
+create(tbl,"tbl3",db1,4)
+create(col,"col1",db1.tbl3)
+create(col,"col2",db1.tbl3)
+create(col,"col3",db1.tbl3)
+create(col,"col4",db1.tbl3)
+-- Create a clustered index on col1
+create(idx,db1.tbl3.col1,sorted,clustered)
+-- Create an unclustered btree index on col2
+create(idx,db1.tbl3.col2,btree,unclustered)
 --
 --
--- 
-batch_queries()
-s1=select(db1.tbl3.col1,10,20)
-s2=select(db1.tbl3.col1,110,120)
-s3=select(db1.tbl3.col1,210,220)
-s4=select(db1.tbl3.col1,310,320)
-s5=select(db1.tbl3.col1,410,420)
-batch_execute()
-f1=fetch(db1.tbl3.col4,s1)
-f2=fetch(db1.tbl3.col4,s2)
-f3=fetch(db1.tbl3.col4,s3)
-f4=fetch(db1.tbl3.col4,s4)
-f5=fetch(db1.tbl3.col4,s5)
-print(f1)
-print(f2)
-print(f3)
-print(f4)
-print(f5)
+-- Load data immediately in the form of a clustered index
+load("/home/cs165/cs165-management-scripts/project_tests_2017/data3.csv")
+--
+-- Testing that the data and their indexes are durable on disk.
+shutdown

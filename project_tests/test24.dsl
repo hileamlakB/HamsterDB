@@ -1,16 +1,17 @@
--- Testing hash join 1
+-- Create a control table that is identical to the one in test25.dsl, but
+-- without any indexes
 --
+-- Loads data from: data4_ctrl.csv
 --
--- Query in SQL: 
--- SELECT tbl2.col1, tbl3.col2 FROM tbl2,tbl3 WHERE tbl2.col2=tbl3.col3 AND tbl2.col2>= 500 AND tbl3.col3<510;
+-- Create Table
+create(tbl,"tbl4_ctrl",db1,4)
+create(col,"col1",db1.tbl4_ctrl)
+create(col,"col2",db1.tbl4_ctrl)
+create(col,"col3",db1.tbl4_ctrl)
+create(col,"col4",db1.tbl4_ctrl)
 --
+-- Load data immediately in the form of a clustered index
+load("/home/cs165/cs165-management-scripts/project_tests_2017/data4_ctrl.csv")
 --
-p1=select(db1.tbl2.col2,500,null)
-p2=select(db1.tbl3.col3,null,510)
-f1=fetch(db1.tbl2.col2,p1)
-f2=fetch(db1.tbl3.col3,p2)
-t1,t2=join(f1,p1,f2,p2,hash)
-out1=fetch(db1.tbl2.col1,t1)
-out2=fetch(db1.tbl3.col2,t2)
-print(out1,out2)
-
+-- Testing that the data and their indexes are durable on disk.
+shutdown

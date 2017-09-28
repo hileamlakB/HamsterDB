@@ -1,22 +1,8 @@
--- Test for creating table with duplicates for joins
 --
--- Table tbl5 has duplicates in col4 (each value has ~50 instances)
+-- Query in SQL:
+-- SELECT col3 FROM tbl3_ctrl WHERE col2 >= 800 and col2 < 810;
 --
--- Loads data from: data5.csv
---
--- Create Table
-create(tbl,"tbl5",db1,4)
-create(col,"col1",db1.tbl5)
-create(col,"col2",db1.tbl5)
-create(col,"col3",db1.tbl5)
-create(col,"col4",db1.tbl5)
--- Create an unclustered btree index on col2
-create(idx,db1.tbl5.col4,btree,unclustered)
---
---
--- Load data immediately in the form of a clustered index
-load("../project_tests/data5.csv")
---
--- Testing that the data and their indexes are durable on disk.
-shutdown
-
+-- Control test for test 15.dsl
+s2=select(db1.tbl3_ctrl.col2,800,810)
+f2=fetch(db1.tbl3_ctrl.col3,s2)
+print(f2)

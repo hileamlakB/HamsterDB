@@ -1,17 +1,17 @@
--- Needs test10.dsl 
--- Testing for batching queries
--- First test is 2 queries with full overlap (subsumption)
+-- Create a control table that is identical to the one in test19.dsl, but
+-- without any indexes
 --
--- Query in SQL:
--- SELECT col4 FROM tbl3 WHERE col1 >= 810 AND col1 < 820;
--- SELECT col4 FROM tbl3 WHERE col1 >= 800 AND col1 < 830;
+-- Loads data from: data3_ctrl.csv
 --
+-- Create Table
+create(tbl,"tbl3_ctrl",db1,4)
+create(col,"col1",db1.tbl3_ctrl)
+create(col,"col2",db1.tbl3_ctrl)
+create(col,"col3",db1.tbl3_ctrl)
+create(col,"col4",db1.tbl3_ctrl)
 --
-batch_queries()
-s1=select(db1.tbl3.col1,810,820)
-s2=select(db1.tbl3.col1,800,830)
-batch_execute()
-f1=fetch(db1.tbl3.col4,s1)
-f2=fetch(db1.tbl3.col4,s2)
-print(f1)
-print(f2)
+-- Load data immediately
+load("/home/cs165/cs165-management-scripts/project_tests_2017/data3_ctrl.csv")
+--
+-- Testing that the data and their indexes are durable on disk.
+shutdown

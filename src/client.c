@@ -86,6 +86,7 @@ int main(void)
     // 2. read from stdin until eof.
     char read_buffer[DEFAULT_STDIN_BUFFER_SIZE];
     send_message.payload = read_buffer;
+    send_message.status = 0;
 
     while (printf("%s", prefix), output_str = fgets(read_buffer,
            DEFAULT_STDIN_BUFFER_SIZE, stdin), !feof(stdin)) {

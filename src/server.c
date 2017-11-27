@@ -20,6 +20,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <string.h>
+#include <libexplain/bind.h>
 
 #include "common.h"
 #include "parse.h"
@@ -140,6 +141,8 @@ int setup_server() {
     len = strlen(local.sun_path) + sizeof(local.sun_family) + 1;
     if (bind(server_socket, (struct sockaddr *)&local, len) == -1) {
         log_err("L%d: Socket failed to bind.\n", __LINE__);
+        fprintf(stderr, "%s\n", explain_errno_bind(err,
+                fildes, sock_addr, sock_addr_size));
         return -1;
     }
 

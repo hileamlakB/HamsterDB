@@ -12,7 +12,7 @@ create(col,"col3",db1.tbl4)
 create(col,"col4",db1.tbl4)
 -- Create a clustered index on col1
 create(idx,db1.tbl4.col1,btree,clustered)
--- Create an unclustered btree index on col2
+-- Create an unclustered sorted index on col2
 create(idx,db1.tbl4.col2,sorted,unclustered)
 --
 --

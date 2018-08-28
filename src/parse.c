@@ -202,6 +202,11 @@ DbOperator* parse_insert(char* query_command, message* send_message) {
  * parses it into the appropriate query. Stores into send_message the
  * status to send back.
  * Returns a db_operator.
+ * 
+ * Getting Started Hint:
+ *      What commands are currently supported for parsing in the starter code distribution?
+ *      How would you add a new command type to parse? 
+ *      What if such command requires multiple arguments?
  **/
 DbOperator* parse_command(char* query_command, message* send_message, int client_socket, ClientContext* context) {
     DbOperator *dbo = NULL; // = malloc(sizeof(DbOperator)); // calloc?

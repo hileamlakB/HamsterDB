@@ -5,7 +5,7 @@ machine please look into this as a a source of error. */
 
 /**
  * client.c
- *  CS165 Fall 2015
+ *  CS165 Fall 2018
  *
  * This file provides a basic unix socket implementation for a client
  * used in an interactive client-server database.
@@ -61,6 +61,12 @@ int connect_client() {
     return client_socket;
 }
 
+/**
+ * Getting Started Hint:
+ *      What kind of protocol or structure will you use to deliver your results from the server to the client?
+ *      What kind of protocol or structure will you use to interpret results for final display to the user?
+ *      
+**/
 int main(void)
 {
     int client_socket = connect_client();

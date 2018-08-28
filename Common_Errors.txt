@@ -11,7 +11,7 @@ B) Please define necessary feature test macros. As an example, the default clien
 C) Install gdb. A guide on how to do so can be found here, https://www.ics.uci.edu/~pattis/common/handouts/macmingweclipse/allexperimental/mac-gdb-install.html, although the steps may differ from machine to machine. 
 
 
-Section 2: Other common mistakes
+Section 2: Other common mistakes and hints
 ----------------------------------------------------------------------------------------------
 A) Please close all file descriptors. Certain operating systems (both Linux based and Mac OS X) will cover for you if you do not close file descriptors when you are done writing data, however data is not guaranteed to be flushed to disk if a file descriptor is not closed correctly. This leads to non-deterministic behavior, missing data, and varying behavior across machines, making debugging hard.
 
@@ -19,3 +19,10 @@ B) Be careful to send and recieve exactly the same number of bytes. Often times 
 
 C) Memory errors can be validated using Valgrind. As a helpful hint, whenever segfaults are occurring or you aren't sure why errors are happening, try using Valgrind to see if you are touching unallocated memory. 
 
+D) Remember with C you are responsible for your own memory management, where do you allocate memory for structs, and when are you done with them and can free that memory? Do you need special treatment for allocating and freeing nested structures?
+
+E) When casting values between different primitive types, what direction are you casting (e.g. are you creating potential for a value overflow error)?
+
+F) Are you clear on your function's argument passing and return convention? Are you passing arguments in by value or by reference? Are you returning by value or by reference? When might you use one convention instead of the other?
+
+G) When you begin to use synchronization primitives, do you introduce any code paths with potential for synchronization issues (e.g. deadlock)?

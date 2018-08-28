@@ -3,8 +3,15 @@
  * implement in your catalogue. It takes in a string (char *)
  * and outputs a pointer to a table object. Similar methods
  * will be needed for columns and databases. How you choose
- * to implement the method is up to you.
+ * to implement the method is up to you.c
+ * 
  */
 Table* lookup_table(char *name) {
 	return NULL;
 }
+
+/**
+*  Getting started hint:
+* 		What other entities are context related (and contextual with respect to what scope in your design)?
+* 		What else will you define in this file?
+**/

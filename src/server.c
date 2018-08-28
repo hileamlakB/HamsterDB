@@ -1,5 +1,5 @@
 /** server.c
- * CS165 Fall 2015
+ * CS165 Fall 2018
  *
  * This file provides a basic unix socket implementation for a server
  * used in an interactive client-server database.
@@ -20,7 +20,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <string.h>
-#include <libexplain/bind.h>
 
 #include "common.h"
 #include "parse.h"
@@ -34,6 +33,11 @@
 /** execute_DbOperator takes as input the DbOperator and executes the query.
  * This should be replaced in your implementation (and its implementation possibly moved to a different file).
  * It is currently here so that you can verify that your server and client can send messages.
+ * 
+ * Getting started hints: 
+ *      What are the structural attributes of a `query`?
+ *      How will you interpret different queries?
+ *      How will you ensure different queries invoke different execution paths in your code?
  **/
 char* execute_DbOperator(DbOperator* query) {
     free(query);
@@ -62,7 +66,7 @@ void handle_client(int client_socket) {
     // 1. Parse the command
     // 2. Handle request if appropriate
     // 3. Send status of the received message (OK, UNKNOWN_QUERY, etc)
-    // 4. Send response of request.
+    // 4. Send response to the request.
     do {
         length = recv(client_socket, &recv_message, sizeof(message), 0);
         if (length < 0) {
@@ -79,9 +83,11 @@ void handle_client(int client_socket) {
             recv_message.payload[recv_message.length] = '\0';
 
             // 1. Parse command
+            //    Query string is converted into a request for an database operator
             DbOperator* query = parse_command(recv_message.payload, &send_message, client_socket, client_context);
 
             // 2. Handle request
+            //    Corresponding database operator is executed over the query
             char* result = execute_DbOperator(query);
 
             send_message.length = strlen(result);
@@ -95,7 +101,7 @@ void handle_client(int client_socket) {
                 exit(1);
             }
 
-            // 4. Send response of request
+            // 4. Send response to the request
             if (send(client_socket, result, send_message.length, 0) == -1) {
                 log_err("Failed to send message.");
                 exit(1);
@@ -141,8 +147,6 @@ int setup_server() {
     len = strlen(local.sun_path) + sizeof(local.sun_family) + 1;
     if (bind(server_socket, (struct sockaddr *)&local, len) == -1) {
         log_err("L%d: Socket failed to bind.\n", __LINE__);
-        fprintf(stderr, "%s\n", explain_errno_bind(err,
-                fildes, sock_addr, sock_addr_size));
         return -1;
     }
 
@@ -156,7 +160,7 @@ int setup_server() {
 
 // Currently this main will setup the socket and accept a single client.
 // After handling the client, it will exit.
-// You will need to extend this to handle multiple concurrent clients
+// You WILL need to extend this to handle MULTIPLE concurrent clients
 // and remain running until it receives a shut-down command.
 int main(void)
 {

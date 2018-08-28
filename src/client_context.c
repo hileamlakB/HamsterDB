@@ -7,6 +7,9 @@
  * 
  */
 Table* lookup_table(char *name) {
+	// void pattern for 'using' a variable to prevent compiler unused variable warning
+	(void) name;
+
 	return NULL;
 }
 

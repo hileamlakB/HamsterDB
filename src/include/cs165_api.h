@@ -242,7 +242,7 @@ Status db_startup();
  **/
 Status sync_db(Db* db);
 
-Status add_db(const char* db_name, bool new);
+Status add_db(const char* db_name, bool is_new);
 
 Table* create_table(Db* db, const char* name, size_t num_columns, Status *status);
 

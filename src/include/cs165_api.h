@@ -193,7 +193,7 @@ typedef struct Comparator {
 typedef enum OperatorType {
     CREATE,
     INSERT,
-    OPEN,
+    LOAD,
 } OperatorType;
 /*
  * necessary fields for insertion
@@ -205,15 +205,15 @@ typedef struct InsertOperator {
 /*
  * necessary fields for insertion
  */
-typedef struct OpenOperator {
-    char* db_name;
-} OpenOperator;
+typedef struct LoadOperator {
+    char* file_name;
+} LoadOperator;
 /*
  * union type holding the fields of any operator
  */
 typedef union OperatorFields {
     InsertOperator insert_operator;
-    OpenOperator open_operator;
+    LoadOperator load_operator;
 } OperatorFields;
 /*
  * DbOperator holds the following fields:
@@ -231,25 +231,19 @@ typedef struct DbOperator {
 
 extern Db *current_db;
 
+/* 
+ * Use this command to see if databases that were persisted start up properly. If files
+ * don't load as expected, this can return an error. 
+ */
 Status db_startup();
 
-/**
- * sync_db(db)
- * Saves the current status of the database to disk.
- *
- * db       : the database to sync.
- * returns  : the status of the operation.
- **/
-Status sync_db(Db* db);
-
-Status add_db(const char* db_name, bool is_new);
+Status create_db(const char* db_name);
 
 Table* create_table(Db* db, const char* name, size_t num_columns, Status *status);
 
-Column* create_column(char *name, Table *table, bool sorted, Status *ret_status);
+Column* create_column(Table *table, char *name, bool sorted, Status *ret_status);
 
 Status shutdown_server();
-Status shutdown_database(Db* db);
 
 char** execute_db_operator(DbOperator* query);
 void db_operator_free(DbOperator* query);

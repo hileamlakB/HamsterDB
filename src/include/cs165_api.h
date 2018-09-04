@@ -71,7 +71,7 @@ typedef struct Column {
  *     within a database, but tables from different databases can have the same
  *     name.
  * - col_count, the number of columns in the table
- * - col,umns this is the pointer to an array of columns contained in the table.
+ * - columns this is the pointer to an array of columns contained in the table.
  * - table_length, the size of the columns in the table.
  **/
 

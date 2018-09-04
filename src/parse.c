@@ -230,6 +230,9 @@ DbOperator* parse_command(char* query_command, message* send_message, int client
 
     cs165_log(stdout, "QUERY: %s\n", query_command);
 
+    // by default, set the status to acknowledge receipt of command,
+    //   indication to client to now wait for the response from the server.
+    //   Note, some commands might want to relay a different status back to the client.
     send_message->status = OK_WAIT_FOR_RESPONSE;
     query_command = trim_whitespace(query_command);
     // check what command is given. 

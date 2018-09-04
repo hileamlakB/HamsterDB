@@ -1,0 +1,36 @@
+Section 1: Mac vs. Linux
+----------------------------------------------------------------------------------------------
+
+You are welcome to use a macbook for your development. 
+However, please make sure to have a Linux VM so that you can test your code on a Linux machine. 
+This is to save our time and yours, as TAs will not always be available to run your code on our test server. 
+
+A) Mac includes libraries by default that Linux doesn't. 
+Please make sure that functions which are called on your machine have the necessary libraries included for running on Linux.
+See https://www.kernel.org/doc/man-pages/ to see what libraries need to be included and linked for each function call. 
+
+B) Please define necessary feature test macros. 
+As an example, the default client file includes _XOPEN_SOURCE. 
+The linux manual pages, posted above, will tell you what needs to be defined to call various functions.
+Note that not all features are compatible with each other.
+
+C) Install gdb. 
+A guide on how to do so can be found here, https://www.ics.uci.edu/~pattis/common/handouts/macmingweclipse/allexperimental/mac-gdb-install.html, 
+although the steps may differ from machine to machine. 
+
+
+Section 2: Other common mistakes and hints
+----------------------------------------------------------------------------------------------
+A) Please close all file descriptors. Certain operating systems (both Linux based and Mac OS X) will cover for you if you do not close file descriptors when you are done writing data, however data is not guaranteed to be flushed to disk if a file descriptor is not closed correctly. This leads to non-deterministic behavior, missing data, and varying behavior across machines, making debugging hard.
+
+B) Be careful to send and recieve exactly the same number of bytes. Often times off by one errors can accumulate and lead to programs crashing at weird times or both sides of a socket waiting for the other (which is observed as a "hang"). This behavior is also very hard to debug. 
+
+C) Memory errors can be validated using Valgrind. As a helpful hint, whenever segfaults are occurring or you aren't sure why errors are happening, try using Valgrind to see if you are touching unallocated memory. 
+
+D) Remember with C you are responsible for your own memory management. Where do you allocate memory for your structs? When are you done with using them and can free memory? Do you need any special treatment for allocating and freeing nested structures?
+
+E) When casting values between different primitive types, what direction are you casting (e.g. are you creating potential for a value overflow error)?
+
+F) Are you clear on your function's argument passing and return convention? Are you passing arguments in by value or by reference? Are you returning by value or by reference? When might you use one convention instead of the other?
+
+G) When you begin to use synchronization primitives, do you introduce any code paths with potential for synchronization issues (e.g. deadlock or race condition)?

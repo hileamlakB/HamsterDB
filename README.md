@@ -4,7 +4,7 @@
 
 This repository contains the distribution code for CS165 Fall 2018.
 
-Next, please make sure that your project/repo are set to private.
+Please make sure that your project/repo are set to private.
 You'll still need to share read access with the cs165-staff group.
 
 We recommend that throughout the semester, you make git tags at each of

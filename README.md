@@ -3,30 +3,6 @@
 ## Introduction
 
 This repository contains the distribution code for CS165 Fall 2018.
-We will continually update this repository throughout the semester,
-so it is recommended that you add
-
-> `git://code.seas.harvard.edu/cs165-main/cs165-2018-base.git`
-
-(TODO: Change this link).
-
-as a new remote to your own local git repository. This will help you
-merge in any updates or bug fixes that we might release.
-
-This repository is managed by the CS165 Staff, so please contact one
-of the TFs or Stratos if you have any questions at any time.
-
-## Getting Started
-
-
-First, please add our distribution code repository as a new remote,
-you can do that with:
-
-> `git remote add cs165 git://code.seas.harvard.edu/cs165-main/cs165-2018-base.git`
-
-This means in the future, you can pull from our repository using:
-
-> `git pull cs165 master`
 
 Next, please make sure that your project/repo are set to private.
 You'll still need to share read access with the cs165-staff group.

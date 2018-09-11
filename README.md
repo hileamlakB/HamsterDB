@@ -3,12 +3,15 @@
 ## Introduction
 
 This repository contains the distribution code for CS165 Fall 2018.
+More details about the project: http://daslab.seas.harvard.edu/classes/cs165/project.html
+
 
 Please make sure that your project/repo are set to private.
 You'll still need to share read access with the cs165-staff group.
 
 We recommend that throughout the semester, you make git tags at each of
 the checkpoints so that it's easier to manage the progress of your project.
+
 
 ## Client-Server code
 We have included a simple unix socket implementation of an interactive

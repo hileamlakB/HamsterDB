@@ -10,7 +10,7 @@ create(col,"col3",db1.tbl3_batch)
 create(col,"col4",db1.tbl3_batch)
 --
 -- Load data immediately
-load("/home/cs165/cs165-management-scripts/project_tests_2017/data3_batch.csv")
+load("/home/cs165/cs165-management-scripts/project_tests_2018/data3_batch.csv")
 --
 -- Testing that the data is durable on disk.
 shutdown

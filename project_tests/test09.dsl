@@ -14,5 +14,3 @@ sub32=sub(f3,f2)
 out4=avg(sub32)
 out5=sum(sub32)
 print(out1,out2,out3,out4,out5)
-
-

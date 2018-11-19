@@ -12,12 +12,12 @@ create(col,"col3",db1.tbl4)
 create(col,"col4",db1.tbl4)
 -- Create a clustered index on col1
 create(idx,db1.tbl4.col1,btree,clustered)
--- Create an unclustered btree index on col2
+-- Create an unclustered sorted index on col2
 create(idx,db1.tbl4.col2,sorted,unclustered)
 --
 --
 -- Load data immediately in the form of a clustered index
-load("/home/cs165/cs165-management-scripts/project_tests_2018/data4.csv")
+load("/home/cs165/cs165-management-scripts/project_tests_2017/data4.csv")
 --
 -- Testing that the data and their indexes are durable on disk.
 shutdown

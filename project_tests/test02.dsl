@@ -4,7 +4,7 @@ create(col,"col1",db1.tbl2)
 create(col,"col2",db1.tbl2)
 create(col,"col3",db1.tbl2)
 create(col,"col4",db1.tbl2)
-load("/home/cs165/cs165-management-scripts/project_tests_2018/data2.csv")
+load("/home/cs165/cs165-management-scripts/project_tests_2017/data2.csv")
 relational_insert(db1.tbl2,-1,-11,-111,-1111)
 relational_insert(db1.tbl2,-2,-22,-222,-2222)
 relational_insert(db1.tbl2,-3,-33,-333,-2222)
@@ -16,3 +16,4 @@ relational_insert(db1.tbl2,-8,-88,-888,-2222)
 relational_insert(db1.tbl2,-9,-99,-999,-2222)
 relational_insert(db1.tbl2,-10,-11,0,-34)
 shutdown
+

@@ -19,7 +19,7 @@ create(idx,db1.tbl3.col2,btree,unclustered)
 --
 --
 -- Load data immediately in the form of a clustered index
-load("/home/cs165/cs165-management-scripts/project_tests_2018/data3.csv")
+load("/home/cs165/cs165-management-scripts/project_tests_2017/data3.csv")
 --
 -- Testing that the data and their indexes are durable on disk.
 shutdown

@@ -1,16 +1,5 @@
 -- Test Select + Fetch
 --
---
--- SELECT col1 FROM tblx WHERE col1 < 20;
-s1=select(dbx.tblx.col1,null,20)
-f1=fetch(dbx.tblx.col1,s1)
-print(f1)
---
--- SELECT col1 FROM tblx WHERE col1 >= -1;
-s2=select(dbx.tblx.col1,-1,null)
-f2=fetch(dbx.tblx.col1,s2)
-print(f2)
---
 -- SELECT col1 FROM tbl1 WHERE col1 < 20;
 s1=select(db1.tbl1.col1,null,20)
 f1=fetch(db1.tbl1.col1,s1)

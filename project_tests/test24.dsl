@@ -11,7 +11,7 @@ create(col,"col3",db1.tbl4_ctrl)
 create(col,"col4",db1.tbl4_ctrl)
 --
 -- Load data immediately in the form of a clustered index
-load("/home/cs165/cs165-management-scripts/project_tests_2018/data4_ctrl.csv")
+load("/home/cs165/cs165-management-scripts/project_tests_2017/data4_ctrl.csv")
 --
 -- Testing that the data and their indexes are durable on disk.
 shutdown

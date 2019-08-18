@@ -1,0 +1,6 @@
+TODOs
+======
+
+1. Double check that SIMD and other intrinsics propogate through to Docker container as intended.
+2. Same as #1 but for Perf.
+3. Think about how to trigger testing script through the docker interface.

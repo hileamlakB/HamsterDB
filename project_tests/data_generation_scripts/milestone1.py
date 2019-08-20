@@ -8,32 +8,11 @@ import numpy as np
 import struct
 import pandas as pd
 
+import data_gen_utils
+
 ############################################################################
 # Notes: You can generate your own scripts for generating data fairly easily by modifying this script.
 ############################################################################
-
-def generateHeaderLineWithNewline(dbName, tblName, numColumns):
-	first_line = generateHeaderLine(dbName, tblName, numColumns) + '\n'
-	return first_line
-
-def generateHeaderLine(dbName, tblName, numColumns):
-	prefix_string = dbName + "." + tblName + ".col"
-	string_list = []
-	for i in range(numColumns):
-		string_list.append(prefix_string + str(i+1))
-	first_line = ','.join(string_list)
-	return first_line
-
-def openFileHandles(testNum):
-	if testNum < 10:
-		outputFile = 'test0{}gen.dsl'.format(testNum)
-		expOutputFile = 'test0{}gen.exp'.format(testNum)
-	else:
-		outputFile = 'test{}gen.dsl'.format(testNum)
-		expOutputFile = 'test{}gen.exp'.format(testNum)
-	output_file = open(outputFile, 'w')
-	exp_output_file = open(expOutputFile, 'w')
-	return output_file, exp_output_file
 
 def generateDataFileMidwayCheckin():
 	outputFile = 'data1_generated.csv'
@@ -49,13 +28,9 @@ def generateDataFileMidwayCheckin():
 	outputTable.to_csv(outputFile, sep=',', index=False, header=header_line, line_terminator='\n')
 	return outputTable
 
-def closeFileHandles(output_file, exp_output_file):
-	output_file.close()
-	exp_output_file.close()
-
 def createTestOne():
 	# write out test
-	output_file, exp_output_file = openFileHandles(1)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(1)
 	output_file.write('-- Load+create Data and shut down of tbl1 which has 1 attribute only\n')
 	output_file.write('create(db,\"db1\")\n')
 	output_file.write('create(tbl,\"tbl1\",db1,2)\n')
@@ -66,11 +41,11 @@ def createTestOne():
 		output_file.write('relational_insert(db1.tbl1,-{}, {})\n'.format(x, x-10))
 	output_file.write('shutdown\n')
 	# generate expected results
-	closeFileHandles(output_file, exp_output_file)
+	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTestTwo(dataTable):
 	# write out test
-	output_file, exp_output_file = openFileHandles(2)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(2)
 	output_file.write('-- Test Select + Fetch\n')
 	output_file.write('--\n')
 	### Part 1
@@ -96,7 +71,7 @@ def createTestTwo(dataTable):
 	output = dataTable[dfSelectMaskGT]['col2']
 	exp_output_file.write(output.to_string(header=False,index=False))
 	exp_output_file.write('\n\n')
-	closeFileHandles(output_file, exp_output_file)
+	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 
 def createTestThree(dataTable):
@@ -118,7 +93,7 @@ def createTestThree(dataTable):
 	output = dataTable[dfSelectMaskGT & dfSelectMaskLT]['col2']
 	exp_output_file.write(str(output.mean()))
 	exp_output_file.write('\n')
-	closeFileHandles(output_file, exp_output_file)
+	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def generateDataFile2(dataSizeTableTwo):
 	outputFile = 'data2_generated.csv'
@@ -133,7 +108,7 @@ def generateDataFile2(dataSizeTableTwo):
 
 def createTestFour():
 	# prelude
-	output_file, exp_output_file = openFileHandles(4)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(4)
 	output_file.write('-- Load Test Data 2\n')
 	output_file.write('--\n')
 	output_file.write('-- Load+create Data and shut down of tbl2 which has 4 attributes\n')
@@ -154,12 +129,12 @@ def createTestFour():
 	output_file.write('relational_insert(db1.tbl2,-9,-99,-999,-2222)\n')
 	output_file.write('relational_insert(db1.tbl2,-10,-11,0,-34)\n')
 	output_file.write('shutdown\n')
-	closeFileHandles(output_file, exp_output_file)
+	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 ## NOTE: approxSelectivity should be between 0 and 1
 def createTestFive(dataTable, dataSizeTableTwo, approxSelectivity):
 	# prelude
-	output_file, exp_output_file = openFileHandles(5)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(5)
 	output_file.write('-- Summation\n')
 	output_file.write('--\n')
 	# query
@@ -184,11 +159,11 @@ def createTestFive(dataTable, dataSizeTableTwo, approxSelectivity):
 	exp_output_file.write('\n')
 	exp_output_file.write(str(dataTable['col1'].sum()))
 	exp_output_file.write('\n')
-	closeFileHandles(output_file, exp_output_file)
+	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTestSix(dataTable, dataSizeTableTwo, approxNumOutputTuples):
 	# prelude
-	output_file, exp_output_file = openFileHandles(6)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(6)
 	output_file.write('-- Addition\n')
 	output_file.write('--\n')
 	# query
@@ -208,10 +183,10 @@ def createTestSix(dataTable, dataSizeTableTwo, approxNumOutputTuples):
 	output = dataTable[dfSelectMaskGT & dfSelectMaskLT]['col3'] + dataTable[dfSelectMaskGT & dfSelectMaskLT]['col2']
 	exp_output_file.write(output.to_string(header=False,index=False))
 	exp_output_file.write('\n')
-	closeFileHandles(output_file, exp_output_file)
+	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTestSeven(dataTable, dataSizeTableTwo, approxNumOutputTuples):
-	output_file, exp_output_file = openFileHandles(7)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(7)
 	output_file.write('-- Subtraction\n')
 	output_file.write('--\n')
 	offset = approxNumOutputTuples
@@ -230,7 +205,7 @@ def createTestSeven(dataTable, dataSizeTableTwo, approxNumOutputTuples):
 	output = dataTable[dfSelectMaskGT & dfSelectMaskLT]['col3'] - dataTable[dfSelectMaskGT & dfSelectMaskLT]['col2']
 	exp_output_file.write(output.to_string(header=False,index=False))
 	exp_output_file.write('\n')
-	closeFileHandles(output_file, exp_output_file)
+	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTestEight(dataTable, dataSizeTableTwo, approxSelectivity):
 	output_file, exp_output_file = openFileHandles(8)
@@ -324,9 +299,7 @@ def createTestNine(dataTable, dataSizeTableTwo, approxSelectivity):
 	exp_output_file.write(str(output3) + ',')
 	exp_output_file.write(str(output4) + ',')
 	exp_output_file.write(str(output5) + '\n')
-	closeFileHandles(output_file, exp_output_file)
-
-
+	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def generateTestsMidwayCheckin(dataTable):
 	createTestOne()
@@ -341,8 +314,7 @@ def generateOtherMilestoneOneTests(dataTable2, dataSizeTableTwo):
 	createTestEight(dataTable2, dataSizeTableTwo, 0.1)
 	createTestNine(dataTable2, dataSizeTableTwo, 0.1)
 
-def generateMilestoneOneFiles(dataSizeTableTwo):
-	randomSeed = 47
+def generateMilestoneOneFiles(dataSizeTableTwo, randomSeed):
 	dataTable = generateDataFileMidwayCheckin()
 	generateTestsMidwayCheckin(dataTable)
 	#### The seed is now a different number on the server! Data size is also different. 
@@ -352,7 +324,12 @@ def generateMilestoneOneFiles(dataSizeTableTwo):
 
 def main(argv):
 	dataSizeTableTwo = int(argv[0])
-	generateMilestoneOneFiles(dataSizeTableTwo)
+	dataSize = int(argv[0])
+    if len(argv) > 1:
+        randomSeed = argv[1]
+    else:
+        randomSeed = 47
+	generateMilestoneOneFiles(dataSizeTableTwo, randomSeed)
 
 if __name__ == "__main__":
 	main(sys.argv[1:])

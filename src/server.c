@@ -40,6 +40,27 @@
  *      How will you ensure different queries invoke different execution paths in your code?
  **/
 char* execute_DbOperator(DbOperator* query) {
+    if(query && query->type == CREATE){
+        if(query->operator_fields.create_operator.create_type == _DB){
+            if (create_db(query->operator_fields.create_operator.name).code == OK) {
+                return "165";
+            } else {
+                return "Failed";
+            }
+        }
+        else if(query->operator_fields.create_operator.create_type == _TABLE){
+            Status create_status;
+            create_table(query->operator_fields.create_operator.db, 
+                query->operator_fields.create_operator.name, 
+                query->operator_fields.create_operator.col_count, 
+                &create_status);
+            if (create_status.code != OK) {
+                cs165_log(stdout, "adding a table failed.");
+                return "Failed";
+            }
+            return "165";
+        }
+    }
     free(query);
     return "165";
 }

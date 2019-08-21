@@ -19,7 +19,7 @@ import data_gen_utils
 
 def generateDataMilestone2(dataSize):
     outputFile = 'data3_batch.csv'
-    header_line = generateHeaderLine('db1', 'tbl3', 4)
+    header_line = data_gen_utils.generateHeaderLine('db1', 'tbl3', 4)
     outputTable = pd.DataFrame(np.random.randint(0, dataSize/5, size=(dataSize, 4)), columns =['col1', 'col2', 'col3', 'col4'])
     # This is going to have many, many duplicates for large tables!!!!
     outputTable['col1'] = np.random.randint(0,1000, size = (dataSize))
@@ -200,7 +200,7 @@ def createTestFifteen(dataTable):
     for i in range(10):
         dfSelectMask = (dataTable['col4'] >= (randomVal + (2 * i))) & (dataTable['col4'] < (randomVal + 60 - (2 * i)))
         output = dataTable[dfSelectMask]['col1']
-        exp_output_file.write(outputPrint(output))
+        exp_output_file.write(data_gen_utils.outputPrint(output))
         exp_output_file.write('\n\n')
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 

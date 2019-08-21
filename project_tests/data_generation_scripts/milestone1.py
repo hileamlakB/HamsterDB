@@ -16,15 +16,14 @@ import data_gen_utils
 
 def generateDataFileMidwayCheckin():
 	outputFile = 'data1_generated.csv'
-	header_line = generateHeaderLine('db1', 'tbl1', 2)
+	header_line = data_gen_utils.generateHeaderLine('db1', 'tbl1', 2)
 	column1 = list(range(0,1000))
 	column2 = list(range(10,1010))
 	#### For these 3 tests, the seed is exactly the same on the server. 
 	np.random.seed(47)
 	np.random.shuffle(column2)
 	#outputTable = np.column_stack((column1, column2)).astype(int)
-	outputTable = pd.DataFrame(list(zip(column1, column2)), 
-               columns =['col1', 'col2']) 
+	outputTable = pd.DataFrame(list(zip(column1, column2)), columns =['col1', 'col2']) 
 	outputTable.to_csv(outputFile, sep=',', index=False, header=header_line, line_terminator='\n')
 	return outputTable
 
@@ -76,7 +75,7 @@ def createTestTwo(dataTable):
 
 def createTestThree(dataTable):
 	# prelude
-	output_file, exp_output_file = openFileHandles(3)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(3)
 	output_file.write('-- Test Multiple Selects + Average\n')
 	output_file.write('--\n')
 	# query
@@ -97,7 +96,7 @@ def createTestThree(dataTable):
 
 def generateDataFile2(dataSizeTableTwo):
 	outputFile = 'data2_generated.csv'
-	header_line = generateHeaderLine('db1', 'tbl2', 4)
+	header_line = data_gen_utils.generateHeaderLine('db1', 'tbl2', 4)
 	outputTable = pd.DataFrame(np.random.randint(-1 * dataSizeTableTwo/2, dataSizeTableTwo/2, size=(dataSizeTableTwo, 4)), columns =['col1', 'col2', 'col3', 'col4'])
 	outputTable['col2'] = outputTable['col2'] + outputTable['col1']
 	# This is going to have many, many duplicates!!!!
@@ -208,7 +207,7 @@ def createTestSeven(dataTable, dataSizeTableTwo, approxNumOutputTuples):
 	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTestEight(dataTable, dataSizeTableTwo, approxSelectivity):
-	output_file, exp_output_file = openFileHandles(8)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(8)
 	output_file.write('-- Min,Max\n')
 	output_file.write('--\n')
 	offset = int(approxSelectivity * dataSizeTableTwo)
@@ -250,10 +249,10 @@ def createTestEight(dataTable, dataSizeTableTwo, approxSelectivity):
 	exp_output_file.write(str(output2) + '\n')
 	exp_output_file.write(str(output3) + '\n')
 	exp_output_file.write(str(output4) + '\n')
-	closeFileHandles(output_file, exp_output_file)
+	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTestNine(dataTable, dataSizeTableTwo, approxSelectivity):
-	output_file, exp_output_file = openFileHandles(9)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(9)
 	output_file.write('-- Big Bad Boss Test! Milestone 1\n')
 	output_file.write('-- It\'s basically just the previous tests put together\n')
 	output_file.write('-- But also, its.... Boss test!\n')
@@ -325,10 +324,10 @@ def generateMilestoneOneFiles(dataSizeTableTwo, randomSeed):
 def main(argv):
 	dataSizeTableTwo = int(argv[0])
 	dataSize = int(argv[0])
-    if len(argv) > 1:
-        randomSeed = argv[1]
-    else:
-        randomSeed = 47
+	if len(argv) > 1:
+		randomSeed = argv[1]
+	else:
+		randomSeed = 47
 	generateMilestoneOneFiles(dataSizeTableTwo, randomSeed)
 
 if __name__ == "__main__":

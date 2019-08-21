@@ -8,30 +8,14 @@ import numpy as np
 import struct
 import pandas as pd
 
+import data_gen_utils
+
 ############################################################################
 # Notes: You can generate your own scripts for generating data fairly easily by modifying this script.
 #
 # To test functionality and speed, run your tests first on small data. Then when you are reasonably confident that your code works, move to bigger data sizes for speed.
 # 
 ############################################################################
-
-def generateHeaderLineWithNewline(dbName, tblName, numColumns):
-    first_line = generateHeaderLine(dbName, tblName, numColumns) + '\n'
-    return first_line
-
-def generateHeaderLine(dbName, tblName, numColumns):
-    prefix_string = dbName + "." + tblName + ".col"
-    string_list = []
-    for i in range(numColumns):
-        string_list.append(prefix_string + str(i+1))
-    first_line = ','.join(string_list)
-    return first_line
-
-def outputPrint(output):
-    if output.shape[0] > 0:
-        return output.to_string(header=False,index=False)
-    else:
-        return('')
 
 def generateDataMilestone2(dataSize):
     outputFile = 'data3_batch.csv'
@@ -44,25 +28,9 @@ def generateDataMilestone2(dataSize):
     outputTable.to_csv(outputFile, sep=',', index=False, header=header_line, line_terminator='\n')
     return outputTable
 
-
-def openFileHandles(testNum):
-    if testNum < 10:
-        outputFile = 'test0{}gen.dsl'.format(testNum)
-        expOutputFile = 'test0{}gen.exp'.format(testNum)
-    else:
-        outputFile = 'test{}gen.dsl'.format(testNum)
-        expOutputFile = 'test{}gen.exp'.format(testNum)
-    output_file = open(outputFile, 'w')
-    exp_output_file = open(expOutputFile, 'w')
-    return output_file, exp_output_file
-
-def closeFileHandles(output_file, exp_output_file):
-    output_file.close()
-    exp_output_file.close()
-
 def createTestTen():
     # prelude
-    output_file, exp_output_file = openFileHandles(10)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(10)
     output_file.write('-- Load Test Data 2\n')
     output_file.write('-- Create a table to run batch queries on\n')
     output_file.write('--\n')
@@ -82,11 +50,11 @@ def createTestTen():
     output_file.write('-- Testing that the data is durable on disk.\n')
     output_file.write('shutdown\n')
     # no expected results
-    closeFileHandles(output_file, exp_output_file)
+    data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTestEleven(dataTable):
     # prelude and query
-    output_file, exp_output_file = openFileHandles(11)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(11)
     output_file.write('--\n')
     output_file.write('-- Testing for batching queries\n')
     output_file.write('-- First test is 2 queries with NO overlap\n')
@@ -109,16 +77,16 @@ def createTestEleven(dataTable):
     dfSelectMask2 = (dataTable['col1'] >= 800) & (dataTable['col1'] < 830)
     output1 = dataTable[dfSelectMask1]['col4']
     output2 = dataTable[dfSelectMask2]['col4']
-    exp_output_file.write(outputPrint(output1))
+    exp_output_file.write(data_gen_utils.outputPrint(output1))
     exp_output_file.write('\n\n')
-    exp_output_file.write(outputPrint(output2))
+    exp_output_file.write(data_gen_utils.outputPrint(output2))
     exp_output_file.write('\n')
-    closeFileHandles(output_file, exp_output_file)
+    data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 
 def createTestTwelve(dataTable):
     # prelude and query
-    output_file, exp_output_file = openFileHandles(12)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(12)
     output_file.write('--\n')
     output_file.write('-- Testing for batching queries\n')
     output_file.write('-- First test is 2 queries with partial overlap\n')
@@ -141,15 +109,15 @@ def createTestTwelve(dataTable):
     dfSelectMask2 = (dataTable['col1'] >= 800) & (dataTable['col1'] < 830)
     output1 = dataTable[dfSelectMask1]['col4']
     output2 = dataTable[dfSelectMask2]['col4']
-    exp_output_file.write(outputPrint(output1))
+    exp_output_file.write(data_gen_utils.outputPrint(output1))
     exp_output_file.write('\n\n')
-    exp_output_file.write(outputPrint(output2))
+    exp_output_file.write(data_gen_utils.outputPrint(output2))
     exp_output_file.write('\n')
-    closeFileHandles(output_file, exp_output_file)
+    data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTestThirteen(dataTable):
     # prelude and query
-    output_file, exp_output_file = openFileHandles(13)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(13)
     output_file.write('--\n')
     output_file.write('-- Testing for batching queries\n')
     output_file.write('-- First test is 2 queries with full overlap (subsumption)\n')
@@ -172,15 +140,15 @@ def createTestThirteen(dataTable):
     dfSelectMask2 = (dataTable['col1'] >= 800) & (dataTable['col1'] < 830)
     output1 = dataTable[dfSelectMask1]['col4']
     output2 = dataTable[dfSelectMask2]['col4']
-    exp_output_file.write(outputPrint(output1))
+    exp_output_file.write(data_gen_utils.outputPrint(output1))
     exp_output_file.write('\n\n')
-    exp_output_file.write(outputPrint(output2))
+    exp_output_file.write(data_gen_utils.outputPrint(output2))
     exp_output_file.write('\n')
-    closeFileHandles(output_file, exp_output_file)
+    data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTestFourteen(dataTable):
     # prelude and query
-    output_file, exp_output_file = openFileHandles(15)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(15)
     output_file.write('--\n')
     output_file.write('-- Testing for batching queries\n')
     output_file.write('-- First test is 2 queries with no overlap\n')
@@ -202,14 +170,14 @@ def createTestFourteen(dataTable):
     for i in range(10):
         dfSelectMask = (dataTable['col4'] >= (1000 * i)) & (dataTable['col4'] < ((1000 * i) + 30))
         output = dataTable[dfSelectMask]['col1']
-        exp_output_file.write(outputPrint(output))
+        exp_output_file.write(data_gen_utils.outputPrint(output))
         exp_output_file.write('\n\n')
-    closeFileHandles(output_file, exp_output_file)
+    data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 
 def createTestFifteen(dataTable):
     # prelude and query
-    output_file, exp_output_file = openFileHandles(15)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(15)
     output_file.write('--\n')
     output_file.write('-- Testing for batching queries\n')
     output_file.write('-- First test is 2 queries with full overlap (subsumption)\n')
@@ -234,14 +202,14 @@ def createTestFifteen(dataTable):
         output = dataTable[dfSelectMask]['col1']
         exp_output_file.write(outputPrint(output))
         exp_output_file.write('\n\n')
-    closeFileHandles(output_file, exp_output_file)
+    data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTests16And17(dataTable, dataSize):
     # 1 / 1000 tuples should qualify on average. This is so that most time is spent on scans & not fetches or prints
-    offset = np.min([1, int(dataSize/5000)])
+    offset = np.max([1, int(dataSize/5000)])
     query_starts = np.random.randint(0,(dataSize/8), size = (100))
-    output_file16, exp_output_file16 = openFileHandles(16)
-    output_file17, exp_output_file17 = openFileHandles(17)
+    output_file16, exp_output_file16 = data_gen_utils.openFileHandles(16)
+    output_file17, exp_output_file17 = data_gen_utils.openFileHandles(17)
     output_file16.write('--\n')
     output_file16.write('-- Control timing for without batching\n')
     output_file16.write('-- Queries for 16 and 17 are identical.\n')
@@ -267,18 +235,17 @@ def createTests16And17(dataTable, dataSize):
     for i in range(100):
         dfSelectMask = (dataTable['col2'] >= query_starts[i]) & ((dataTable['col2'] < (query_starts[i] + offset)))
         output = dataTable[dfSelectMask]['col3']
-        exp_output_file16.write(outputPrint(output))
+        exp_output_file16.write(data_gen_utils.outputPrint(output))
         exp_output_file16.write('\n\n')
-        exp_output_file17.write(outputPrint(output))
+        exp_output_file17.write(data_gen_utils.outputPrint(output))
         exp_output_file17.write('\n\n')
-    closeFileHandles(output_file16, exp_output_file16)
-    closeFileHandles(output_file17, exp_output_file17)
+    data_gen_utils.closeFileHandles(output_file16, exp_output_file16)
+    data_gen_utils.closeFileHandles(output_file17, exp_output_file17)
 
 
-def generateMilestoneTwoFiles(dataSize):
-    randomSeed = 47
-    dataTable = generateDataMilestone2(dataSize)
+def generateMilestoneTwoFiles(dataSize, randomSeed):
     np.random.seed(randomSeed)
+    dataTable = generateDataMilestone2(dataSize)   
     createTestTen()
     createTestEleven(dataTable)
     createTestTwelve(dataTable)
@@ -289,7 +256,11 @@ def generateMilestoneTwoFiles(dataSize):
 
 def main(argv):
     dataSize = int(argv[0])
-    generateMilestoneTwoFiles(dataSize)
+    if len(argv) > 1:
+        randomSeed = argv[1]
+    else:
+        randomSeed = 47
+    generateMilestoneTwoFiles(dataSize, randomSeed)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

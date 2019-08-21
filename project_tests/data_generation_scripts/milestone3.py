@@ -7,6 +7,7 @@ from scipy.stats import beta, uniform
 import numpy as np
 import struct
 import pandas as pd
+import math
 
 import data_gen_utils
 
@@ -68,7 +69,7 @@ def createTest19():
     output_file, exp_output_file = data_gen_utils.openFileHandles(19)
     output_file.write('-- Test for creating table with indexes\n')
     output_file.write('--\n')
-    output_file.write('-- Table tbl3 has a clustered index with col3 being the leading column.\n')
+    output_file.write('-- Table tbl4 has a clustered index with col3 being the leading column.\n')
     output_file.write('-- The clustered index has the form of a sorted column.\n')
     output_file.write('-- The table also has a secondary btree index.\n')
     output_file.write('--\n')
@@ -80,7 +81,7 @@ def createTest19():
     output_file.write('create(col,"col2",db1.tbl4)\n')
     output_file.write('create(col,"col3",db1.tbl4)\n')
     output_file.write('create(col,"col4",db1.tbl4)\n')
-    output_file.write('-- Create a clustered index on col1\n')
+    output_file.write('-- Create a clustered index on col3\n')
     output_file.write('create(idx,db1.tbl4.col3,sorted,clustered)\n')
     output_file.write('-- Create an unclustered btree index on col2\n')
     output_file.write('create(idx,db1.tbl4.col2,btree,unclustered)\n')
@@ -117,14 +118,14 @@ def createTests20And21(dataTable, dataSize):
     output_file20.write('print(f2)\n')
     # generate test 21
     output_file21.write('--\n')
-    output_file21.write('-- tbl3 has a secondary b-tree tree index on col2, and a clustered index on col1 with the form of a sorted column\n')
+    output_file21.write('-- tbl3 has a secondary b-tree tree index on col2, and a clustered index on col3 with the form of a sorted column\n')
     output_file21.write('-- testing for correctness\n')
     output_file21.write('--\n')
     output_file21.write('-- Query in SQL:\n')
-    output_file21.write('-- SELECT col1 FROM tbl3_ WHERE col3 >= {} and col3 < {};\n'.format(val1, val1+offset))
-    output_file21.write('-- SELECT col1 FROM tbl3_ctrl WHERE col3 >= {} and col3 < {};\n'.format(val2, val2+offset2))
+    output_file21.write('-- SELECT col1 FROM tbl4 WHERE col3 >= {} and col3 < {};\n'.format(val1, val1+offset))
+    output_file21.write('-- SELECT col1 FROM tbl4 WHERE col3 >= {} and col3 < {};\n'.format(val2, val2+offset2))
     output_file21.write('--\n')
-    output_file21.write('-- since col1 has a clustered index, the index is expected to be used by the select operator\n')
+    output_file21.write('-- since col3 has a clustered index, the index is expected to be used by the select operator\n')
     output_file21.write('s1=select(db1.tbl4.col3,{},{})\n'.format(val1, val1 + offset))
     output_file21.write('f1=fetch(db1.tbl4.col1,s1)\n')
     output_file21.write('print(f1)\n')
@@ -153,13 +154,13 @@ def createTest22(dataTable, dataSize):
     output_file.write('-- Test for a clustered index select followed by a second predicate\n')
     output_file.write('--\n')
     output_file.write('-- Query in SQL:\n')
-    output_file.write('-- SELECT sum(col1) FROM tbl3_ WHERE (col3 >= {} and col3 < {}) AND (col2 >= {} and col2 < {});\n'.format(val1, val1+offset, val2, val2+offset))
+    output_file.write('-- SELECT sum(col1) FROM tbl4 WHERE (col3 >= {} and col3 < {}) AND (col2 >= {} and col2 < {});\n'.format(val1, val1+offset, val2, val2+offset))
     output_file.write('--\n')
     output_file.write('s1=select(db1.tbl4.col3,{},{})\n'.format(val1, val1 + offset))
     output_file.write('f1=fetch(db1.tbl4.col2,s1)\n')
     output_file.write('s2=select(f1,{},{})\n'.format(val2, val2 + offset2))
-    output_file.write('f1=fetch(db1.tbl4.col1,s2)\n')
-    output_file.write('a1=sum(f1)\n')
+    output_file.write('f2=fetch(db1.tbl4.col1,s2)\n')
+    output_file.write('a1=sum(f2)\n')
     output_file.write('print(a1)\n')
     # generate expected results
     dfSelectMask1 = (dataTable['col3'] >= val1) & (dataTable['col3'] < (val1 + offset))
@@ -168,6 +169,63 @@ def createTest22(dataTable, dataSize):
     exp_output_file.write(str(values.sum()))
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
+def createTests23And24(dataTable, dataSize):
+    output_file23, exp_output_file23 = data_gen_utils.openFileHandles(23)
+    output_file24, exp_output_file24 = data_gen_utils.openFileHandles(24)
+    offset = np.max([2, int(dataSize/1000)])
+    output_file23.write('-- Test for a non-clustered index select followed by an aggregate (control-test)\n')
+    output_file23.write('--\n')
+    output_file23.write('-- Query form in SQL:\n')
+    output_file23.write('-- SELECT avg(col3) FROM tbl4 WHERE (col2 >= _ and col2 < {});\n')
+    output_file23.write('--\n')
+    output_file24.write('-- Test for a non-clustered index select followed by an aggregate (control-test)\n')
+    output_file24.write('--\n')
+    output_file24.write('-- Query form in SQL:\n')
+    output_file24.write('-- SELECT avg(col3) FROM tbl4 WHERE (col2 >= _ and col2 < _);\n')
+    output_file24.write('--\n')
+    for i in range(10):
+        val1 = np.random.randint(0, int((dataSize/5) - offset))
+        output_file23.write('s{}=select(db1.tbl4_ctrl.col2,{},{})\n'.format(i, val1, val1 + offset))
+        output_file23.write('f{}=fetch(db1.tbl4_ctrl.col3,s{})\n'.format(i,i))
+        output_file23.write('a{}=sum(f{})\n'.format(i,i))
+        output_file23.write('print(a{})\n'.format(i))
+        output_file24.write('s{}=select(db1.tbl4.col2,{},{})\n'.format(i, val1, val1 + offset))
+        output_file24.write('f{}=fetch(db1.tbl4.col3,s{})\n'.format(i,i))
+        output_file24.write('a{}=sum(f{})\n'.format(i,i))
+        output_file24.write('print(a{})\n'.format(i))
+        # generate expected results
+        dfSelectMask1 = (dataTable['col2'] >= val1) & (dataTable['col2'] < (val1 + offset))
+        values = dataTable[dfSelectMask1]['col3']
+        mean_result = values.mean()
+        if (math.isnan(mean_result)):
+            exp_output_file23.write('0\n')
+            exp_output_file24.write('0\n')
+        else:
+            exp_output_file23.write(str(mean_result) + '\n')
+            exp_output_file24.write(str(mean_result) + '\n')
+    data_gen_utils.closeFileHandles(output_file23, exp_output_file23)
+    data_gen_utils.closeFileHandles(output_file24, exp_output_file24)
+
+def createTest25(dataTable, frequentVal1, frequentVal2):
+    output_file, exp_output_file = data_gen_utils.openFileHandles(25)
+    output_file.write('-- Test for a clustered index select followed by a second predicate\n')
+    output_file.write('--\n')
+    output_file.write('-- Query in SQL:\n')
+    output_file.write('-- SELECT sum(col1) FROM tbl4 WHERE (col2 >= {} and col2 < {});\n'.format(frequentVal1 - 1, frequentVal1 + 1))
+    output_file.write('-- SELECT sum(col1) FROM tbl4 WHERE (col2 >= {} and col2 < {});\n'.format(frequentVal2 - 1, frequentVal2 + 1))
+    output_file.write('--\n')
+    output_file.write('s1=select(db1.tbl4.col2,{},{})\n'.format(frequentVal1 - 1, frequentVal1 + 1))
+    output_file.write('f1=fetch(db1.tbl4.col1,s1)\n')
+    output_file.write('a1=sum(f1)\n')
+    output_file.write('print(a1)\n')
+    # generate expected results
+    dfSelectMask1 = (dataTable['col2'] >= (frequentVal1 - 1)) & (dataTable['col2'] < (frequentVal1 + 1))
+    result1 = dataTable[dfSelectMask1]['col1'].sum()
+    dfSelectMask2 = (dataTable['col2'] >= (frequentVal2 - 1)) & (dataTable['col2'] < (frequentVal2 + 1))
+    result2 = dataTable[dfSelectMask2]['col1'].sum()
+    exp_output_file.write(str(result1) + '\n')
+    exp_output_file.write(str(result2) + '\n')
+    data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 
 def generateMilestoneThreeFiles(dataSize):
@@ -178,6 +236,8 @@ def generateMilestoneThreeFiles(dataSize):
     createTest19()
     createTests20And21(dataTable, dataSize)
     createTest22(dataTable, dataSize)
+    createTests23And24(dataTable, dataSize)
+    createTest25(dataTable, frequentVal1, frequentVal2)
 
 def main(argv):
     dataSize = int(argv[0])

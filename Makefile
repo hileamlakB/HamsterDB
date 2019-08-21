@@ -12,4 +12,3 @@ build:
 # runs a docker container, based off the `cs165` image that was last built and registered
 run:
 	docker container run -t -i cs165
-	

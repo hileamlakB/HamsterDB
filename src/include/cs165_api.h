@@ -195,6 +195,29 @@ typedef enum OperatorType {
     INSERT,
     LOAD,
 } OperatorType;
+
+
+typedef enum CreateType {
+    _DB,
+    _TABLE,
+    _COLUMN,
+} CreateType;
+
+/*
+ * necessary fields for creation
+ * "create_type" indicates what kind of object you are creating. 
+ * For example, if create_type == _DB, the operator should create a db named <<name>> 
+ * if create_type = _TABLE, the operator should create a table named <<name>> with <<col_count>> columns within db <<db>>
+ * if create_type = = _COLUMN, the operator should create a column named <<name>> within table <<table>>
+ */
+typedef struct CreateOperator {
+    CreateType create_type; 
+    char name[MAX_SIZE_NAME]; 
+    Db* db;
+    Table* table;
+    int col_count;
+} CreateOperator;
+
 /*
  * necessary fields for insertion
  */
@@ -212,6 +235,7 @@ typedef struct LoadOperator {
  * union type holding the fields of any operator
  */
 typedef union OperatorFields {
+    CreateOperator create_operator;
     InsertOperator insert_operator;
     LoadOperator load_operator;
 } OperatorFields;

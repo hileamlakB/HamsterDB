@@ -37,7 +37,8 @@ char* next_token(char** tokenizer, message_status* status) {
  * It parses those arguments, checks that they are valid, and creates a table.
  **/
 
-message_status parse_create_tbl(char* create_arguments) {
+
+DbOperator* parse_create_tbl(char* create_arguments) {
     message_status status = OK_DONE;
     char** create_arguments_index = &create_arguments;
     char* table_name = next_token(create_arguments_index, &status);
@@ -46,39 +47,35 @@ message_status parse_create_tbl(char* create_arguments) {
 
     // not enough arguments
     if (status == INCORRECT_FORMAT) {
-        return status;
+        return NULL;
     }
-
     // Get the table name free of quotation marks
     table_name = trim_quotes(table_name);
-
     // read and chop off last char, which should be a ')'
     int last_char = strlen(col_cnt) - 1;
     if (col_cnt[last_char] != ')') {
-        return INCORRECT_FORMAT;
+        return NULL;
     }
     // replace the ')' with a null terminating character. 
     col_cnt[last_char] = '\0';
-
     // check that the database argument is the current active database
     if (strcmp(current_db->name, db_name) != 0) {
         cs165_log(stdout, "query unsupported. Bad db name");
-        return QUERY_UNSUPPORTED;
+        return NULL; //QUERY_UNSUPPORTED
     }
-
     // turn the string column count into an integer, and check that the input is valid.
     int column_cnt = atoi(col_cnt);
     if (column_cnt < 1) {
-        return INCORRECT_FORMAT;
+        return NULL;
     }
-    Status create_status;
-    create_table(current_db, table_name, column_cnt, &create_status);
-    if (create_status.code != OK) {
-        cs165_log(stdout, "adding a table failed.");
-        return EXECUTION_ERROR;
-    }
-
-    return status;
+    // make create dbo for table
+    DbOperator* dbo = malloc(sizeof(DbOperator));
+    dbo->type = CREATE;
+    dbo->operator_fields.create_operator.create_type = _TABLE;
+    strcpy(dbo->operator_fields.create_operator.name, table_name);
+    dbo->operator_fields.create_operator.db = current_db;
+    dbo->operator_fields.create_operator.col_count = column_cnt;
+    return dbo;
 }
 
 /**
@@ -86,12 +83,13 @@ message_status parse_create_tbl(char* create_arguments) {
  * It parses those arguments, checks that they are valid, and creates a database.
  **/
 
-message_status parse_create_db(char* create_arguments) {
+
+DbOperator* parse_create_db(char* create_arguments) {
     char *token;
     token = strsep(&create_arguments, ",");
     // not enough arguments if token is NULL
     if (token == NULL) {
-        return INCORRECT_FORMAT;                    
+        return NULL;
     } else {
         // create the database with given name
         char* db_name = token;
@@ -99,28 +97,30 @@ message_status parse_create_db(char* create_arguments) {
         db_name = trim_quotes(db_name);
         int last_char = strlen(db_name) - 1;
         if (last_char < 0 || db_name[last_char] != ')') {
-            return INCORRECT_FORMAT;
+            return NULL;
         }
         // replace final ')' with null-termination character.
         db_name[last_char] = '\0';
 
         token = strsep(&create_arguments, ",");
         if (token != NULL) {
-            return INCORRECT_FORMAT;
+            return NULL;
         }
-        if (create_db(db_name).code == OK) {
-            return OK_DONE;
-        } else {
-            return EXECUTION_ERROR;
-        }
+        // make create operator. 
+        DbOperator* dbo = malloc(sizeof(DbOperator));
+        dbo->type = CREATE;
+        dbo->operator_fields.create_operator.create_type = _DB;
+        strcpy(dbo->operator_fields.create_operator.name, db_name);
+        return dbo;
     }
 }
 
 /**
  * parse_create parses a create statement and then passes the necessary arguments off to the next function
  **/
-message_status parse_create(char* create_arguments) {
+DbOperator* parse_create(char* create_arguments) {
     message_status mes_status;
+    DbOperator* dbo = NULL;
     char *tokenizer_copy, *to_free;
     // Since strsep destroys input, we create a copy of our input. 
     tokenizer_copy = to_free = malloc((strlen(create_arguments)+1) * sizeof(char));
@@ -132,13 +132,13 @@ message_status parse_create(char* create_arguments) {
         // token stores first argument. Tokenizer copy now points to just past first ","
         token = next_token(&tokenizer_copy, &mes_status);
         if (mes_status == INCORRECT_FORMAT) {
-            return mes_status;
+            return NULL;
         } else {
             // pass off to next parse function. 
             if (strcmp(token, "db") == 0) {
-                mes_status = parse_create_db(tokenizer_copy);
+                dbo = parse_create_db(tokenizer_copy);
             } else if (strcmp(token, "tbl") == 0) {
-                mes_status = parse_create_tbl(tokenizer_copy);
+                dbo = parse_create_tbl(tokenizer_copy);
             } else {
                 mes_status = UNKNOWN_COMMAND;
             }
@@ -147,7 +147,7 @@ message_status parse_create(char* create_arguments) {
         mes_status = UNKNOWN_COMMAND;
     }
     free(to_free);
-    return mes_status;
+    return dbo;
 }
 
 /**
@@ -238,9 +238,13 @@ DbOperator* parse_command(char* query_command, message* send_message, int client
     // check what command is given. 
     if (strncmp(query_command, "create", 6) == 0) {
         query_command += 6;
-        send_message->status = parse_create(query_command);
-        dbo = malloc(sizeof(DbOperator));
-        dbo->type = CREATE;
+        dbo = parse_create(query_command);
+        if(dbo == NULL){
+            send_message->status = INCORRECT_FORMAT;
+        }
+        else{
+            send_message->status = OK_DONE;
+        }
     } else if (strncmp(query_command, "relational_insert", 17) == 0) {
         query_command += 17;
         dbo = parse_insert(query_command, send_message);

@@ -141,7 +141,7 @@ def createTestFive(dataTable, dataSizeTableTwo, approxSelectivity):
 	highestHighVal = int((dataSizeTableTwo/2) - offset)
 	selectValLess = np.random.randint(int(-1 * (dataSizeTableTwo/2)), highestHighVal)
 	selectValGreater = selectValLess + offset
-	output_file.write('-- SELECT SUM(col4) FROM tbl2 WHERE col1 >= {} AND col1 < {};\n'.format(selectValLess, selectValGreater))
+	output_file.write('-- SELECT SUM(col3) FROM tbl2 WHERE col1 >= {} AND col1 < {};\n'.format(selectValLess, selectValGreater))
 	output_file.write('s1=select(db1.tbl2.col1,{},{})\n'.format(selectValLess, selectValGreater))
 	output_file.write('f1=fetch(db1.tbl2.col3,s1)\n')
 	output_file.write('a1=sum(f1)\n')

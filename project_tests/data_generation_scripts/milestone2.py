@@ -148,7 +148,7 @@ def createTestThirteen(dataTable):
 
 def createTestFourteen(dataTable):
     # prelude and query
-    output_file, exp_output_file = data_gen_utils.openFileHandles(15)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(14)
     output_file.write('--\n')
     output_file.write('-- Testing for batching queries\n')
     output_file.write('-- First test is 2 queries with no overlap\n')

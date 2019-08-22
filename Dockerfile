@@ -4,14 +4,16 @@
 # start from ubuntu 18.04 base docker image (specified by Docker hub itself)
 FROM ubuntu:18.04
 
-# specify working directory inside the new docker container
+# specify working directory inside the new docker container, creating it, if does not exist
 WORKDIR /cs165
 
+
 # copy everything from this dir to the docker container
-COPY ./src /cs165
+# NOTE: this is now DEPRECATED and replaced by host FS mounting via the container run cmd
+# COPY ./src /cs165
 
 # install any pre-reqs and dependencies needed?
-CMD sudo apt-get install build-essential
+# CMD sudo apt-get install build-essential
 
 # define any environmental variables you need?
 ENV MYLABEL helloworld
@@ -28,4 +30,5 @@ RUN apt-get update && apt-get install -y \
     tmux
 
 # start by cleaning and making, and then starting a shell
+CMD cd src
 CMD make clean && make all && /bin/bash && tmux

@@ -170,7 +170,7 @@ def createTestSix(dataTable, dataSizeTableTwo, approxNumOutputTuples):
 	highestHighVal = int((dataSizeTableTwo/2) - offset)
 	selectValLess = np.random.randint(int(-1 * (dataSizeTableTwo/2)), highestHighVal)
 	selectValGreater = selectValLess + offset
-	output_file.write('-- SELECT col2+col3 FROM tbl2 WHERE col1 >= -1 AND col1 < 10;\n')
+	output_file.write('-- SELECT col2+col3 FROM tbl2 WHERE col1 >= {} AND col1 < {};\n'.format(selectValLess, selectValGreater))
 	output_file.write('s11=select(db1.tbl2.col1,{},{})\n'.format(selectValLess, selectValGreater))
 	output_file.write('f11=fetch(db1.tbl2.col2,s11)\n')
 	output_file.write('f12=fetch(db1.tbl2.col3,s11)\n')

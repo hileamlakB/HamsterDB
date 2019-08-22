@@ -83,7 +83,7 @@ def createTestThree(dataTable):
 	selectValGreater = 972
 	output_file.write('-- SELECT col1 FROM tbl1 WHERE col1 >= {} & col1 < {};\n'.format(selectValLess, selectValGreater))
 	output_file.write('s1=select(db1.tbl1.col1,956,972)\n')
-	output_file.write('f1=fetch(db1.tbl1.col1,s2)\n')
+	output_file.write('f1=fetch(db1.tbl1.col1,s1)\n')
 	output_file.write('a1=avg(f1)\n')
 	output_file.write('print(a1)\n')
 	# generate expected result

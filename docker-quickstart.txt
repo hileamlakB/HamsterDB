@@ -38,3 +38,7 @@ More on how to do that here: https://docs.docker.com/engine/reference/commandlin
 Feel free to modify this project root Makefile, by adding your own new targets (e.g. for your own testing). 
 Do not change the ones needed for automated testing which we have labeled. That will be how we grade you.
 
+5. Maintaining your Docker space usage. You may notice that containers can hang around if not specified with the --rm option when they are run.
+These take up space on your hard disk! 
+You can periodically use the `docker system prune` command to cleanup stopped containers and dangling images.
+For more details on related commands see this resource: https://linuxize.com/post/how-to-remove-docker-images-containers-volumes-and-networks/

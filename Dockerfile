@@ -36,10 +36,3 @@ RUN apt-get update && apt-get install -y \
 # start by cleaning and making, and then starting a shell
 CMD cd src
 CMD make clean && make all && /bin/bash && tmux
-CMD cd ../project_tests/data_generation_scripts
-CMD python milestone1.py 10000
-CMD cd ../src
-CMD ./server > ../test01gen.server.debug.out &
-CMD ./client < ../project_tests/data_generation_scripts/test01gen.dsl
-CMD ./server > ../test02gen.server.debug.out &
-CMD ./client < ../project_tests/data_generation_scripts/test02gen.dsl

@@ -8,13 +8,16 @@ import numpy as np
 import struct
 import pandas as pd
 
-def openFileHandles(testNum):
+def openFileHandles(testNum, TEST_DIR=""):
+	# if a directory base specified, we want to add the trailing separator `/`
+	if TEST_DIR != "":
+		TEST_DIR += "/"
 	if testNum < 10:
-		output_file = open("test0{}gen.dsl".format(testNum),"w")
-		exp_output_file = open("test0{}gen.exp".format(testNum),"w")
+		output_file = open(TEST_DIR + "test0{}gen.dsl".format(testNum),"w")
+		exp_output_file = open(TEST_DIR + "test0{}gen.exp".format(testNum),"w")
 	else:
-		output_file = open("test{}gen.dsl".format(testNum),"w")
-		exp_output_file = open("test{}gen.exp".format(testNum),"w")
+		output_file = open(TEST_DIR + "test{}gen.dsl".format(testNum),"w")
+		exp_output_file = open(TEST_DIR + "test{}gen.exp".format(testNum),"w")
 	return output_file, exp_output_file
 
 def closeFileHandles(output_file, exp_output_file):

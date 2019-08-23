@@ -13,7 +13,18 @@ build:
 
 # runs a docker container, based off the `cs165` image that was last built and registered
 run:
-	docker container run -v $(BASE_DIR)/src:/cs165/src -v $(BASE_DIR)/project_tests:/cs165/project_tests -t -i cs165 bash
+	docker container run \
+		-v $(BASE_DIR)/src:/cs165/src \
+		-v $(BASE_DIR)/project_tests:/cs165/project_tests \
+		-v $(BASE_DIR)/generated_data:/cs165/generated_data \
+		-v $(BASE_DIR)/test.sh:/cs165/test.sh \
+		-d -t -i cs165 bash
+
+gen:
+	mkdir generated_data
 
 # m1:
 # 	docker container run -v $(BASE_DIR)/src:/cs165/src -v $(BASE_DIR)/project_tests:/cs165/project_tests -t -i cs165 bash
+
+clean:
+	rm -r generated_data

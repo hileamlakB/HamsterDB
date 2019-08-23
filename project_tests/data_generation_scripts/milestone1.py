@@ -10,14 +10,15 @@ import pandas as pd
 
 import data_gen_utils
 
-PROJECT_TEST_BASE = "/home/cs165/cs165-management-scripts/project_tests_2017"
+# note this is the base path to the data files we generate
+TEST_BASE_DIR = "/cs165/generated_data"
 
 ############################################################################
 # Notes: You can generate your own scripts for generating data fairly easily by modifying this script.
 ############################################################################
 
 def generateDataFileMidwayCheckin():
-	outputFile = 'data1_generated.csv'
+	outputFile = TEST_BASE_DIR + '/data1_generated.csv'
 	header_line = data_gen_utils.generateHeaderLine('db1', 'tbl1', 2)
 	column1 = list(range(0,1000))
 	column2 = list(range(10,1010))
@@ -31,13 +32,13 @@ def generateDataFileMidwayCheckin():
 
 def createTestOne():
 	# write out test
-	output_file, exp_output_file = data_gen_utils.openFileHandles(1)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(1, TEST_DIR=TEST_BASE_DIR)
 	output_file.write('-- Load+create Data and shut down of tbl1 which has 1 attribute only\n')
 	output_file.write('create(db,\"db1\")\n')
 	output_file.write('create(tbl,\"tbl1\",db1,2)\n')
 	output_file.write('create(col,\"col1\",db1.tbl1)\n')
 	output_file.write('create(col,\"col1\",db1.tbl2)\n')
-	output_file.write('load(\"'+PROJECT_TEST_BASE+'/data1.csv\")\n')
+	output_file.write('load(\"'+TEST_BASE_DIR+'/data1.csv\")\n')
 	for x in range(1, 10):
 		output_file.write('relational_insert(db1.tbl1,-{}, {})\n'.format(x, x-10))
 	output_file.write('shutdown\n')
@@ -46,7 +47,7 @@ def createTestOne():
 
 def createTestTwo(dataTable):
 	# write out test
-	output_file, exp_output_file = data_gen_utils.openFileHandles(2)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(2, TEST_DIR=TEST_BASE_DIR)
 	output_file.write('-- Test Select + Fetch\n')
 	output_file.write('--\n')
 	### Part 1
@@ -77,7 +78,7 @@ def createTestTwo(dataTable):
 
 def createTestThree(dataTable):
 	# prelude
-	output_file, exp_output_file = data_gen_utils.openFileHandles(3)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(3, TEST_DIR=TEST_BASE_DIR)
 	output_file.write('-- Test Multiple Selects + Average\n')
 	output_file.write('--\n')
 	# query
@@ -118,7 +119,7 @@ def createTestFour():
 	output_file.write('create(col,\"col2\",db1.tbl2)\n')
 	output_file.write('create(col,\"col3\",db1.tbl2)\n')
 	output_file.write('create(col,\"col4\",db1.tbl2)\n')
-	output_file.write('load(\"/home/cs165/cs165-management-scripts/project_tests_2017/data2.csv\")\n')
+	output_file.write('load(\"'+TEST_BASE_DIR+'/data2.csv\")\n')
 	output_file.write('relational_insert(db1.tbl2,-1,-11,-111,-1111)\n')
 	output_file.write('relational_insert(db1.tbl2,-2,-22,-222,-2222)\n')
 	output_file.write('relational_insert(db1.tbl2,-3,-33,-333,-2222)\n')
@@ -135,7 +136,7 @@ def createTestFour():
 ## NOTE: approxSelectivity should be between 0 and 1
 def createTestFive(dataTable, dataSizeTableTwo, approxSelectivity):
 	# prelude
-	output_file, exp_output_file = data_gen_utils.openFileHandles(5)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(5, TEST_DIR=TEST_BASE_DIR)
 	output_file.write('-- Summation\n')
 	output_file.write('--\n')
 	# query
@@ -164,7 +165,7 @@ def createTestFive(dataTable, dataSizeTableTwo, approxSelectivity):
 
 def createTestSix(dataTable, dataSizeTableTwo, approxNumOutputTuples):
 	# prelude
-	output_file, exp_output_file = data_gen_utils.openFileHandles(6)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(6, TEST_DIR=TEST_BASE_DIR)
 	output_file.write('-- Addition\n')
 	output_file.write('--\n')
 	# query
@@ -187,7 +188,7 @@ def createTestSix(dataTable, dataSizeTableTwo, approxNumOutputTuples):
 	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTestSeven(dataTable, dataSizeTableTwo, approxNumOutputTuples):
-	output_file, exp_output_file = data_gen_utils.openFileHandles(7)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(7, TEST_DIR=TEST_BASE_DIR)
 	output_file.write('-- Subtraction\n')
 	output_file.write('--\n')
 	offset = approxNumOutputTuples
@@ -209,7 +210,7 @@ def createTestSeven(dataTable, dataSizeTableTwo, approxNumOutputTuples):
 	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTestEight(dataTable, dataSizeTableTwo, approxSelectivity):
-	output_file, exp_output_file = data_gen_utils.openFileHandles(8)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(8, TEST_DIR=TEST_BASE_DIR)
 	output_file.write('-- Min,Max\n')
 	output_file.write('--\n')
 	offset = int(approxSelectivity * dataSizeTableTwo)
@@ -254,7 +255,7 @@ def createTestEight(dataTable, dataSizeTableTwo, approxSelectivity):
 	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTestNine(dataTable, dataSizeTableTwo, approxSelectivity):
-	output_file, exp_output_file = data_gen_utils.openFileHandles(9)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(9, TEST_DIR=TEST_BASE_DIR)
 	output_file.write('-- Big Bad Boss Test! Milestone 1\n')
 	output_file.write('-- It\'s basically just the previous tests put together\n')
 	output_file.write('-- But also, its.... Boss test!\n')
@@ -327,9 +328,15 @@ def main(argv):
 	dataSizeTableTwo = int(argv[0])
 	dataSize = int(argv[0])
 	if len(argv) > 1:
-		randomSeed = argv[1]
+		randomSeed = int(argv[1])
 	else:
 		randomSeed = 47
+	
+	# override the base directory for where to output test related files
+	if len(argv) > 2:
+		TEST_BASE_DIR = argv[2]
+		
+
 	generateMilestoneOneFiles(dataSizeTableTwo, randomSeed)
 
 if __name__ == "__main__":

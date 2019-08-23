@@ -1,3 +1,6 @@
+student_outputs
+generated_data
+
 # Object files
 obj/*
 *.o

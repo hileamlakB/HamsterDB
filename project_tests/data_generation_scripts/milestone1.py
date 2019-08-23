@@ -10,6 +10,8 @@ import pandas as pd
 
 import data_gen_utils
 
+PROJECT_TEST_BASE = "/home/cs165/cs165-management-scripts/project_tests_2017"
+
 ############################################################################
 # Notes: You can generate your own scripts for generating data fairly easily by modifying this script.
 ############################################################################
@@ -35,7 +37,7 @@ def createTestOne():
 	output_file.write('create(tbl,\"tbl1\",db1,2)\n')
 	output_file.write('create(col,\"col1\",db1.tbl1)\n')
 	output_file.write('create(col,\"col1\",db1.tbl2)\n')
-	output_file.write('load(\"/home/cs165/cs165-management-scripts/project_tests_2017/data1.csv\")\n')
+	output_file.write('load(\"'+PROJECT_TEST_BASE+'/data1.csv\")\n')
 	for x in range(1, 10):
 		output_file.write('relational_insert(db1.tbl1,-{}, {})\n'.format(x, x-10))
 	output_file.write('shutdown\n')

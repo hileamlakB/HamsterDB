@@ -14,3 +14,6 @@ build:
 # runs a docker container, based off the `cs165` image that was last built and registered
 run:
 	docker container run -v $(BASE_DIR)/src:/cs165/src -v $(BASE_DIR)/project_tests:/cs165/project_tests -t -i cs165 bash
+
+# m1:
+# 	docker container run -v $(BASE_DIR)/src:/cs165/src -v $(BASE_DIR)/project_tests:/cs165/project_tests -t -i cs165 bash

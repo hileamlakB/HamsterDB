@@ -59,7 +59,7 @@ DbOperator* parse_create_tbl(char* create_arguments) {
     // replace the ')' with a null terminating character. 
     col_cnt[last_char] = '\0';
     // check that the database argument is the current active database
-    if (strcmp(current_db->name, db_name) != 0) {
+    if (!current_db || strcmp(current_db->name, db_name) != 0) {
         cs165_log(stdout, "query unsupported. Bad db name");
         return NULL; //QUERY_UNSUPPORTED
     }

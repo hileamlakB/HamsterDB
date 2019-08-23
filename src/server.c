@@ -40,6 +40,10 @@
  *      How will you ensure different queries invoke different execution paths in your code?
  **/
 char* execute_DbOperator(DbOperator* query) {
+    if(!query)
+    {
+        return "165";
+    }
     if(query && query->type == CREATE){
         if(query->operator_fields.create_operator.create_type == _DB){
             if (create_db(query->operator_fields.create_operator.name).code == OK) {
@@ -115,6 +119,7 @@ void handle_client(int client_socket) {
             char send_buffer[send_message.length + 1];
             strcpy(send_buffer, result);
             send_message.payload = send_buffer;
+            send_message.status = OK_WAIT_FOR_RESPONSE;
             
             // 3. Send status of the received message (OK, UNKNOWN_QUERY, etc)
             if (send(client_socket, &(send_message), sizeof(message), 0) == -1) {

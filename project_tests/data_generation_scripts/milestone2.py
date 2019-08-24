@@ -10,6 +10,9 @@ import pandas as pd
 
 import data_gen_utils
 
+# note this is the base path to the data files we generate
+TEST_BASE_DIR = "/cs165/generated_data"
+
 ############################################################################
 # Notes: You can generate your own scripts for generating data fairly easily by modifying this script.
 #
@@ -18,7 +21,7 @@ import data_gen_utils
 ############################################################################
 
 def generateDataMilestone2(dataSize):
-    outputFile = 'data3_batch.csv'
+    outputFile = TEST_BASE_DIR + '/data3_batch.csv'
     header_line = data_gen_utils.generateHeaderLine('db1', 'tbl3', 4)
     outputTable = pd.DataFrame(np.random.randint(0, dataSize/5, size=(dataSize, 4)), columns =['col1', 'col2', 'col3', 'col4'])
     # This is going to have many, many duplicates for large tables!!!!
@@ -30,7 +33,7 @@ def generateDataMilestone2(dataSize):
 
 def createTestTen():
     # prelude
-    output_file, exp_output_file = data_gen_utils.openFileHandles(10)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(10, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- Load Test Data 2\n')
     output_file.write('-- Create a table to run batch queries on\n')
     output_file.write('--\n')
@@ -45,7 +48,7 @@ def createTestTen():
     output_file.write('create(col,"col4",db1.tbl3_batch)\n')
     output_file.write('--\n')
     output_file.write('-- Load data immediately\n')
-    output_file.write('load("/home/cs165/cs165-management-scripts/project_tests_2017/data3_batch.csv")\n')
+    output_file.write('load(\"'+TEST_BASE_DIR+'/data3_batch.csv\")\n')
     output_file.write('--\n')
     output_file.write('-- Testing that the data is durable on disk.\n')
     output_file.write('shutdown\n')
@@ -54,7 +57,7 @@ def createTestTen():
 
 def createTestEleven(dataTable):
     # prelude and query
-    output_file, exp_output_file = data_gen_utils.openFileHandles(11)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(11, TEST_DIR=TEST_BASE_DIR)
     output_file.write('--\n')
     output_file.write('-- Testing for batching queries\n')
     output_file.write('-- First test is 2 queries with NO overlap\n')
@@ -86,7 +89,7 @@ def createTestEleven(dataTable):
 
 def createTestTwelve(dataTable):
     # prelude and query
-    output_file, exp_output_file = data_gen_utils.openFileHandles(12)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(12, TEST_DIR=TEST_BASE_DIR)
     output_file.write('--\n')
     output_file.write('-- Testing for batching queries\n')
     output_file.write('-- First test is 2 queries with partial overlap\n')
@@ -117,7 +120,7 @@ def createTestTwelve(dataTable):
 
 def createTestThirteen(dataTable):
     # prelude and query
-    output_file, exp_output_file = data_gen_utils.openFileHandles(13)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(13, TEST_DIR=TEST_BASE_DIR)
     output_file.write('--\n')
     output_file.write('-- Testing for batching queries\n')
     output_file.write('-- First test is 2 queries with full overlap (subsumption)\n')
@@ -148,7 +151,7 @@ def createTestThirteen(dataTable):
 
 def createTestFourteen(dataTable):
     # prelude and query
-    output_file, exp_output_file = data_gen_utils.openFileHandles(14)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(14, TEST_DIR=TEST_BASE_DIR)
     output_file.write('--\n')
     output_file.write('-- Testing for batching queries\n')
     output_file.write('-- First test is 2 queries with no overlap\n')
@@ -177,7 +180,7 @@ def createTestFourteen(dataTable):
 
 def createTestFifteen(dataTable):
     # prelude and query
-    output_file, exp_output_file = data_gen_utils.openFileHandles(15)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(15, TEST_DIR=TEST_BASE_DIR)
     output_file.write('--\n')
     output_file.write('-- Testing for batching queries\n')
     output_file.write('-- First test is 2 queries with full overlap (subsumption)\n')
@@ -208,8 +211,8 @@ def createTests16And17(dataTable, dataSize):
     # 1 / 1000 tuples should qualify on average. This is so that most time is spent on scans & not fetches or prints
     offset = np.max([1, int(dataSize/5000)])
     query_starts = np.random.randint(0,(dataSize/8), size = (100))
-    output_file16, exp_output_file16 = data_gen_utils.openFileHandles(16)
-    output_file17, exp_output_file17 = data_gen_utils.openFileHandles(17)
+    output_file16, exp_output_file16 = data_gen_utils.openFileHandles(16, TEST_DIR=TEST_BASE_DIR)
+    output_file17, exp_output_file17 = data_gen_utils.openFileHandles(17, TEST_DIR=TEST_BASE_DIR)
     output_file16.write('--\n')
     output_file16.write('-- Control timing for without batching\n')
     output_file16.write('-- Queries for 16 and 17 are identical.\n')
@@ -261,6 +264,10 @@ def main(argv):
     else:
         randomSeed = 47
     generateMilestoneTwoFiles(dataSize, randomSeed)
+    # override the base directory for where to output test related files
+    if len(argv) > 2:
+        TEST_BASE_DIR = argv[2]
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])

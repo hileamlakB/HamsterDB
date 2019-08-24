@@ -42,3 +42,10 @@ Do not change the ones needed for automated testing which we have labeled. That 
 These take up space on your hard disk! 
 You can periodically use the `docker system prune` command to cleanup stopped containers and dangling images.
 For more details on related commands see this resource: https://linuxize.com/post/how-to-remove-docker-images-containers-volumes-and-networks/
+
+6. Sudo Permissions for Docker
+If somehow your setup is such that you need `sudo` permission to run docker (for mac or linux), you will need to set up your environment variable `CS165_DOCKER_USE_SUDO`.
+To set an environment variable you may use the shell commands `set`/`unset`, or `export`.
+E.g. `export CS165_DOCKER_USE_SUDO=1` to set an environment variable called `CS165_DOCKER_USE_SUDO` in your current shell session.
+And `unset CS165_DOCKER_USE_SUDO` to forget the variable `CS165_DOCKER_USE_SUDO` from your current shell session.
+For more on environment variable specifications, you may find the following link useful: https://www.cyberciti.biz/faq/set-environment-variable-linux/

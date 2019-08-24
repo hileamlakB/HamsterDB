@@ -110,7 +110,7 @@ def generateDataFile2(dataSizeTableTwo):
 
 def createTestFour():
 	# prelude
-	output_file, exp_output_file = data_gen_utils.openFileHandles(4)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(4, TEST_DIR=TEST_BASE_DIR)
 	output_file.write('-- Load Test Data 2\n')
 	output_file.write('--\n')
 	output_file.write('-- Load+create Data and shut down of tbl2 which has 4 attributes\n')

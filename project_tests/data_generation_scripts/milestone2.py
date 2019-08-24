@@ -257,7 +257,7 @@ def generateMilestoneTwoFiles(dataSize, randomSeed):
 def main(argv):
     dataSize = int(argv[0])
     if len(argv) > 1:
-        randomSeed = argv[1]
+        randomSeed = int(argv[1])
     else:
         randomSeed = 47
     generateMilestoneTwoFiles(dataSize, randomSeed)

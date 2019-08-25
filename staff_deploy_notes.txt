@@ -4,3 +4,7 @@ TODOs
 1. Double check that SIMD and other intrinsics propogate through to Docker container as intended.
 2. Same as #1 but for Perf.
 3. Think about how to trigger testing script through the docker interface.
+
+4. load students to gaius script, test google form for registration later. register for test interface.
+5. adapt full workflow
+6. adapt pull run compile

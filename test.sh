@@ -4,6 +4,8 @@ REL_TEST_DIR=generated_data
 # absolute with the docker mount points
 ABS_TEST_DIR=/cs165/$REL_TEST_DIR
 
+STUDENT_OUTPUT_DIR=/cs165/student_outputs
+
 DATA_SIZE=10000
 RAND_SEED=42
 
@@ -19,11 +21,11 @@ make all
 # record results of tests
 echo ""
 echo "running test 1"
-./server > test01gen.server.debug.out &
+./server > $STUDENT_OUTPUT_DIR/test01gen.server.debug.out &
 sleep 1
 ./client < ../$REL_TEST_DIR/test01gen.dsl
 echo ""
 echo "running test 2"
-./server > test02gen.server.debug.out &
+./server > $STUDENT_OUTPUT_DIR/test02gen.server.debug.out &
 sleep 1
 ./client < ../$REL_TEST_DIR/test02gen.dsl

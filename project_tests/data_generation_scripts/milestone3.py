@@ -11,6 +11,8 @@ import math
 
 import data_gen_utils
 
+# note this is the base path to the data files we generate
+TEST_BASE_DIR = "/cs165/generated_data"
 
 ############################################################################
 # Notes: You can generate your own scripts for generating data fairly easily by modifying this script.
@@ -18,8 +20,8 @@ import data_gen_utils
 ############################################################################
 
 def generateDataMilestone3(dataSize):
-    outputFile_ctrl = 'data4_ctrl.csv'
-    outputFile_btree = 'data4_btree.csv'
+    outputFile_ctrl = TEST_BASE_DIR + '/data4_ctrl.csv'
+    outputFile_btree = TEST_BASE_DIR + '/data4_btree.csv'
     header_line_ctrl = data_gen_utils.generateHeaderLine('db1', 'tbl4_ctrl', 4)
     header_line_btree = data_gen_utils.generateHeaderLine('db1', 'tbl4_btree', 4)
     outputTable = pd.DataFrame(np.random.randint(0, dataSize/5, size=(dataSize, 4)), columns =['col1', 'col2', 'col3', 'col4'])
@@ -44,7 +46,7 @@ def generateDataMilestone3(dataSize):
 
 def createTest18():
     # prelude
-    output_file, exp_output_file = data_gen_utils.openFileHandles(18)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(18, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- Create a control table that is identical to the one in test19.dsl, but\n')
     output_file.write('-- without any indexes\n')
     output_file.write('--\n')
@@ -58,7 +60,7 @@ def createTest18():
     output_file.write('create(col,"col4",db1.tbl4_ctrl)\n')
     output_file.write('--\n')
     output_file.write('-- Load data immediately\n')
-    output_file.write('load("/home/cs165/cs165-management-scripts/project_tests_2017/data4_ctrl.csv")\n')
+    output_file.write('load(\"'+TEST_BASE_DIR+'/data4_ctrl.csv\")\n')
     output_file.write('--\n')
     output_file.write('-- Testing that the data and their indexes are durable on disk.\n')
     output_file.write('shutdown\n')
@@ -66,7 +68,7 @@ def createTest18():
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTest19():
-    output_file, exp_output_file = data_gen_utils.openFileHandles(19)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(19, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- Test for creating table with indexes\n')
     output_file.write('--\n')
     output_file.write('-- Table tbl4 has a clustered index with col3 being the leading column.\n')
@@ -88,7 +90,7 @@ def createTest19():
     output_file.write('--\n')
     output_file.write('--\n')
     output_file.write('-- Load data immediately in the form of a clustered index\n')
-    output_file.write('load("/home/cs165/cs165-management-scripts/project_tests_2017/data4_btree.csv")\n')
+    output_file.write('load(\"'+TEST_BASE_DIR+'/data4_btree.csv\")\n')
     output_file.write('--\n')
     output_file.write('-- Testing that the data and their indexes are durable on disk.\n')
     output_file.write('shutdown\n')
@@ -96,8 +98,8 @@ def createTest19():
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTests20And21(dataTable, dataSize):
-    output_file20, exp_output_file20 = data_gen_utils.openFileHandles(20)
-    output_file21, exp_output_file21 = data_gen_utils.openFileHandles(21)
+    output_file20, exp_output_file20 = data_gen_utils.openFileHandles(20, TEST_DIR=TEST_BASE_DIR)
+    output_file21, exp_output_file21 = data_gen_utils.openFileHandles(21, TEST_DIR=TEST_BASE_DIR)
     output_file20.write('--\n')
     output_file20.write('-- Query in SQL:\n')
     # selectivity = 
@@ -146,7 +148,7 @@ def createTests20And21(dataTable, dataSize):
     data_gen_utils.closeFileHandles(output_file21, exp_output_file21)
 
 def createTest22(dataTable, dataSize):
-    output_file, exp_output_file = data_gen_utils.openFileHandles(22)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(22, TEST_DIR=TEST_BASE_DIR)
     offset = np.max([1, int(dataSize/10)])
     offset2 = 2000
     val1 = np.random.randint(0, int((dataSize/5) - offset))
@@ -170,8 +172,8 @@ def createTest22(dataTable, dataSize):
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTests23And24(dataTable, dataSize):
-    output_file23, exp_output_file23 = data_gen_utils.openFileHandles(23)
-    output_file24, exp_output_file24 = data_gen_utils.openFileHandles(24)
+    output_file23, exp_output_file23 = data_gen_utils.openFileHandles(23, TEST_DIR=TEST_BASE_DIR)
+    output_file24, exp_output_file24 = data_gen_utils.openFileHandles(24, TEST_DIR=TEST_BASE_DIR)
     offset = np.max([2, int(dataSize/1000)])
     output_file23.write('-- Test for a non-clustered index select followed by an aggregate (control-test)\n')
     output_file23.write('--\n')
@@ -207,7 +209,7 @@ def createTests23And24(dataTable, dataSize):
     data_gen_utils.closeFileHandles(output_file24, exp_output_file24)
 
 def createTest25(dataTable, frequentVal1, frequentVal2):
-    output_file, exp_output_file = data_gen_utils.openFileHandles(25)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(25, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- Test for a clustered index select followed by a second predicate\n')
     output_file.write('--\n')
     output_file.write('-- Query in SQL:\n')
@@ -242,11 +244,12 @@ def generateMilestoneThreeFiles(dataSize):
 def main(argv):
     dataSize = int(argv[0])
     if len(argv) > 1:
-        randomSeed = argv[1]
+        randomSeed = int(argv[1])
     else:
         randomSeed = 47
     generateMilestoneThreeFiles(dataSize)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
+    print("********************************")
 

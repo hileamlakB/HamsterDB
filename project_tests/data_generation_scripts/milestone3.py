@@ -156,7 +156,7 @@ def createTest22(dataTable, dataSize):
     output_file.write('-- Test for a clustered index select followed by a second predicate\n')
     output_file.write('--\n')
     output_file.write('-- Query in SQL:\n')
-    output_file.write('-- SELECT sum(col1) FROM tbl4 WHERE (col3 >= {} and col3 < {}) AND (col2 >= {} and col2 < {});\n'.format(val1, val1+offset, val2, val2+offset))
+    output_file.write('-- SELECT sum(col1) FROM tbl4 WHERE (col3 >= {} and col3 < {}) AND (col2 >= {} and col2 < {});\n'.format(val1, val1+offset, val2, val2+offset2))
     output_file.write('--\n')
     output_file.write('s1=select(db1.tbl4.col3,{},{})\n'.format(val1, val1 + offset))
     output_file.write('f1=fetch(db1.tbl4.col2,s1)\n')

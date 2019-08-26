@@ -65,7 +65,7 @@ def createTestTwo(dataTable):
 	exp_output_file.write('\n\n')
 	#write query 2 out
 	selectValGreater = 987
-	output_file.write('-- SELECT col1 FROM tbl1 WHERE col1 >= {};\n'.format(selectValGreater))
+	output_file.write('-- SELECT col2 FROM tbl1 WHERE col1 >= {};\n'.format(selectValGreater))
 	output_file.write('s2=select(db1.tbl1.col1,{},null)\n'.format(selectValGreater))
 	output_file.write('f2=fetch(db1.tbl1.col2,s2)\n')
 	output_file.write('print(f2)\n')

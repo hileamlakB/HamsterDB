@@ -1,3 +1,6 @@
+#### TO BE RUN INSIDE DOCKER #####
+# run from base dirctory as ./infra_scripts/test.sh
+
 # the test directory, containing generated data dl, exp, and csvs
 # expressed, relative to the base project directory
 REL_TEST_DIR=generated_data

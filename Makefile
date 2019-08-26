@@ -28,12 +28,33 @@ run:
 	$(eval DOCKER_CONT_ID := $(shell docker container run \
 		-v $(BASE_DIR)/src:/cs165/src \
 		-v $(BASE_DIR)/project_tests:/cs165/project_tests \
+		-v $(BASE_DIR)/infra_scripts:/cs165/infra_scripts \
 		-v $(BASE_DIR)/generated_data:/cs165/generated_data \
 		-v $(BASE_DIR)/test.sh:/cs165/test.sh \
 		-v $(BASE_DIR)/student_outputs:/cs165/student_outputs \
 		-d --rm -t -i cs165 bash))
-	$(DOCKER_CMD) exec $(DOCKER_CONT_ID) bash /cs165/test.sh
+	$(DOCKER_CMD) exec $(DOCKER_CONT_ID) bash /cs165/infra_scripts/test.sh
 	$(DOCKER_CMD) stop $(DOCKER_CONT_ID)
+
+# starts a docker container, based off the `cs165` image that was last built and registered.
+# this target is used to kick off automated testing on staff grading server
+startcontainer:
+	$(eval DOCKER_CONT_ID := $(shell docker container run \
+		-v $(BASE_DIR)/src:/cs165/src \
+		-v $(BASE_DIR)/project_tests:/cs165/project_tests \
+		-v $(BASE_DIR)/infra_scripts:/cs165/infra_scripts \
+		-v $(BASE_DIR)/generated_data:/cs165/generated_data \
+		-v $(BASE_DIR)/test.sh:/cs165/test.sh \
+		-v $(BASE_DIR)/student_outputs:/cs165/student_outputs \
+		-d --rm -t -i cs165 bash))
+	echo $(DOCKER_CONT_ID) > status.current_container_id
+
+# stops a docker container, the based off the last stored current_container_id
+# if startcontainer was run earlier in a session, it will be stopped by this command
+stopcontainer:
+	$(eval DOCKER_CONT_ID := $(shell cat status.current_container_id | awk '{print $1}'))
+	$(DOCKER_CMD) stop $(DOCKER_CONT_ID)
+	rm status.current_container_id
 
 prep:
 	[ -d generated_data ] || mkdir generated_data

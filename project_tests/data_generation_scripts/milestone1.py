@@ -195,11 +195,11 @@ def createTestSeven(dataTable, dataSizeTableTwo, approxNumOutputTuples):
 	highestHighVal = int((dataSizeTableTwo/2) - offset)
 	selectValLess = np.random.randint(int(-1 * (dataSizeTableTwo/2)), highestHighVal)
 	selectValGreater = selectValLess + offset
-	output_file.write('-- SELECT col2+col3 FROM tbl2 WHERE col1 >= {} AND col1 < {};\n'.format(selectValLess, selectValGreater))
+	output_file.write('-- SELECT col3-col2 FROM tbl2 WHERE col1 >= {} AND col1 < {};\n'.format(selectValLess, selectValGreater))
 	output_file.write('s21=select(db1.tbl2.col1,{},{})\n'.format(selectValLess, selectValGreater))
 	output_file.write('f21=fetch(db1.tbl2.col2,s21)\n')
 	output_file.write('f22=fetch(db1.tbl2.col3,s21)\n')
-	output_file.write('s21=add(f21,f22)\n')
+	output_file.write('s21=sub(f22,f21)\n')
 	output_file.write('print(s21)\n')
 	# generate expected results
 	dfSelectMaskGT = dataTable['col1'] >= selectValLess

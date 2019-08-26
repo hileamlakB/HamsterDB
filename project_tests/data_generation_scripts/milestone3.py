@@ -178,7 +178,7 @@ def createTests23And24(dataTable, dataSize):
     output_file23.write('-- Test for a non-clustered index select followed by an aggregate (control-test)\n')
     output_file23.write('--\n')
     output_file23.write('-- Query form in SQL:\n')
-    output_file23.write('-- SELECT avg(col3) FROM tbl4 WHERE (col2 >= _ and col2 < {});\n')
+    output_file23.write('-- SELECT avg(col3) FROM tbl4_ctrl WHERE (col2 >= _ and col2 < _);\n')
     output_file23.write('--\n')
     output_file24.write('-- Test for a non-clustered index select followed by an aggregate (control-test)\n')
     output_file24.write('--\n')

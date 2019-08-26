@@ -267,7 +267,7 @@ def createTestNine(dataTable, dataSizeTableTwo, approxSelectivity):
 	selectValLess2 = np.random.randint(int(-1 * (dataSizeTableTwo/2)), highestHighVal)
 	selectValGreater1 = selectValLess1 + offset
 	selectValGreater2 = selectValLess2 + offset
-	output_file.write('-- SELECT avg(col1+col2), min (col2), max(col3), avg(col3-col2), sum(col3-col2) FROM tbl2 WHERE (col1 between {} AND {}) AND (col2 between {} AND {});\n'.format(selectValLess1, selectValGreater1, selectValLess2, selectValGreater2))
+	output_file.write('-- SELECT avg(col1+col2), min (col2), max(col3), avg(col3-col2), sum(col3-col2) FROM tbl2 WHERE (col1 >= {} AND col1 < {}) AND (col2 >= {} AND col2 < {});\n'.format(selectValLess1, selectValGreater1, selectValLess2, selectValGreater2))
 	output_file.write('s1=select(db1.tbl2.col1,{},{})\n'.format(selectValLess1, selectValGreater1))
 	output_file.write('sf1=fetch(db1.tbl2.col2,s1)\n')
 	output_file.write('s2=select(s1,sf1,{},{})\n'.format(selectValLess2, selectValGreater2))

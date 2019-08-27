@@ -31,6 +31,8 @@ RUN apt-get update && apt-get install -y \
     python-pip \
     tmux \
     valgrind \
+    strace \
+    mutt \
     && \
     pip install scipy pandas
 

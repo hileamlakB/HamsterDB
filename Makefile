@@ -46,6 +46,7 @@ startcontainer:
 		-v $(BASE_DIR)/generated_data:/cs165/generated_data \
 		-v $(BASE_DIR)/test.sh:/cs165/test.sh \
 		-v $(BASE_DIR)/student_outputs:/cs165/student_outputs \
+		-v $(outputdir):/cs165/infra_outputs \
 		-d --rm -t -i cs165 bash))
 	echo $(DOCKER_CONT_ID) > status.current_container_id
 

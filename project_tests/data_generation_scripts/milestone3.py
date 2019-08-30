@@ -241,8 +241,8 @@ def createTest25(dataTable, frequentVal1, frequentVal2):
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTests26And27(dataTable, dataSize):
-    output_file26, exp_output_file26 = data_gen_utils.openFileHandles(26)
-    output_file27, exp_output_file27 = data_gen_utils.openFileHandles(27)
+    output_file26, exp_output_file26 = data_gen_utils.openFileHandles(26, TEST_DIR=TEST_BASE_DIR)
+    output_file27, exp_output_file27 = data_gen_utils.openFileHandles(27, TEST_DIR=TEST_BASE_DIR)
     offset = np.max([2, int(dataSize/500)])
     output_file26.write('-- Test for a non-clustered index select followed by an aggregate (control-test, many queries)\n')
     output_file26.write('-- Compare to test 27 for timing differences between B-tree and scan for highly selective queries\n')
@@ -279,7 +279,7 @@ def createTests26And27(dataTable, dataSize):
     data_gen_utils.closeFileHandles(output_file27, exp_output_file27)
 
 def createTest28():
-    output_file, exp_output_file = data_gen_utils.openFileHandles(28)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(28, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- Test for creating table with indexes\n')
     output_file.write('--\n')
     output_file.write('-- Table tbl4_clustered_btree has a clustered index with col3 being the leading column.\n')
@@ -309,7 +309,7 @@ def createTest28():
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTest29(dataTable, dataSize):
-    output_file, exp_output_file = data_gen_utils.openFileHandles(29)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(29, TEST_DIR=TEST_BASE_DIR)
     output_file.write('--\n')
     output_file.write('-- Query in SQL:\n')
     # selectivity = 
@@ -345,7 +345,7 @@ def createTest29(dataTable, dataSize):
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTests30(dataTable, dataSize):
-    output_file, exp_output_file = data_gen_utils.openFileHandles(30)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(30, TEST_DIR=TEST_BASE_DIR)
     offset = np.max([2, int(dataSize/1000)])
     output_file.write('-- Test for a non-clustered index select followed by an aggregate\n')
     output_file.write('--\n')

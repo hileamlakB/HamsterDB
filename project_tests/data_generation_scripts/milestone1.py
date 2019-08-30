@@ -38,7 +38,7 @@ def generateDataFileMidwayCheckin():
 	outputTable.to_csv(outputFile, sep=',', index=False, header=header_line, line_terminator='\n')
 	return outputTable
 
-def createTestOne():
+def createTestOne(outputTable):
 	# write out test
 	output_file, exp_output_file = data_gen_utils.openFileHandles(1, TEST_DIR=TEST_BASE_DIR)
 	output_file.write('-- Load+create Data and shut down of tbl1 which has 1 attribute only\n')
@@ -47,8 +47,6 @@ def createTestOne():
 	output_file.write('create(col,\"col1\",db1.tbl1)\n')
 	output_file.write('create(col,\"col1\",db1.tbl2)\n')
 	output_file.write('load(\"'+DOCKER_TEST_BASE_DIR+'/data1_generated.csv\")\n')
-	for x in range(1, 10):
-		output_file.write('relational_insert(db1.tbl1,-{}, {})\n'.format(x, x-10))
 	output_file.write('shutdown\n')
 	# generate expected results
 	data_gen_utils.closeFileHandles(output_file, exp_output_file)

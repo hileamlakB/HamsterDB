@@ -30,7 +30,6 @@ run:
 		-v $(BASE_DIR)/project_tests:/cs165/project_tests \
 		-v $(BASE_DIR)/infra_scripts:/cs165/infra_scripts \
 		-v $(BASE_DIR)/generated_data:/cs165/generated_data \
-		-v $(BASE_DIR)/test.sh:/cs165/test.sh \
 		-v $(BASE_DIR)/student_outputs:/cs165/student_outputs \
 		-d --rm -t -i cs165 bash))
 	$(DOCKER_CMD) exec $(DOCKER_CONT_ID) bash /cs165/infra_scripts/test.sh
@@ -45,7 +44,6 @@ startcontainer:
 		-v $(testdir):/cs165/staff_test:ro \
 		-v $(BASE_DIR)/infra_scripts:/cs165/infra_scripts \
 		-v $(BASE_DIR)/generated_data:/cs165/generated_data \
-		-v $(BASE_DIR)/test.sh:/cs165/test.sh \
 		-v $(BASE_DIR)/student_outputs:/cs165/student_outputs \
 		-v $(outputdir):/cs165/infra_outputs \
 		-d --rm -t -i cs165 bash))

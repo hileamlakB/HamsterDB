@@ -46,7 +46,7 @@ startcontainer:
 		-v $(BASE_DIR)/generated_data:/cs165/generated_data \
 		-v $(BASE_DIR)/student_outputs:/cs165/student_outputs \
 		-v $(outputdir):/cs165/infra_outputs \
-		-d --rm -t -i cs165 bash))
+		-d --rm -t --privileged -i cs165 bash))
 	echo $(DOCKER_CONT_ID) > status.current_container_id
 
 # stops a docker container, the based off the last stored current_container_id

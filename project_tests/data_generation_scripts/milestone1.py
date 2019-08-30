@@ -175,9 +175,9 @@ def createTestFive(dataTable, dataSizeTableTwo, approxSelectivity):
 	dfSelectMaskGT = dataTable['col1'] >= selectValLess
 	dfSelectMaskLT = dataTable['col1'] < selectValGreater
 	output = dataTable[dfSelectMaskGT & dfSelectMaskLT]['col3']
-	exp_output_file.write(str(output.sum()))
+	exp_output_file.write(str(int(output.sum())))
 	exp_output_file.write('\n')
-	exp_output_file.write(str(dataTable['col1'].sum()))
+	exp_output_file.write(str(int(dataTable['col1'].sum())))
 	exp_output_file.write('\n')
 	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 

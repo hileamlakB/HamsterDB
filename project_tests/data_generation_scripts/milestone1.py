@@ -46,7 +46,7 @@ def createTestOne():
 	output_file.write('create(tbl,\"tbl1\",db1,2)\n')
 	output_file.write('create(col,\"col1\",db1.tbl1)\n')
 	output_file.write('create(col,\"col1\",db1.tbl2)\n')
-	output_file.write('load(\"'+DOCKER_TEST_BASE_DIR+'/data1.csv\")\n')
+	output_file.write('load(\"'+DOCKER_TEST_BASE_DIR+'/data1_generated.csv\")\n')
 	for x in range(1, 10):
 		output_file.write('relational_insert(db1.tbl1,-{}, {})\n'.format(x, x-10))
 	output_file.write('shutdown\n')
@@ -127,7 +127,7 @@ def createTestFour(dataTable):
 	output_file.write('create(col,\"col2\",db1.tbl2)\n')
 	output_file.write('create(col,\"col3\",db1.tbl2)\n')
 	output_file.write('create(col,\"col4\",db1.tbl2)\n')
-	output_file.write('load(\"'+DOCKER_TEST_BASE_DIR+'/data2.csv\")\n')
+	output_file.write('load(\"'+DOCKER_TEST_BASE_DIR+'/data2_generated.csv\")\n')
 	output_file.write('relational_insert(db1.tbl2,-1,-11,-111,-1111)\n')
 	output_file.write('relational_insert(db1.tbl2,-2,-22,-222,-2222)\n')
 	output_file.write('relational_insert(db1.tbl2,-3,-33,-333,-2222)\n')

@@ -38,7 +38,7 @@ def generateDataFileMidwayCheckin():
 	outputTable.to_csv(outputFile, sep=',', index=False, header=header_line, line_terminator='\n')
 	return outputTable
 
-def createTestOne(outputTable):
+def createTestOne():
 	# write out test
 	output_file, exp_output_file = data_gen_utils.openFileHandles(1, TEST_DIR=TEST_BASE_DIR)
 	output_file.write('-- Load+create Data and shut down of tbl1 which has 1 attribute only\n')

@@ -13,6 +13,11 @@ import data_gen_utils
 # note this is the base path to the data files we generate
 TEST_BASE_DIR = "/cs165/generated_data"
 
+#
+# Example usage: 
+#   python milestone3.py 10000 42 ~/repo/cs165-docker-test-runner/test_data
+#
+
 ############################################################################
 # Notes: You can generate your own scripts for generating data fairly easily by modifying this script.
 ############################################################################

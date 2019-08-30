@@ -11,6 +11,14 @@ import math
 
 import data_gen_utils
 
+# note this is the base path to the data files we generate
+TEST_BASE_DIR = "/cs165/generated_data"
+
+#
+# Example usage: 
+#   python milestone4.py 10000 10000 10000 42 1.0 50 ~/repo/cs165-docker-test-runner/test_data
+#
+
 
 ############################################################################
 # Notes: You can generate your own scripts for generating data fairly easily by modifying this script.
@@ -44,9 +52,9 @@ class ZipfianDistribution:
 
 
 def generateDataMilestone4(dataSizeFact, dataSizeDim1, dataSizeDim2, zipfianParam, numDistinctElements):
-    outputFile1 = 'data5_fact.csv'
-    outputFile2 = 'data5_dimension1.csv'
-    outputFile3 = 'data5_dimension2.csv'
+    outputFile1 = TEST_BASE_DIR + '/' + 'data5_fact.csv'
+    outputFile2 = TEST_BASE_DIR + '/' + 'data5_dimension1.csv'
+    outputFile3 = TEST_BASE_DIR + '/' + 'data5_dimension2.csv'
 
     header_line_fact = data_gen_utils.generateHeaderLine('db1', 'tbl5_fact', 4)
     header_line_dim1 = data_gen_utils.generateHeaderLine('db1', 'tbl5_dim1', 3)
@@ -74,7 +82,7 @@ def generateDataMilestone4(dataSizeFact, dataSizeDim1, dataSizeDim2, zipfianPara
 
 def createTest31():
     # prelude
-    output_file, exp_output_file = data_gen_utils.openFileHandles(31)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(31, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- Creates tables for join tests\n')
     output_file.write('-- without any indexes\n')
     output_file.write('create(tbl,"tbl5_fact",db1,4)\n')
@@ -82,25 +90,25 @@ def createTest31():
     output_file.write('create(col,"col2",db1.tbl5_fact)\n')
     output_file.write('create(col,"col3",db1.tbl5_fact)\n')
     output_file.write('create(col,"col4",db1.tbl5_fact)\n')
-    output_file.write('load("/home/cs165/cs165-management-scripts/project_tests_2017/data5_fact.csv")\n')
+    output_file.write('load("'+TEST_BASE_DIR+'/data5_fact.csv")\n')
     output_file.write('--\n')
     output_file.write('create(tbl,"tbl5_dim1",db1,3)\n')
     output_file.write('create(col,"col1",db1.tbl5_dim1)\n')
     output_file.write('create(col,"col2",db1.tbl5_dim1)\n')
     output_file.write('create(col,"col3",db1.tbl5_dim1)\n')
-    output_file.write('load("/home/cs165/cs165-management-scripts/project_tests_2017/data5_dimension1.csv")\n')
+    output_file.write('load("'+TEST_BASE_DIR+'/data5_dimension1.csv")\n')
     output_file.write('--\n')
     output_file.write('create(tbl,"tbl5_dim2",db1,2)\n')
     output_file.write('create(col,"col1",db1.tbl5_dim2)\n')
     output_file.write('create(col,"col2",db1.tbl5_dim2)\n')
-    output_file.write('load("/home/cs165/cs165-management-scripts/project_tests_2017/data5_dimension2.csv")\n')
+    output_file.write('load("'+TEST_BASE_DIR+'/data5_dimension2.csv")\n')
     output_file.write('-- Testing that the data and their indexes are durable on disk.\n')
     output_file.write('shutdown\n')
     # no expected results
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTest32(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFact, selectivityDim2):
-    output_file, exp_output_file = data_gen_utils.openFileHandles(32)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(32, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- First join test - nested-loop. Select + Join + aggregation\n')   
     output_file.write('-- Performs the join using nested loops\n')
     output_file.write('-- Do this only on reasonable sized tables! (O(n^2)\n')
@@ -136,7 +144,7 @@ def createTest32(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFa
         exp_output_file.write('{}\n'.format(col3ValuesSum))
 
 def createTest33(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFact, selectivityDim2):
-    output_file, exp_output_file = data_gen_utils.openFileHandles(33)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(33, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- First join test - hash. Select + Join + aggregation\n')
     output_file.write('-- Performs the join using hashing\n')
     output_file.write('-- Query in SQL:\n')
@@ -171,7 +179,7 @@ def createTest33(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFa
         exp_output_file.write('{}\n'.format(col3ValuesSum))
 
 def createTest34(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFact, selectivityDim1):
-    output_file, exp_output_file = data_gen_utils.openFileHandles(34)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(34, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- Join test 2 - nested-loop. Select + Join + aggregation\n')
     output_file.write('-- Performs the join using nested loops\n')
     output_file.write('-- Do this only on reasonable sized tables! (O(n^2)\n')
@@ -207,7 +215,7 @@ def createTest34(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
         exp_output_file.write('{}\n'.format(col1ValuesMean))
 
 def createTest35(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFact, selectivityDim1):
-    output_file, exp_output_file = data_gen_utils.openFileHandles(35)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(35, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- join test 2 - hash. Select + Join + aggregation\n')
     output_file.write('-- Performs the join using hashing\n')
     output_file.write('-- Query in SQL:\n')
@@ -242,7 +250,7 @@ def createTest35(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
         exp_output_file.write('{}\n'.format(col1ValuesMean))
 
 def createTest36(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFact, selectivityDim2):
-    output_file, exp_output_file = data_gen_utils.openFileHandles(36)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(36, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- join test 3 - hashing many-one with larger selectivities.\n')
     output_file.write('-- Select + Join + aggregation\n')
     output_file.write('-- Performs the join using hashing\n')
@@ -278,7 +286,7 @@ def createTest36(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFa
         exp_output_file.write('{}\n'.format(col3ValuesSum))
 
 def createTest37(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFact, selectivityDim1):
-    output_file, exp_output_file = data_gen_utils.openFileHandles(35)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(37, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- join test 4 - hashing many-many with larger selectivities.\n')
     output_file.write('-- Select + Join + aggregation\n')
     output_file.write('-- Query in SQL:\n')
@@ -312,8 +320,7 @@ def createTest37(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     else:
         exp_output_file.write('{}\n'.format(col1ValuesMean))
     
-def generateMilestoneFourFiles(dataSizeFact, dataSizeDim1, dataSizeDim2, zipfianParam, numDistinctElements):
-    randomSeed = 47
+def generateMilestoneFourFiles(dataSizeFact, dataSizeDim1, dataSizeDim2, zipfianParam, numDistinctElements, randomSeed=47):
     np.random.seed(randomSeed)
     factTable, dimTable1, dimTable2 = generateDataMilestone4(dataSizeFact, dataSizeDim1, dataSizeDim2, zipfianParam, numDistinctElements)  
     createTest31()
@@ -329,15 +336,21 @@ def generateMilestoneFourFiles(dataSizeFact, dataSizeDim1, dataSizeDim2, zipfian
 
 
 def main(argv):
+    global TEST_BASE_DIR
     dataSizeFact = int(argv[0])
     dataSizeDim1 = int(argv[1])
     dataSizeDim2 = int(argv[2])
-    if len(argv) > 5:
+    if len(argv) > 6:
+        randomSeed = int(argv[3])
+        zipfianParam = np.double(argv[4])
+        numDistinctElements = int(argv[5])
+        TEST_BASE_DIR = argv[6]
+    elif len(argv) > 5:
         randomSeed = argv[3]
-        zipfianParam = double(argv[4])
+        zipfianParam = np.double(argv[4])
         numDistinctElements = int(argv[5])
     elif len(argv) > 3:
-        randomSeed = argv[3]
+        randomSeed = int(argv[3])
         zipfianParam = 1.0
         numDistinctElements = 50
     else:
@@ -345,7 +358,7 @@ def main(argv):
         zipfianParam = 1.0
         numDistinctElements = 50
 
-    generateMilestoneFourFiles(dataSizeFact, dataSizeDim1, dataSizeDim2, zipfianParam, numDistinctElements)
+    generateMilestoneFourFiles(dataSizeFact, dataSizeDim1, dataSizeDim2, zipfianParam, numDistinctElements, randomSeed=randomSeed)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

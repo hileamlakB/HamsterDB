@@ -14,15 +14,20 @@ import data_gen_utils
 # note this is the base path to the data files we generate
 TEST_BASE_DIR = "/cs165/generated_data"
 
+#
+# Example usage: 
+#   python milestone3.py 10000 42 ~/repo/cs165-docker-test-runner/test_data
+#
+
 ############################################################################
 # Notes: You can generate your own scripts for generating data fairly easily by modifying this script.
 # 
 ############################################################################
 
 def generateDataMilestone3(dataSize):
-    outputFile_ctrl = 'data4_ctrl.csv'
-    outputFile_btree = 'data4_btree.csv'
-    outputFile_clustered_btree = 'data4_clustered_btree.csv'
+    outputFile_ctrl = TEST_BASE_DIR + '/' + 'data4_ctrl.csv'
+    outputFile_btree = TEST_BASE_DIR + '/' + 'data4_btree.csv'
+    outputFile_clustered_btree = TEST_BASE_DIR + '/' + 'data4_clustered_btree.csv'
     header_line_ctrl = data_gen_utils.generateHeaderLine('db1', 'tbl4_ctrl', 4)
     header_line_btree = data_gen_utils.generateHeaderLine('db1', 'tbl4_btree', 4)
     header_line_clustered_btree = data_gen_utils.generateHeaderLine('db1', 'tbl4_clustered_btree', 4)
@@ -293,7 +298,7 @@ def createTest28():
     output_file.write('--\n')
     output_file.write('--\n')
     output_file.write('-- Load data immediately in the form of a clustered index\n')
-    output_file.write('load("/home/cs165/cs165-management-scripts/project_tests_2017/data4_clustered_btree.csv")\n')
+    output_file.write('load("'+TEST_BASE_DIR+'/data4_clustered_btree.csv")\n')
     output_file.write('--\n')
     output_file.write('-- Testing that the data and their indexes are durable on disk.\n')
     output_file.write('shutdown\n')
@@ -361,8 +366,7 @@ def createTests30(dataTable, dataSize):
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 
-def generateMilestoneThreeFiles(dataSize):
-    randomSeed = 47
+def generateMilestoneThreeFiles(dataSize, randomSeed=47):
     np.random.seed(randomSeed)
     frequentVal1, frequentVal2, dataTable = generateDataMilestone3(dataSize)  
     createTest18()
@@ -373,12 +377,19 @@ def generateMilestoneThreeFiles(dataSize):
     createTest25(dataTable, frequentVal1, frequentVal2)
 
 def main(argv):
+    global TEST_BASE_DIR
+
     dataSize = int(argv[0])
     if len(argv) > 1:
         randomSeed = int(argv[1])
     else:
         randomSeed = 47
-    generateMilestoneThreeFiles(dataSize)
+
+    # override the base directory for where to output test related files
+    if len(argv) > 2:
+        TEST_BASE_DIR = argv[2]
+
+    generateMilestoneThreeFiles(dataSize, randomSeed=randomSeed)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

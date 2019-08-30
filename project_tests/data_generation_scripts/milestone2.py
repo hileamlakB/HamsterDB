@@ -13,6 +13,11 @@ import data_gen_utils
 # note this is the base path to the data files we generate
 TEST_BASE_DIR = "/cs165/generated_data"
 
+#
+# Example usage: 
+#   python milestone3.py 10000 42 ~/repo/cs165-docker-test-runner/test_data
+#
+
 ############################################################################
 # Notes: You can generate your own scripts for generating data fairly easily by modifying this script.
 #
@@ -258,16 +263,18 @@ def generateMilestoneTwoFiles(dataSize, randomSeed):
     createTests16And17(dataTable, dataSize)
 
 def main(argv):
+    global TEST_BASE_DIR
     dataSize = int(argv[0])
     if len(argv) > 1:
         randomSeed = int(argv[1])
     else:
         randomSeed = 47
-    generateMilestoneTwoFiles(dataSize, randomSeed)
+
     # override the base directory for where to output test related files
     if len(argv) > 2:
         TEST_BASE_DIR = argv[2]
 
+    generateMilestoneTwoFiles(dataSize, randomSeed)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

@@ -137,16 +137,17 @@ def createTestFour(dataTable):
 	output_file.write('relational_insert(db1.tbl2,-9,-99,-999,-2222)\n')
 	output_file.write('relational_insert(db1.tbl2,-10,-11,0,-34)\n')
 	output_file.write('shutdown\n')
-	dataTable.append([[-1, -11, -111, -1111]])
-	dataTable.append([[-2, -22, -222, -2222]])
-	dataTable.append([[-3, -33, -333, -2222]])
-	dataTable.append([[-4, -44, -444, -2222]])
-	dataTable.append([[-5, -55, -555, -2222]])
-	dataTable.append([[-6, -66, -666, -2222]])
-	dataTable.append([[-7, -77, -777, -2222]])
-	dataTable.append([[-8, -88, -888, -2222]])
-	dataTable.append([[-9, -99, -999, -2222]])
-	dataTable.append([[-10, -11, 0, -34]])
+	deltaTable = [[-1, -11, -111, -1111],
+		[-2, -22, -222, -2222],
+		[-3, -33, -333, -2222],
+		[-4, -44, -444, -2222],
+		[-5, -55, -555, -2222],
+		[-6, -66, -666, -2222],
+		[-7, -77, -777, -2222],
+		[-8, -88, -888, -2222],
+		[-9, -99, -999, -2222],
+		[-10, -11, 0, -34]]
+	dataTable = dataTable.append(deltaTable)
 	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 ## NOTE: approxSelectivity should be between 0 and 1

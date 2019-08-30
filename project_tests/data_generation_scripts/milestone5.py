@@ -14,6 +14,9 @@ import data_gen_utils
 # note this is the base path to the data files we generate
 TEST_BASE_DIR = "/cs165/generated_data"
 
+# note this is the base path that _POINTS_ to the data files we generate
+DOCKER_TEST_BASE_DIR = "/cs165/staff_test"
+
 ############################################################################
 # Notes: You can generate your own scripts for generating data fairly easily by modifying this script.
 # 
@@ -52,7 +55,7 @@ def createTest38(dataTable):
     output_file.write('--\n')
     output_file.write('--\n')
     output_file.write('-- Load data immediately in the form of a clustered index\n')
-    output_file.write('load(\"'+TEST_BASE_DIR+'/data5.csv\")\n')
+    output_file.write('load(\"'+DOCKER_TEST_BASE_DIR+'/data5.csv\")\n')
     output_file.write('--\n')
 
     output_file.write('-- INSERT INTO tbl5 VALUES (-1,-11,-111,-1111);\n')

@@ -1,3 +1,6 @@
+# sample usage:
+#       ./gen_all_for_staff_use.sh ~/repo/cs165-docker-test-runner/test_data
+
 # TODO: somebody needs to add here and pick some good configs for correctness tests
 # especially for milestone4 and beyond.
 

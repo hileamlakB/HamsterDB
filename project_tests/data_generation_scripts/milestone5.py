@@ -291,7 +291,7 @@ def createTest43(dataTable):
 
 
 
-def generateMilestoneFiveFiles(randomSeed, dataSize):
+def generateMilestoneFiveFiles(dataSize,randomSeed=47):
     np.random.seed(randomSeed)
     dataTable = generateDataMilestone5(dataSize)
     dataTable = createTest38(dataTable)
@@ -302,12 +302,20 @@ def generateMilestoneFiveFiles(randomSeed, dataSize):
     createTest43(dataTable)
 
 def main(argv):
+    global TEST_BASE_DIR
+    global DOCKER_TEST_BASE_DIR
     dataSize = int(argv[0])
     if len(argv) > 1:
         randomSeed = int(argv[1])
     else:
         randomSeed = 47
-    generateMilestoneFiveFiles(randomSeed, dataSize)
+    
+    if len(argv) > 2:
+        TEST_BASE_DIR = argv[2]
+        if len(argv) > 3:
+            DOCKER_TEST_BASE_DIR = argv[3]
+
+    generateMilestoneFiveFiles(dataSize, randomSeed=randomSeed)
 
 
 if __name__ == "__main__":

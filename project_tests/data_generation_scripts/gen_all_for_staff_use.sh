@@ -2,7 +2,7 @@
 # especially for milestone4 and beyond.
 
 OUTPUT_TEST_DIR=$1
-DOCKER_TEST_DIR="${2:-'/cs165/staff_test'}"
+DOCKER_TEST_DIR="${2:-/cs165/staff_test}"
 TBL_SIZE="${3:-10000}"
 RAND_SEED="${4:-42}"
 

@@ -98,7 +98,7 @@ def createTestThree(dataTable):
 	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def generateDataFile2(dataSizeTableTwo):
-	outputFile = TEST_BASE_DIR + 'data2_generated.csv'
+	outputFile = TEST_BASE_DIR + '/' + 'data2_generated.csv'
 	header_line = data_gen_utils.generateHeaderLine('db1', 'tbl2', 4)
 	outputTable = pd.DataFrame(np.random.randint(-1 * dataSizeTableTwo/2, dataSizeTableTwo/2, size=(dataSizeTableTwo, 4)), columns =['col1', 'col2', 'col3', 'col4'])
 	outputTable['col2'] = outputTable['col2'] + outputTable['col1']

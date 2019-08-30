@@ -25,10 +25,10 @@ def closeFileHandles(output_file, exp_output_file):
 	exp_output_file.close()
 
 def generateHeaderLine(dbName, tableName, numColumns):
-	outputString = ''
-	for i in range(1, numColumns):
-		outputString += '{}.{}.col{},'.format(dbName, tableName, i)
-	outputString += '{}.{}.col{}'.format(dbName, tableName, numColumns)
+	outputString = []
+	for i in range(1, numColumns+1):
+		outputString.append('{}.{}.col{}'.format(dbName, tableName, i))
+	#outputString.append('{}.{}.col{}'.format(dbName, tableName, numColumns))
 	return outputString
 
 def outputPrint(pandasArray):

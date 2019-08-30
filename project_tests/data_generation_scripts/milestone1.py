@@ -11,7 +11,7 @@ import pandas as pd
 import data_gen_utils
 
 # note this is the base path to the data files we generate
-TEST_BASE_DIR = "/cs165/generated_data"
+TEST_BASE_DIR = "./"
 
 ############################################################################
 # Notes: You can generate your own scripts for generating data fairly easily by modifying this script.
@@ -108,7 +108,7 @@ def generateDataFile2(dataSizeTableTwo):
 	outputTable.to_csv(outputFile, sep=',', index=False, header=header_line, line_terminator='\n')
 	return outputTable
 
-def createTestFour():
+def createTestFour(dataTable):
 	# prelude
 	output_file, exp_output_file = data_gen_utils.openFileHandles(4, TEST_DIR=TEST_BASE_DIR)
 	output_file.write('-- Load Test Data 2\n')
@@ -319,7 +319,7 @@ def generateTestsMidwayCheckin(dataTable):
 	createTestThree(dataTable)
 
 def generateOtherMilestoneOneTests(dataTable2, dataSizeTableTwo):
-	createTestFour()
+	createTestFour(dataTable2)
 	createTestFive(dataTable2, dataSizeTableTwo, 0.8)
 	createTestSix(dataTable2, dataSizeTableTwo, 20)
 	createTestSeven(dataTable2, dataSizeTableTwo, 20)

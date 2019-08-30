@@ -265,8 +265,8 @@ def createRandomSelects(dataTable, numberOfQueries, output_file, exp_output_file
     highestVal = dataTable['col2'].max()
     dataSize = len(dataTable)
     for i in range(numberOfQueries):
-        selectValLess = np.random.randint(lowestVal, highestVal-1)
-        selectValGreater = np.random.randint(selectValLess+dataSize/10, highestVal)
+        selectValLess = np.random.randint(lowestVal-1, highestVal-1)
+        selectValGreater = np.random.randint(selectValLess, highestVal)
         output_file.write('-- SELECT col1 FROM tbl5 WHERE col2 >= {} AND col2 < {};\n'.format(selectValLess, selectValGreater))
         output_file.write('s1=select(db1.tbl5.col2,{},{})\n'.format(selectValLess, selectValGreater))
         output_file.write('f1=fetch(db1.tbl5.col1,s1)\n')

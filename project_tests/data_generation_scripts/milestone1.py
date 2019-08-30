@@ -21,6 +21,9 @@ DOCKER_TEST_BASE_DIR = "/cs165/staff_test"
 #   python milestone1.py 10000 42 ~/repo/cs165-docker-test-runner/test_data /cs165/staff_test
 #
 
+# PRECISION FOR AVG OPERATION
+PLACES_TO_ROUND = 2
+
 ############################################################################
 # Notes: You can generate your own scripts for generating data fairly easily by modifying this script.
 ############################################################################
@@ -99,7 +102,7 @@ def createTestThree(dataTable):
 	dfSelectMaskGT = dataTable['col1'] >= selectValLess
 	dfSelectMaskLT = dataTable['col1'] < selectValGreater
 	output = dataTable[dfSelectMaskGT & dfSelectMaskLT]['col2']
-	exp_output_file.write(str(output.mean()))
+	exp_output_file.write(str(np.round(output.mean(), PLACES_TO_ROUND)))
 	exp_output_file.write('\n')
 	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
@@ -137,6 +140,8 @@ def createTestFour(dataTable):
 	output_file.write('relational_insert(db1.tbl2,-9,-99,-999,-2222)\n')
 	output_file.write('relational_insert(db1.tbl2,-10,-11,0,-34)\n')
 	output_file.write('shutdown\n')
+
+	# columns need to align for append to work
 	deltaTable = pd.DataFrame([[-1, -11, -111, -1111],
 		[-2, -22, -222, -2222],
 		[-3, -33, -333, -2222],
@@ -146,7 +151,8 @@ def createTestFour(dataTable):
 		[-7, -77, -777, -2222],
 		[-8, -88, -888, -2222],
 		[-9, -99, -999, -2222],
-		[-10, -11, 0, -34]])
+		[-10, -11, 0, -34]], columns=['col1', 'col2', 'col3', 'col4'])
+	
 	dataTable = dataTable.append(deltaTable)
 	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 	return dataTable

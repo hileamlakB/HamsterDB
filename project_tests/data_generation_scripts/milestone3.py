@@ -11,8 +11,16 @@ import math
 
 import data_gen_utils
 
-# note this is the base path to the data files we generate
+# note this is the base path where we store the data files we generate
 TEST_BASE_DIR = "/cs165/generated_data"
+
+# note this is the base path that _POINTS_ to the data files we generate
+DOCKER_TEST_BASE_DIR = "/cs165/staff_test"
+
+#
+# Example usage: 
+#   python milestone3.py 10000 42 ~/repo/cs165-docker-test-runner/test_data /cs165/staff_test
+#
 
 ############################################################################
 # Notes: You can generate your own scripts for generating data fairly easily by modifying this script.
@@ -20,9 +28,9 @@ TEST_BASE_DIR = "/cs165/generated_data"
 ############################################################################
 
 def generateDataMilestone3(dataSize):
-    outputFile_ctrl = 'data4_ctrl.csv'
-    outputFile_btree = 'data4_btree.csv'
-    outputFile_clustered_btree = 'data4_clustered_btree.csv'
+    outputFile_ctrl = TEST_BASE_DIR + '/' + 'data4_ctrl.csv'
+    outputFile_btree = TEST_BASE_DIR + '/' + 'data4_btree.csv'
+    outputFile_clustered_btree = TEST_BASE_DIR + '/' + 'data4_clustered_btree.csv'
     header_line_ctrl = data_gen_utils.generateHeaderLine('db1', 'tbl4_ctrl', 4)
     header_line_btree = data_gen_utils.generateHeaderLine('db1', 'tbl4_btree', 4)
     header_line_clustered_btree = data_gen_utils.generateHeaderLine('db1', 'tbl4_clustered_btree', 4)
@@ -63,7 +71,7 @@ def createTest18():
     output_file.write('create(col,"col4",db1.tbl4_ctrl)\n')
     output_file.write('--\n')
     output_file.write('-- Load data immediately\n')
-    output_file.write('load(\"'+TEST_BASE_DIR+'/data4_ctrl.csv\")\n')
+    output_file.write('load(\"'+DOCKER_TEST_BASE_DIR+'/data4_ctrl.csv\")\n')
     output_file.write('--\n')
     output_file.write('-- Testing that the data and their indexes are durable on disk.\n')
     output_file.write('shutdown\n')
@@ -93,7 +101,7 @@ def createTest19():
     output_file.write('--\n')
     output_file.write('--\n')
     output_file.write('-- Load data immediately in the form of a clustered index\n')
-    output_file.write('load(\"'+TEST_BASE_DIR+'/data4_btree.csv\")\n')
+    output_file.write('load(\"'+DOCKER_TEST_BASE_DIR+'/data4_btree.csv\")\n')
     output_file.write('--\n')
     output_file.write('-- Testing that the data and their indexes are durable on disk.\n')
     output_file.write('shutdown\n')
@@ -233,8 +241,8 @@ def createTest25(dataTable, frequentVal1, frequentVal2):
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTests26And27(dataTable, dataSize):
-    output_file26, exp_output_file26 = data_gen_utils.openFileHandles(26)
-    output_file27, exp_output_file27 = data_gen_utils.openFileHandles(27)
+    output_file26, exp_output_file26 = data_gen_utils.openFileHandles(26, TEST_DIR=TEST_BASE_DIR)
+    output_file27, exp_output_file27 = data_gen_utils.openFileHandles(27, TEST_DIR=TEST_BASE_DIR)
     offset = np.max([2, int(dataSize/500)])
     output_file26.write('-- Test for a non-clustered index select followed by an aggregate (control-test, many queries)\n')
     output_file26.write('-- Compare to test 27 for timing differences between B-tree and scan for highly selective queries\n')
@@ -271,7 +279,7 @@ def createTests26And27(dataTable, dataSize):
     data_gen_utils.closeFileHandles(output_file27, exp_output_file27)
 
 def createTest28():
-    output_file, exp_output_file = data_gen_utils.openFileHandles(28)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(28, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- Test for creating table with indexes\n')
     output_file.write('--\n')
     output_file.write('-- Table tbl4_clustered_btree has a clustered index with col3 being the leading column.\n')
@@ -293,7 +301,7 @@ def createTest28():
     output_file.write('--\n')
     output_file.write('--\n')
     output_file.write('-- Load data immediately in the form of a clustered index\n')
-    output_file.write('load("/home/cs165/cs165-management-scripts/project_tests_2017/data4_clustered_btree.csv")\n')
+    output_file.write('load("'+DOCKER_TEST_BASE_DIR+'/data4_clustered_btree.csv")\n')
     output_file.write('--\n')
     output_file.write('-- Testing that the data and their indexes are durable on disk.\n')
     output_file.write('shutdown\n')
@@ -301,7 +309,7 @@ def createTest28():
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTest29(dataTable, dataSize):
-    output_file, exp_output_file = data_gen_utils.openFileHandles(29)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(29, TEST_DIR=TEST_BASE_DIR)
     output_file.write('--\n')
     output_file.write('-- Query in SQL:\n')
     # selectivity = 
@@ -337,7 +345,7 @@ def createTest29(dataTable, dataSize):
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTests30(dataTable, dataSize):
-    output_file, exp_output_file = data_gen_utils.openFileHandles(30)
+    output_file, exp_output_file = data_gen_utils.openFileHandles(30, TEST_DIR=TEST_BASE_DIR)
     offset = np.max([2, int(dataSize/1000)])
     output_file.write('-- Test for a non-clustered index select followed by an aggregate\n')
     output_file.write('--\n')
@@ -361,8 +369,7 @@ def createTests30(dataTable, dataSize):
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 
-def generateMilestoneThreeFiles(dataSize):
-    randomSeed = 47
+def generateMilestoneThreeFiles(dataSize, randomSeed=47):
     np.random.seed(randomSeed)
     frequentVal1, frequentVal2, dataTable = generateDataMilestone3(dataSize)  
     createTest18()
@@ -373,12 +380,21 @@ def generateMilestoneThreeFiles(dataSize):
     createTest25(dataTable, frequentVal1, frequentVal2)
 
 def main(argv):
+    global TEST_BASE_DIR
+    global DOCKER_TEST_BASE_DIR
+
     dataSize = int(argv[0])
     if len(argv) > 1:
         randomSeed = int(argv[1])
     else:
         randomSeed = 47
-    generateMilestoneThreeFiles(dataSize)
+
+    # override the base directory for where to output test related files
+    if len(argv) > 2:
+        TEST_BASE_DIR = argv[2]
+        if len(argv) > 3:
+            DOCKER_TEST_BASE_DIR = argv[3]
+    generateMilestoneThreeFiles(dataSize, randomSeed=randomSeed)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

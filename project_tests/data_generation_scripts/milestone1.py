@@ -10,8 +10,16 @@ import pandas as pd
 
 import data_gen_utils
 
-# note this is the base path to the data files we generate
-TEST_BASE_DIR = "./"
+# note this is the base path where we store the data files we generate
+TEST_BASE_DIR = "/cs165/generated_data"
+
+# note this is the base path that _POINTS_ to the data files we generate
+DOCKER_TEST_BASE_DIR = "/cs165/staff_test"
+
+#
+# Example usage: 
+#   python milestone1.py 10000 42 ~/repo/cs165-docker-test-runner/test_data /cs165/staff_test
+#
 
 ############################################################################
 # Notes: You can generate your own scripts for generating data fairly easily by modifying this script.
@@ -22,11 +30,11 @@ def generateDataFileMidwayCheckin():
 	header_line = data_gen_utils.generateHeaderLine('db1', 'tbl1', 2)
 	column1 = list(range(0,1000))
 	column2 = list(range(10,1010))
-	#### For these 3 tests, the seed is exactly the same on the server. 
+	#### For these 3 tests, the seed is exactly the same on the server.
 	np.random.seed(47)
 	np.random.shuffle(column2)
 	#outputTable = np.column_stack((column1, column2)).astype(int)
-	outputTable = pd.DataFrame(list(zip(column1, column2)), columns =['col1', 'col2']) 
+	outputTable = pd.DataFrame(list(zip(column1, column2)), columns =['col1', 'col2'])
 	outputTable.to_csv(outputFile, sep=',', index=False, header=header_line, line_terminator='\n')
 	return outputTable
 
@@ -38,7 +46,7 @@ def createTestOne():
 	output_file.write('create(tbl,\"tbl1\",db1,2)\n')
 	output_file.write('create(col,\"col1\",db1.tbl1)\n')
 	output_file.write('create(col,\"col1\",db1.tbl2)\n')
-	output_file.write('load(\"'+TEST_BASE_DIR+'/data1.csv\")\n')
+	output_file.write('load(\"'+DOCKER_TEST_BASE_DIR+'/data1_generated.csv\")\n')
 	for x in range(1, 10):
 		output_file.write('relational_insert(db1.tbl1,-{}, {})\n'.format(x, x-10))
 	output_file.write('shutdown\n')
@@ -47,7 +55,7 @@ def createTestOne():
 
 def createTestTwo(dataTable):
 	# write out test
-	output_file, exp_output_file = data_gen_utils.openFileHandles(2)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(2, TEST_DIR=TEST_BASE_DIR)
 	output_file.write('-- Test Select + Fetch\n')
 	output_file.write('--\n')
 	### Part 1
@@ -98,7 +106,7 @@ def createTestThree(dataTable):
 	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def generateDataFile2(dataSizeTableTwo):
-	outputFile = 'data2_generated.csv'
+	outputFile = TEST_BASE_DIR + '/' + 'data2_generated.csv'
 	header_line = data_gen_utils.generateHeaderLine('db1', 'tbl2', 4)
 	outputTable = pd.DataFrame(np.random.randint(-1 * dataSizeTableTwo/2, dataSizeTableTwo/2, size=(dataSizeTableTwo, 4)), columns =['col1', 'col2', 'col3', 'col4'])
 	outputTable['col2'] = outputTable['col2'] + outputTable['col1']
@@ -119,7 +127,7 @@ def createTestFour(dataTable):
 	output_file.write('create(col,\"col2\",db1.tbl2)\n')
 	output_file.write('create(col,\"col3\",db1.tbl2)\n')
 	output_file.write('create(col,\"col4\",db1.tbl2)\n')
-	output_file.write('load(\"'+TEST_BASE_DIR+'/data2.csv\")\n')
+	output_file.write('load(\"'+DOCKER_TEST_BASE_DIR+'/data2_generated.csv\")\n')
 	output_file.write('relational_insert(db1.tbl2,-1,-11,-111,-1111)\n')
 	output_file.write('relational_insert(db1.tbl2,-2,-22,-222,-2222)\n')
 	output_file.write('relational_insert(db1.tbl2,-3,-33,-333,-2222)\n')
@@ -329,23 +337,28 @@ def generateOtherMilestoneOneTests(dataTable2, dataSizeTableTwo):
 def generateMilestoneOneFiles(dataSizeTableTwo, randomSeed):
 	dataTable = generateDataFileMidwayCheckin()
 	generateTestsMidwayCheckin(dataTable)
-	#### The seed is now a different number on the server! Data size is also different. 
+	#### The seed is now a different number on the server! Data size is also different.
 	np.random.seed(randomSeed)
-	dataTable2 = generateDataFile2(dataSizeTableTwo)	
+	dataTable2 = generateDataFile2(dataSizeTableTwo)
 	generateOtherMilestoneOneTests(dataTable2, dataSizeTableTwo)
 
 def main(argv):
+	global TEST_BASE_DIR
+	global DOCKER_TEST_BASE_DIR
+
 	dataSizeTableTwo = int(argv[0])
-	dataSize = int(argv[0])
+
 	if len(argv) > 1:
 		randomSeed = int(argv[1])
 	else:
 		randomSeed = 47
-	
+
 	# override the base directory for where to output test related files
 	if len(argv) > 2:
 		TEST_BASE_DIR = argv[2]
-		
+		if len(argv) > 3:
+			DOCKER_TEST_BASE_DIR = argv[3]
+
 
 	generateMilestoneOneFiles(dataSizeTableTwo, randomSeed)
 

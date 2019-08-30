@@ -20,10 +20,12 @@ TEST_BASE_DIR = "/cs165/generated_data"
 ############################################################################
 
 def generateDataMilestone3(dataSize):
-    outputFile_ctrl = TEST_BASE_DIR + '/data4_ctrl.csv'
-    outputFile_btree = TEST_BASE_DIR + '/data4_btree.csv'
+    outputFile_ctrl = 'data4_ctrl.csv'
+    outputFile_btree = 'data4_btree.csv'
+    outputFile_clustered_btree = 'data4_clustered_btree.csv'
     header_line_ctrl = data_gen_utils.generateHeaderLine('db1', 'tbl4_ctrl', 4)
     header_line_btree = data_gen_utils.generateHeaderLine('db1', 'tbl4_btree', 4)
+    header_line_clustered_btree = data_gen_utils.generateHeaderLine('db1', 'tbl4_clustered_btree', 4)
     outputTable = pd.DataFrame(np.random.randint(0, dataSize/5, size=(dataSize, 4)), columns =['col1', 'col2', 'col3', 'col4'])
     # This is going to have many, many duplicates for large tables!!!!
     outputTable['col1'] = np.random.randint(0,1000, size = (dataSize))
@@ -42,6 +44,7 @@ def generateDataMilestone3(dataSize):
     outputTable['col4'] = outputTable['col4'] + outputTable['col1']
     outputTable.to_csv(outputFile_ctrl, sep=',', index=False, header=header_line_ctrl, line_terminator='\n')
     outputTable.to_csv(outputFile_btree, sep=',', index=False, header=header_line_btree, line_terminator='\n')
+    outputTable.to_csv(outputFile_clustered_btree, sep=',', index=False, header=header_line_clustered_btree, line_terminator='\n')
     return frequentVal1, frequentVal2, outputTable
 
 def createTest18():
@@ -227,6 +230,134 @@ def createTest25(dataTable, frequentVal1, frequentVal2):
     result2 = dataTable[dfSelectMask2]['col1'].sum()
     exp_output_file.write(str(result1) + '\n')
     exp_output_file.write(str(result2) + '\n')
+    data_gen_utils.closeFileHandles(output_file, exp_output_file)
+
+def createTests26And27(dataTable, dataSize):
+    output_file26, exp_output_file26 = data_gen_utils.openFileHandles(26)
+    output_file27, exp_output_file27 = data_gen_utils.openFileHandles(27)
+    offset = np.max([2, int(dataSize/500)])
+    output_file26.write('-- Test for a non-clustered index select followed by an aggregate (control-test, many queries)\n')
+    output_file26.write('-- Compare to test 27 for timing differences between B-tree and scan for highly selective queries\n')
+    output_file26.write('--\n')
+    output_file26.write('-- Query form in SQL:\n')
+    output_file26.write('-- SELECT avg(col3) FROM tbl4 WHERE (col2 >= _ and col2 < _);\n')
+    output_file26.write('--\n')
+    output_file27.write('-- Test for a non-clustered index select followed by an aggregate (many queries)\n')
+    output_file27.write('--\n')
+    output_file27.write('-- Query form in SQL:\n')
+    output_file27.write('-- SELECT avg(col3) FROM tbl4 WHERE (col2 >= _ and col2 < _);\n')
+    output_file27.write('--\n')
+    for i in range(100):
+        val1 = np.random.randint(0, int((dataSize/5) - offset))
+        output_file26.write('s{}=select(db1.tbl4_ctrl.col2,{},{})\n'.format(i, val1, val1 + offset))
+        output_file26.write('f{}=fetch(db1.tbl4_ctrl.col3,s{})\n'.format(i,i))
+        output_file26.write('a{}=sum(f{})\n'.format(i,i))
+        output_file26.write('print(a{})\n'.format(i))
+        output_file27.write('s{}=select(db1.tbl4.col2,{},{})\n'.format(i, val1, val1 + offset))
+        output_file27.write('f{}=fetch(db1.tbl4.col3,s{})\n'.format(i,i))
+        output_file27.write('a{}=sum(f{})\n'.format(i,i))
+        output_file27.write('print(a{})\n'.format(i))
+        # generate expected results
+        dfSelectMask1 = (dataTable['col2'] >= val1) & (dataTable['col2'] < (val1 + offset))
+        values = dataTable[dfSelectMask1]['col3']
+        mean_result = values.mean()
+        if (math.isnan(mean_result)):
+            exp_output_file26.write('0\n')
+            exp_output_file27.write('0\n')
+        else:
+            exp_output_file26.write(str(mean_result) + '\n')
+            exp_output_file27.write(str(mean_result) + '\n')
+    data_gen_utils.closeFileHandles(output_file23, exp_output_file26)
+    data_gen_utils.closeFileHandles(output_file27, exp_output_file27)
+
+def createTest28():
+    output_file, exp_output_file = data_gen_utils.openFileHandles(28)
+    output_file.write('-- Test for creating table with indexes\n')
+    output_file.write('--\n')
+    output_file.write('-- Table tbl4_clustered_btree has a clustered index with col3 being the leading column.\n')
+    output_file.write('-- The clustered index has the form of a B-Tree.\n')
+    output_file.write('-- The table also has a secondary sorted index.\n')
+    output_file.write('--\n')
+    output_file.write('-- Loads data from: data4_clustered_btree.csv\n')
+    output_file.write('--\n')
+    output_file.write('-- Create Table\n')
+    output_file.write('create(tbl,"tbl4_clustered_btree",db1,4)\n')
+    output_file.write('create(col,"col1",db1.tbl4_clustered_btree)\n')
+    output_file.write('create(col,"col2",db1.tbl4_clustered_btree)\n')
+    output_file.write('create(col,"col3",db1.tbl4_clustered_btree)\n')
+    output_file.write('create(col,"col4",db1.tbl4_clustered_btree)\n')
+    output_file.write('-- Create a clustered index on col3\n')
+    output_file.write('create(idx,db1.tbl4_clustered_btree.col3,btree,clustered)\n')
+    output_file.write('-- Create an unclustered btree index on col2\n')
+    output_file.write('create(idx,db1.tbl4_clustered_btree.col2,sorted,unclustered)\n')
+    output_file.write('--\n')
+    output_file.write('--\n')
+    output_file.write('-- Load data immediately in the form of a clustered index\n')
+    output_file.write('load("/home/cs165/cs165-management-scripts/project_tests_2017/data4_clustered_btree.csv")\n')
+    output_file.write('--\n')
+    output_file.write('-- Testing that the data and their indexes are durable on disk.\n')
+    output_file.write('shutdown\n')
+    # no expected results
+    data_gen_utils.closeFileHandles(output_file, exp_output_file)
+
+def createTest29(dataTable, dataSize):
+    output_file, exp_output_file = data_gen_utils.openFileHandles(29)
+    output_file.write('--\n')
+    output_file.write('-- Query in SQL:\n')
+    # selectivity = 
+    offset = np.max([1, int(dataSize/5000)])
+    offset2 = np.max([2, int(dataSize/2500)])
+    val1 = np.random.randint(0, int((dataSize/5) - offset))
+    val2 = np.random.randint(0, int((dataSize/5) - offset2))
+    # generate test 29
+    output_file.write('--\n')
+    output_file.write('-- tbl4_clustered_btree has a secondary sorted index on col2, and a clustered b-tree index on col3\n')
+    output_file.write('-- testing for correctness\n')
+    output_file.write('--\n')
+    output_file.write('-- Query in SQL:\n')
+    output_file.write('-- SELECT col1 FROM tbl4_clustered_btree WHERE col3 >= {} and col3 < {};\n'.format(val1, val1+offset))
+    output_file.write('-- SELECT col1 FROM tbl4_clustered_btree WHERE col3 >= {} and col3 < {};\n'.format(val2, val2+offset2))
+    output_file.write('--\n')
+    output_file.write('-- since col3 has a clustered index, the index is expected to be used by the select operator\n')
+    output_file.write('s1=select(db1.tbl4_clustered_btree.col3,{},{})\n'.format(val1, val1 + offset))
+    output_file.write('f1=fetch(db1.tbl4_clustered_btree.col1,s1)\n')
+    output_file.write('print(f1)\n')
+    output_file.write('s2=select(db1.tbl4_clustered_btree.col3,{},{})\n'.format(val2, val2 + offset2))
+    output_file.write('f2=fetch(db1.tbl4_clustered_btree.col1,s1)\n')
+    output_file.write('print(f2)\n')
+    # generate expected results
+    dfSelectMask1 = (dataTable['col3'] >= val1) & (dataTable['col3'] < (val1 + offset))
+    dfSelectMask2 = (dataTable['col3'] >= val2) & (dataTable['col3'] < (val2 + offset2))
+    output1 = dataTable[dfSelectMask1]['col1']
+    output2 = dataTable[dfSelectMask2]['col1']
+    exp_output_file.write(data_gen_utils.outputPrint(output1))
+    exp_output_file.write('\n\n')
+    exp_output_file.write(data_gen_utils.outputPrint(output2))
+    exp_output_file.write('\n')
+    data_gen_utils.closeFileHandles(output_file, exp_output_file)
+
+def createTests30(dataTable, dataSize):
+    output_file, exp_output_file = data_gen_utils.openFileHandles(30)
+    offset = np.max([2, int(dataSize/1000)])
+    output_file.write('-- Test for a non-clustered index select followed by an aggregate\n')
+    output_file.write('--\n')
+    output_file.write('-- Query form in SQL:\n')
+    output_file.write('-- SELECT avg(col3) FROM tbl4_clustered_btree WHERE (col2 >= _ and col2 < _);\n')
+    output_file.write('--\n')
+    for i in range(5):
+        val1 = np.random.randint(0, int((dataSize/5) - offset))
+        output_file.write('s{}=select(db1.tbl4_clustered_btree.col2,{},{})\n'.format(i, val1, val1 + offset))
+        output_file.write('f{}=fetch(db1.tbl4_clustered_btree.col3,s{})\n'.format(i,i))
+        output_file.write('a{}=sum(f{})\n'.format(i,i))
+        output_file.write('print(a{})\n'.format(i))
+        # generate expected results
+        dfSelectMask1 = (dataTable['col2'] >= val1) & (dataTable['col2'] < (val1 + offset))
+        values = dataTable[dfSelectMask1]['col3']
+        mean_result = values.mean()
+        if (math.isnan(mean_result)):
+            exp_output_file.write('0\n')
+        else:
+            exp_output_file.write(str(mean_result) + '\n')
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 

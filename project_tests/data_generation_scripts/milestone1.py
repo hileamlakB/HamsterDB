@@ -47,7 +47,7 @@ def createTestOne():
 
 def createTestTwo(dataTable):
 	# write out test
-	output_file, exp_output_file = data_gen_utils.openFileHandles(2, TEST_DIR=TEST_BASE_DIR)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(2)
 	output_file.write('-- Test Select + Fetch\n')
 	output_file.write('--\n')
 	### Part 1
@@ -65,9 +65,9 @@ def createTestTwo(dataTable):
 	exp_output_file.write('\n\n')
 	#write query 2 out
 	selectValGreater = 987
-	output_file.write('-- SELECT col2 FROM tbl1 WHERE col1 >= {};\n'.format(selectValGreater))
+	output_file.write('-- SELECT col1 FROM tbl1 WHERE col1 >= {};\n'.format(selectValGreater))
 	output_file.write('s2=select(db1.tbl1.col1,{},null)\n'.format(selectValGreater))
-	output_file.write('f2=fetch(db1.tbl1.col2,s2)\n')
+	output_file.write('f2=fetch(db1.tbl1.col1,s2)\n')
 	output_file.write('print(f2)\n')
 	dfSelectMaskGT = dataTable['col1'] >= selectValGreater
 	output = dataTable[dfSelectMaskGT]['col2']
@@ -131,6 +131,16 @@ def createTestFour():
 	output_file.write('relational_insert(db1.tbl2,-9,-99,-999,-2222)\n')
 	output_file.write('relational_insert(db1.tbl2,-10,-11,0,-34)\n')
 	output_file.write('shutdown\n')
+	dataTable.append([[-1, -11, -111, -1111]])
+	dataTable.append([[-2, -22, -222, -2222]])
+	dataTable.append([[-3, -33, -333, -2222]])
+	dataTable.append([[-4, -44, -444, -2222]])
+	dataTable.append([[-5, -55, -555, -2222]])
+	dataTable.append([[-6, -66, -666, -2222]])
+	dataTable.append([[-7, -77, -777, -2222]])
+	dataTable.append([[-8, -88, -888, -2222]])
+	dataTable.append([[-9, -99, -999, -2222]])
+	dataTable.append([[-10, -11, 0, -34]])
 	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 ## NOTE: approxSelectivity should be between 0 and 1
@@ -310,7 +320,7 @@ def generateTestsMidwayCheckin(dataTable):
 
 def generateOtherMilestoneOneTests(dataTable2, dataSizeTableTwo):
 	createTestFour()
-	createTestFive(dataTable2, dataSizeTableTwo, 0.1)
+	createTestFive(dataTable2, dataSizeTableTwo, 0.8)
 	createTestSix(dataTable2, dataSizeTableTwo, 20)
 	createTestSeven(dataTable2, dataSizeTableTwo, 20)
 	createTestEight(dataTable2, dataSizeTableTwo, 0.1)

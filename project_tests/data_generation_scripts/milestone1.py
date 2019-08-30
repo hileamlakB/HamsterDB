@@ -22,11 +22,11 @@ def generateDataFileMidwayCheckin():
 	header_line = data_gen_utils.generateHeaderLine('db1', 'tbl1', 2)
 	column1 = list(range(0,1000))
 	column2 = list(range(10,1010))
-	#### For these 3 tests, the seed is exactly the same on the server. 
+	#### For these 3 tests, the seed is exactly the same on the server.
 	np.random.seed(47)
 	np.random.shuffle(column2)
 	#outputTable = np.column_stack((column1, column2)).astype(int)
-	outputTable = pd.DataFrame(list(zip(column1, column2)), columns =['col1', 'col2']) 
+	outputTable = pd.DataFrame(list(zip(column1, column2)), columns =['col1', 'col2'])
 	outputTable.to_csv(outputFile, sep=',', index=False, header=header_line, line_terminator='\n')
 	return outputTable
 
@@ -47,7 +47,7 @@ def createTestOne():
 
 def createTestTwo(dataTable):
 	# write out test
-	output_file, exp_output_file = data_gen_utils.openFileHandles(2)
+	output_file, exp_output_file = data_gen_utils.openFileHandles(2, TEST_DIR=TEST_BASE_DIR)
 	output_file.write('-- Test Select + Fetch\n')
 	output_file.write('--\n')
 	### Part 1
@@ -108,7 +108,7 @@ def generateDataFile2(dataSizeTableTwo):
 	outputTable.to_csv(outputFile, sep=',', index=False, header=header_line, line_terminator='\n')
 	return outputTable
 
-def createTestFour():
+def createTestFour(dataTable):
 	# prelude
 	output_file, exp_output_file = data_gen_utils.openFileHandles(4, TEST_DIR=TEST_BASE_DIR)
 	output_file.write('-- Load Test Data 2\n')
@@ -319,7 +319,7 @@ def generateTestsMidwayCheckin(dataTable):
 	createTestThree(dataTable)
 
 def generateOtherMilestoneOneTests(dataTable2, dataSizeTableTwo):
-	createTestFour()
+	createTestFour(dataTable2)
 	createTestFive(dataTable2, dataSizeTableTwo, 0.8)
 	createTestSix(dataTable2, dataSizeTableTwo, 20)
 	createTestSeven(dataTable2, dataSizeTableTwo, 20)
@@ -329,23 +329,24 @@ def generateOtherMilestoneOneTests(dataTable2, dataSizeTableTwo):
 def generateMilestoneOneFiles(dataSizeTableTwo, randomSeed):
 	dataTable = generateDataFileMidwayCheckin()
 	generateTestsMidwayCheckin(dataTable)
-	#### The seed is now a different number on the server! Data size is also different. 
+	#### The seed is now a different number on the server! Data size is also different.
 	np.random.seed(randomSeed)
-	dataTable2 = generateDataFile2(dataSizeTableTwo)	
+	dataTable2 = generateDataFile2(dataSizeTableTwo)
 	generateOtherMilestoneOneTests(dataTable2, dataSizeTableTwo)
 
 def main(argv):
+	global TEST_BASE_DIR
 	dataSizeTableTwo = int(argv[0])
 	dataSize = int(argv[0])
 	if len(argv) > 1:
 		randomSeed = int(argv[1])
 	else:
 		randomSeed = 47
-	
+
 	# override the base directory for where to output test related files
 	if len(argv) > 2:
 		TEST_BASE_DIR = argv[2]
-		
+
 
 	generateMilestoneOneFiles(dataSizeTableTwo, randomSeed)
 

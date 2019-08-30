@@ -45,7 +45,7 @@ def createTestOne(outputTable):
 	output_file.write('create(db,\"db1\")\n')
 	output_file.write('create(tbl,\"tbl1\",db1,2)\n')
 	output_file.write('create(col,\"col1\",db1.tbl1)\n')
-	output_file.write('create(col,\"col1\",db1.tbl2)\n')
+	output_file.write('create(col,\"col2\",db1.tbl1)\n')
 	output_file.write('load(\"'+DOCKER_TEST_BASE_DIR+'/data1_generated.csv\")\n')
 	output_file.write('shutdown\n')
 	# generate expected results

@@ -11,12 +11,15 @@ import math
 
 import data_gen_utils
 
-# note this is the base path to the data files we generate
+# note this is the base path where we store the data files we generate
 TEST_BASE_DIR = "/cs165/generated_data"
+
+# note this is the base path that _POINTS_ to the data files we generate
+DOCKER_TEST_BASE_DIR = "/cs165/staff_test"
 
 #
 # Example usage: 
-#   python milestone4.py 10000 10000 10000 42 1.0 50 ~/repo/cs165-docker-test-runner/test_data
+#   python milestone4.py 10000 10000 10000 42 1.0 50 ~/repo/cs165-docker-test-runner/test_data /cs165/staff_test
 #
 
 
@@ -90,18 +93,18 @@ def createTest31():
     output_file.write('create(col,"col2",db1.tbl5_fact)\n')
     output_file.write('create(col,"col3",db1.tbl5_fact)\n')
     output_file.write('create(col,"col4",db1.tbl5_fact)\n')
-    output_file.write('load("'+TEST_BASE_DIR+'/data5_fact.csv")\n')
+    output_file.write('load("'+DOCKER_TEST_BASE_DIR+'/data5_fact.csv")\n')
     output_file.write('--\n')
     output_file.write('create(tbl,"tbl5_dim1",db1,3)\n')
     output_file.write('create(col,"col1",db1.tbl5_dim1)\n')
     output_file.write('create(col,"col2",db1.tbl5_dim1)\n')
     output_file.write('create(col,"col3",db1.tbl5_dim1)\n')
-    output_file.write('load("'+TEST_BASE_DIR+'/data5_dimension1.csv")\n')
+    output_file.write('load("'+DOCKER_TEST_BASE_DIR+'/data5_dimension1.csv")\n')
     output_file.write('--\n')
     output_file.write('create(tbl,"tbl5_dim2",db1,2)\n')
     output_file.write('create(col,"col1",db1.tbl5_dim2)\n')
     output_file.write('create(col,"col2",db1.tbl5_dim2)\n')
-    output_file.write('load("'+TEST_BASE_DIR+'/data5_dimension2.csv")\n')
+    output_file.write('load("'+DOCKER_TEST_BASE_DIR+'/data5_dimension2.csv")\n')
     output_file.write('-- Testing that the data and their indexes are durable on disk.\n')
     output_file.write('shutdown\n')
     # no expected results
@@ -337,6 +340,8 @@ def generateMilestoneFourFiles(dataSizeFact, dataSizeDim1, dataSizeDim2, zipfian
 
 def main(argv):
     global TEST_BASE_DIR
+    global DOCKER_TEST_BASE_DIR
+
     dataSizeFact = int(argv[0])
     dataSizeDim1 = int(argv[1])
     dataSizeDim2 = int(argv[2])
@@ -345,6 +350,10 @@ def main(argv):
         zipfianParam = np.double(argv[4])
         numDistinctElements = int(argv[5])
         TEST_BASE_DIR = argv[6]
+		
+        if len(argv) > 7:
+            DOCKER_TEST_BASE_DIR = argv[7]
+
     elif len(argv) > 5:
         randomSeed = argv[3]
         zipfianParam = np.double(argv[4])

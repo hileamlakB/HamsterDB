@@ -10,12 +10,15 @@ import pandas as pd
 
 import data_gen_utils
 
-# note this is the base path to the data files we generate
+# note this is the base path where we store the data files we generate
 TEST_BASE_DIR = "/cs165/generated_data"
+
+# note this is the base path that _POINTS_ to the data files we generate
+DOCKER_TEST_BASE_DIR = "/cs165/staff_test"
 
 #
 # Example usage: 
-#   python milestone3.py 10000 42 ~/repo/cs165-docker-test-runner/test_data
+#   python milestone1.py 10000 42 ~/repo/cs165-docker-test-runner/test_data /cs165/staff_test
 #
 
 ############################################################################
@@ -43,7 +46,7 @@ def createTestOne():
 	output_file.write('create(tbl,\"tbl1\",db1,2)\n')
 	output_file.write('create(col,\"col1\",db1.tbl1)\n')
 	output_file.write('create(col,\"col1\",db1.tbl2)\n')
-	output_file.write('load(\"'+TEST_BASE_DIR+'/data1.csv\")\n')
+	output_file.write('load(\"'+DOCKER_TEST_BASE_DIR+'/data1.csv\")\n')
 	for x in range(1, 10):
 		output_file.write('relational_insert(db1.tbl1,-{}, {})\n'.format(x, x-10))
 	output_file.write('shutdown\n')
@@ -124,7 +127,7 @@ def createTestFour(dataTable):
 	output_file.write('create(col,\"col2\",db1.tbl2)\n')
 	output_file.write('create(col,\"col3\",db1.tbl2)\n')
 	output_file.write('create(col,\"col4\",db1.tbl2)\n')
-	output_file.write('load(\"'+TEST_BASE_DIR+'/data2.csv\")\n')
+	output_file.write('load(\"'+DOCKER_TEST_BASE_DIR+'/data2.csv\")\n')
 	output_file.write('relational_insert(db1.tbl2,-1,-11,-111,-1111)\n')
 	output_file.write('relational_insert(db1.tbl2,-2,-22,-222,-2222)\n')
 	output_file.write('relational_insert(db1.tbl2,-3,-33,-333,-2222)\n')
@@ -341,8 +344,10 @@ def generateMilestoneOneFiles(dataSizeTableTwo, randomSeed):
 
 def main(argv):
 	global TEST_BASE_DIR
+	global DOCKER_TEST_BASE_DIR
+
 	dataSizeTableTwo = int(argv[0])
-	dataSize = int(argv[0])
+
 	if len(argv) > 1:
 		randomSeed = int(argv[1])
 	else:
@@ -351,6 +356,8 @@ def main(argv):
 	# override the base directory for where to output test related files
 	if len(argv) > 2:
 		TEST_BASE_DIR = argv[2]
+		if len(argv) > 3:
+			DOCKER_TEST_BASE_DIR = argv[3]
 
 
 	generateMilestoneOneFiles(dataSizeTableTwo, randomSeed)

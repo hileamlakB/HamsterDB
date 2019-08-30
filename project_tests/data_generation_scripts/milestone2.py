@@ -10,12 +10,15 @@ import pandas as pd
 
 import data_gen_utils
 
-# note this is the base path to the data files we generate
+# note this is the base path where we store the data files we generate
 TEST_BASE_DIR = "/cs165/generated_data"
+
+# note this is the base path that _POINTS_ to the data files we generate
+DOCKER_TEST_BASE_DIR = "/cs165/staff_test"
 
 #
 # Example usage: 
-#   python milestone3.py 10000 42 ~/repo/cs165-docker-test-runner/test_data
+#   python milestone2.py 10000 42 ~/repo/cs165-docker-test-runner/test_data /cs165/staff_test
 #
 
 ############################################################################
@@ -53,7 +56,7 @@ def createTestTen():
     output_file.write('create(col,"col4",db1.tbl3_batch)\n')
     output_file.write('--\n')
     output_file.write('-- Load data immediately\n')
-    output_file.write('load(\"'+TEST_BASE_DIR+'/data3_batch.csv\")\n')
+    output_file.write('load(\"'+DOCKER_TEST_BASE_DIR+'/data3_batch.csv\")\n')
     output_file.write('--\n')
     output_file.write('-- Testing that the data is durable on disk.\n')
     output_file.write('shutdown\n')
@@ -184,7 +187,7 @@ def createTestFourteen(dataTable):
 
 
 def createTestFifteen(dataTable):
-    # prelude and query
+    # prelude and queryDOCKER_TEST_BASE_DIR
     output_file, exp_output_file = data_gen_utils.openFileHandles(15, TEST_DIR=TEST_BASE_DIR)
     output_file.write('--\n')
     output_file.write('-- Testing for batching queries\n')
@@ -264,6 +267,8 @@ def generateMilestoneTwoFiles(dataSize, randomSeed):
 
 def main(argv):
     global TEST_BASE_DIR
+    global DOCKER_TEST_BASE_DIR
+
     dataSize = int(argv[0])
     if len(argv) > 1:
         randomSeed = int(argv[1])
@@ -273,6 +278,8 @@ def main(argv):
     # override the base directory for where to output test related files
     if len(argv) > 2:
         TEST_BASE_DIR = argv[2]
+        if len(argv) > 3:
+            DOCKER_TEST_BASE_DIR = argv[3]
 
     generateMilestoneTwoFiles(dataSize, randomSeed)
 

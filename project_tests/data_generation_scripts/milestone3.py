@@ -11,12 +11,15 @@ import math
 
 import data_gen_utils
 
-# note this is the base path to the data files we generate
+# note this is the base path where we store the data files we generate
 TEST_BASE_DIR = "/cs165/generated_data"
+
+# note this is the base path that _POINTS_ to the data files we generate
+DOCKER_TEST_BASE_DIR = "/cs165/staff_test"
 
 #
 # Example usage: 
-#   python milestone3.py 10000 42 ~/repo/cs165-docker-test-runner/test_data
+#   python milestone3.py 10000 42 ~/repo/cs165-docker-test-runner/test_data /cs165/staff_test
 #
 
 ############################################################################
@@ -68,7 +71,7 @@ def createTest18():
     output_file.write('create(col,"col4",db1.tbl4_ctrl)\n')
     output_file.write('--\n')
     output_file.write('-- Load data immediately\n')
-    output_file.write('load(\"'+TEST_BASE_DIR+'/data4_ctrl.csv\")\n')
+    output_file.write('load(\"'+DOCKER_TEST_BASE_DIR+'/data4_ctrl.csv\")\n')
     output_file.write('--\n')
     output_file.write('-- Testing that the data and their indexes are durable on disk.\n')
     output_file.write('shutdown\n')
@@ -98,7 +101,7 @@ def createTest19():
     output_file.write('--\n')
     output_file.write('--\n')
     output_file.write('-- Load data immediately in the form of a clustered index\n')
-    output_file.write('load(\"'+TEST_BASE_DIR+'/data4_btree.csv\")\n')
+    output_file.write('load(\"'+DOCKER_TEST_BASE_DIR+'/data4_btree.csv\")\n')
     output_file.write('--\n')
     output_file.write('-- Testing that the data and their indexes are durable on disk.\n')
     output_file.write('shutdown\n')
@@ -298,7 +301,7 @@ def createTest28():
     output_file.write('--\n')
     output_file.write('--\n')
     output_file.write('-- Load data immediately in the form of a clustered index\n')
-    output_file.write('load("'+TEST_BASE_DIR+'/data4_clustered_btree.csv")\n')
+    output_file.write('load("'+DOCKER_TEST_BASE_DIR+'/data4_clustered_btree.csv")\n')
     output_file.write('--\n')
     output_file.write('-- Testing that the data and their indexes are durable on disk.\n')
     output_file.write('shutdown\n')
@@ -378,6 +381,7 @@ def generateMilestoneThreeFiles(dataSize, randomSeed=47):
 
 def main(argv):
     global TEST_BASE_DIR
+    global DOCKER_TEST_BASE_DIR
 
     dataSize = int(argv[0])
     if len(argv) > 1:
@@ -388,7 +392,8 @@ def main(argv):
     # override the base directory for where to output test related files
     if len(argv) > 2:
         TEST_BASE_DIR = argv[2]
-
+        if len(argv) > 3:
+            DOCKER_TEST_BASE_DIR = argv[3]
     generateMilestoneThreeFiles(dataSize, randomSeed=randomSeed)
 
 if __name__ == "__main__":

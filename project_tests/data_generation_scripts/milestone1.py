@@ -315,10 +315,12 @@ def createTestNine(dataTable, dataSizeTableTwo, approxSelectivity):
 	totalMask = dfSelectMaskGT1 & dfSelectMaskLT1 & dfSelectMaskGT2 & dfSelectMaskLT2
 	col1pluscol2 = dataTable[totalMask]['col1'] + dataTable[totalMask]['col2']
 	col3minuscol2 = dataTable[totalMask]['col3'] - dataTable[totalMask]['col2']
-	output1 = col1pluscol2.mean()
+	# round any mean
+	output1 = np.round(col1pluscol2.mean(), PLACES_TO_ROUND)
 	output2 = dataTable[totalMask]['col2'].min()
 	output3 = dataTable[totalMask]['col3'].max()
-	output4 = col3minuscol2.mean()
+	# round any mean
+	output4 = np.round(col3minuscol2.mean(), PLACES_TO_ROUND)
 	output5 = col3minuscol2.sum()
 	exp_output_file.write(str(output1) + ',')
 	exp_output_file.write(str(output2) + ',')

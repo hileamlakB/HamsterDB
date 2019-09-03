@@ -32,7 +32,7 @@ def generateDataMilestone3(dataSize):
     outputFile_btree = TEST_BASE_DIR + '/' + 'data4_btree.csv'
     outputFile_clustered_btree = TEST_BASE_DIR + '/' + 'data4_clustered_btree.csv'
     header_line_ctrl = data_gen_utils.generateHeaderLine('db1', 'tbl4_ctrl', 4)
-    header_line_btree = data_gen_utils.generateHeaderLine('db1', 'tbl4_btree', 4)
+    header_line_btree = data_gen_utils.generateHeaderLine('db1', 'tbl4', 4)
     header_line_clustered_btree = data_gen_utils.generateHeaderLine('db1', 'tbl4_clustered_btree', 4)
     outputTable = pd.DataFrame(np.random.randint(0, dataSize/5, size=(dataSize, 4)), columns =['col1', 'col2', 'col3', 'col4'])
     # This is going to have many, many duplicates for large tables!!!!

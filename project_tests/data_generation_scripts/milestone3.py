@@ -173,6 +173,7 @@ def createTest22(dataTable, dataSize):
     output_file.write('f1=fetch(db1.tbl4.col2,s1)\n')
     output_file.write('s2=select(f1,{},{})\n'.format(val2, val2 + offset2))
     output_file.write('f2=fetch(db1.tbl4.col1,s2)\n')
+    output_file.write('print(f2)')
     output_file.write('a1=sum(f2)\n')
     output_file.write('print(a1)\n')
     # generate expected results
@@ -182,6 +183,8 @@ def createTest22(dataTable, dataSize):
     dfSelectMask2High = dataTable['col2'] < (val2 + offset2)
     dfTotalMask = dfSelectMask1Low & dfSelectMask1High & dfSelectMask2Low & dfSelectMask2High
     values = dataTable[dfTotalMask]['col1']
+    exp_output_file.write(values.to_string(header=False,index=False))
+    exp_output_file.write('\n\n')
     exp_output_file.write(str(values.sum()) + '\n')
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 

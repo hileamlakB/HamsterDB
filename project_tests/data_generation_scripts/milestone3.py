@@ -344,7 +344,7 @@ def createTest29(dataTable, dataSize):
     exp_output_file.write('\n')
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
-def createTests30(dataTable, dataSize):
+def createTest30(dataTable, dataSize):
     output_file, exp_output_file = data_gen_utils.openFileHandles(30, TEST_DIR=TEST_BASE_DIR)
     offset = np.max([2, int(dataSize/1000)])
     output_file.write('-- Test for a non-clustered index select followed by an aggregate\n')

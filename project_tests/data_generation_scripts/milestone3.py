@@ -237,6 +237,10 @@ def createTest25(dataTable, frequentVal1, frequentVal2):
     output_file.write('f1=fetch(db1.tbl4.col1,s1)\n')
     output_file.write('a1=sum(f1)\n')
     output_file.write('print(a1)\n')
+    output_file.write('s2=select(db1.tbl4.col2,{},{})\n'.format(frequentVal2 - 1, frequentVal2 + 1))
+    output_file.write('f2=fetch(db1.tbl4.col1,s2)\n')
+    output_file.write('a2=sum(f2)\n')
+    output_file.write('print(a2)\n')
     # generate expected results
     dfSelectMask1 = (dataTable['col2'] >= (frequentVal1 - 1)) & (dataTable['col2'] < (frequentVal1 + 1))
     result1 = dataTable[dfSelectMask1]['col1'].sum()

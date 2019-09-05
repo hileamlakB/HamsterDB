@@ -176,10 +176,13 @@ def createTest22(dataTable, dataSize):
     output_file.write('a1=sum(f2)\n')
     output_file.write('print(a1)\n')
     # generate expected results
-    dfSelectMask1 = (dataTable['col3'] >= val1) & (dataTable['col3'] < (val1 + offset))
-    dfSelectMask2 = (dataTable['col2'] >= val2) & (dataTable['col2'] < (val2 + offset2))
-    values = dataTable[dfSelectMask1 & dfSelectMask2]['col1']
-    exp_output_file.write(str(values.sum()))
+    dfSelectMask1Low = dataTable['col3'] >= val1
+    dfSelectMask1High = dataTable['col3'] < (val1 + offset)
+    dfSelectMask2Low = dataTable['col2'] >= val2
+    dfSelectMask2High = dataTable['col2'] < (val2 + offset2)
+    dfTotalMask = dfSelectMask1Low & dfSelectMask1High & dfSelectMask2Low & dfSelectMask2High
+    values = dataTable[dfTotalMask]['col1']
+    exp_output_file.write(str(values.sum()) + '\n')
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def createTests23And24(dataTable, dataSize):

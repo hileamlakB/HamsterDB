@@ -275,7 +275,7 @@ def createTests26And27(dataTable, dataSize):
         else:
             exp_output_file26.write(str(mean_result) + '\n')
             exp_output_file27.write(str(mean_result) + '\n')
-    data_gen_utils.closeFileHandles(output_file23, exp_output_file26)
+    data_gen_utils.closeFileHandles(output_file26, exp_output_file26)
     data_gen_utils.closeFileHandles(output_file27, exp_output_file27)
 
 def createTest28():

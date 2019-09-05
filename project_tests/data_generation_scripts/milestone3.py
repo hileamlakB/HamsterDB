@@ -173,7 +173,7 @@ def createTest22(dataTable, dataSize):
     output_file.write('f1=fetch(db1.tbl4.col2,s1)\n')
     output_file.write('s2=select(f1,{},{})\n'.format(val2, val2 + offset2))
     output_file.write('f2=fetch(db1.tbl4.col1,s2)\n')
-    output_file.write('print(f2)')
+    output_file.write('print(f2)\n')
     output_file.write('a1=sum(f2)\n')
     output_file.write('print(a1)\n')
     # generate expected results

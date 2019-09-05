@@ -143,7 +143,7 @@ def createTests20And21(dataTable, dataSize):
     output_file21.write('f1=fetch(db1.tbl4.col1,s1)\n')
     output_file21.write('print(f1)\n')
     output_file21.write('s2=select(db1.tbl4.col3,{},{})\n'.format(val2, val2 + offset2))
-    output_file21.write('f2=fetch(db1.tbl4.col1,s1)\n')
+    output_file21.write('f2=fetch(db1.tbl4.col1,s2)\n')
     output_file21.write('print(f2)\n')
     # generate expected results
     dfSelectMask1 = (dataTable['col3'] >= val1) & (dataTable['col3'] < (val1 + offset))

@@ -21,6 +21,8 @@ def openFileHandles(testNum, TEST_DIR=""):
 	return output_file, exp_output_file
 
 def closeFileHandles(output_file, exp_output_file):
+	output_file.flush()
+	exp_output_file.flush()
 	output_file.close()
 	exp_output_file.close()
 

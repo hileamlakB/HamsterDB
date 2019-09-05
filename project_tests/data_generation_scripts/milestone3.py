@@ -265,11 +265,11 @@ def createTests26And27(dataTable, dataSize):
         val1 = np.random.randint(0, int((dataSize/5) - offset))
         output_file26.write('s{}=select(db1.tbl4_ctrl.col2,{},{})\n'.format(i, val1, val1 + offset))
         output_file26.write('f{}=fetch(db1.tbl4_ctrl.col3,s{})\n'.format(i,i))
-        output_file26.write('a{}=sum(f{})\n'.format(i,i))
+        output_file26.write('a{}=avg(f{})\n'.format(i,i))
         output_file26.write('print(a{})\n'.format(i))
         output_file27.write('s{}=select(db1.tbl4.col2,{},{})\n'.format(i, val1, val1 + offset))
         output_file27.write('f{}=fetch(db1.tbl4.col3,s{})\n'.format(i,i))
-        output_file27.write('a{}=sum(f{})\n'.format(i,i))
+        output_file27.write('a{}=avg(f{})\n'.format(i,i))
         output_file27.write('print(a{})\n'.format(i))
         # generate expected results
         dfSelectMask1 = (dataTable['col2'] >= val1) & (dataTable['col2'] < (val1 + offset))

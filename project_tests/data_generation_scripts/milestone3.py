@@ -288,8 +288,8 @@ def createTests26And27(dataTable, dataSize):
             exp_output_file26.write('0\n')
             exp_output_file27.write('0\n')
         else:
-            exp_output_file26.write('{.2f}\n'.format(mean_result))
-            exp_output_file27.write('{.2f}\n'.format(mean_result))
+            exp_output_file26.write('{}\n'.format(mean_result))
+            exp_output_file27.write('{}\n'.format(mean_result))
     data_gen_utils.closeFileHandles(output_file26, exp_output_file26)
     data_gen_utils.closeFileHandles(output_file27, exp_output_file27)
 

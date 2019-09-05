@@ -215,7 +215,7 @@ def createTests23And24(dataTable, dataSize):
         # generate expected results
         dfSelectMask1 = (dataTable['col2'] >= val1) & (dataTable['col2'] < (val1 + offset))
         values = dataTable[dfSelectMask1]['col3']
-        mean_result = values.mean()
+        mean_result = values.sum()
         if (math.isnan(mean_result)):
             exp_output_file23.write('0\n')
             exp_output_file24.write('0\n')

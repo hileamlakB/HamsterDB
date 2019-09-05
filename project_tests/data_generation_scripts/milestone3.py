@@ -344,7 +344,7 @@ def createTest29(dataTable, dataSize):
     output_file.write('f1=fetch(db1.tbl4_clustered_btree.col1,s1)\n')
     output_file.write('print(f1)\n')
     output_file.write('s2=select(db1.tbl4_clustered_btree.col3,{},{})\n'.format(val2, val2 + offset2))
-    output_file.write('f2=fetch(db1.tbl4_clustered_btree.col1,s1)\n')
+    output_file.write('f2=fetch(db1.tbl4_clustered_btree.col1,s2)\n')
     output_file.write('print(f2)\n')
     # generate expected results
     dfSelectMask1 = (dataTable['col3'] >= val1) & (dataTable['col3'] < (val1 + offset))

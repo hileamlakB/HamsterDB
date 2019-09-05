@@ -27,8 +27,10 @@ DOCKER_TEST_BASE_DIR = "/cs165/staff_test"
 # 
 ############################################################################
 
-# PRECISION FOR AVG OPERATION
+# PRECISION FOR AVG OPERATION. See 
 PLACES_TO_ROUND = 2
+np.set_printoptions(formatter={'float': lambda x: "{0:0.2f}".format(x)})
+
 
 def generateDataMilestone3(dataSize):
     outputFile_ctrl = TEST_BASE_DIR + '/' + 'data4_ctrl.csv'

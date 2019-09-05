@@ -127,7 +127,7 @@ def createTests20And21(dataTable, dataSize):
     output_file20.write('f1=fetch(db1.tbl4_ctrl.col1,s1)\n')
     output_file20.write('print(f1)\n')
     output_file20.write('s2=select(db1.tbl4_ctrl.col3,{},{})\n'.format(val2, val2 + offset2))
-    output_file20.write('f2=fetch(db1.tbl4_ctrl.col1,s1)\n')
+    output_file20.write('f2=fetch(db1.tbl4_ctrl.col1,s2)\n')
     output_file20.write('print(f2)\n')
     # generate test 21
     output_file21.write('--\n')
@@ -378,6 +378,10 @@ def generateMilestoneThreeFiles(dataSize, randomSeed=47):
     createTest22(dataTable, dataSize)
     createTests23And24(dataTable, dataSize)
     createTest25(dataTable, frequentVal1, frequentVal2)
+    createTests26And27(dataTable, dataSize)
+    createTest28()
+    createTest29(dataTable, dataSize)
+    createTest30(dataTable, dataSize)
 
 def main(argv):
     global TEST_BASE_DIR

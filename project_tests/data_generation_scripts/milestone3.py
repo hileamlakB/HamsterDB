@@ -27,6 +27,9 @@ DOCKER_TEST_BASE_DIR = "/cs165/staff_test"
 # 
 ############################################################################
 
+# PRECISION FOR AVG OPERATION
+PLACES_TO_ROUND = 2
+
 def generateDataMilestone3(dataSize):
     outputFile_ctrl = TEST_BASE_DIR + '/' + 'data4_ctrl.csv'
     outputFile_btree = TEST_BASE_DIR + '/' + 'data4_btree.csv'
@@ -278,7 +281,7 @@ def createTests26And27(dataTable, dataSize):
         # generate expected results
         dfSelectMask1 = (dataTable['col2'] >= val1) & (dataTable['col2'] < (val1 + offset))
         values = dataTable[dfSelectMask1]['col3']
-        mean_result = values.mean()
+        mean_result = np.round(values.mean(), PLACES_TO_ROUND)
         if (math.isnan(mean_result)):
             exp_output_file26.write('0\n')
             exp_output_file27.write('0\n')

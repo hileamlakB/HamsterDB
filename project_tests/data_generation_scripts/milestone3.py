@@ -286,8 +286,8 @@ def createTests26And27(dataTable, dataSize):
             exp_output_file26.write('0\n')
             exp_output_file27.write('0\n')
         else:
-            exp_output_file26.write(str(mean_result) + '\n')
-            exp_output_file27.write(str(mean_result) + '\n')
+            exp_output_file26.write('{.2f}\n'.format(mean_result))
+            exp_output_file27.write('{.2f}\n'.format(mean_result))
     data_gen_utils.closeFileHandles(output_file26, exp_output_file26)
     data_gen_utils.closeFileHandles(output_file27, exp_output_file27)
 
@@ -374,7 +374,7 @@ def createTest30(dataTable, dataSize):
         # generate expected results
         dfSelectMask1 = (dataTable['col2'] >= val1) & (dataTable['col2'] < (val1 + offset))
         values = dataTable[dfSelectMask1]['col3']
-        mean_result = values.mean()
+        mean_result = values.sum()
         if (math.isnan(mean_result)):
             exp_output_file.write('0\n')
         else:

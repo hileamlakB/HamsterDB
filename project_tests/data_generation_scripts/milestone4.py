@@ -142,7 +142,7 @@ def createTest32(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFa
     if (math.isnan(col2ValuesMean)):
         exp_output_file.write('0,')
     else:
-        exp_output_file.write('{},'.format(col2ValuesMean))
+        exp_output_file.write('{:0.2f},'.format(col2ValuesMean))
     if (math.isnan(col3ValuesSum)):
         exp_output_file.write('0\n')
     else:
@@ -177,7 +177,7 @@ def createTest33(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFa
     if (math.isnan(col2ValuesMean)):
         exp_output_file.write('0,')
     else:
-        exp_output_file.write('{},'.format(col2ValuesMean))
+        exp_output_file.write('{:0.2f},'.format(col2ValuesMean))
     if (math.isnan(col3ValuesSum)):
         exp_output_file.write('0\n')
     else:
@@ -217,7 +217,7 @@ def createTest34(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     if (math.isnan(col1ValuesMean)):
         exp_output_file.write('0\n')
     else:
-        exp_output_file.write('{}\n'.format(col1ValuesMean))
+        exp_output_file.write('{:0.2f}\n'.format(col1ValuesMean))
 
 def createTest35(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFact, selectivityDim1):
     output_file, exp_output_file = data_gen_utils.openFileHandles(35, TEST_DIR=TEST_BASE_DIR)
@@ -252,7 +252,7 @@ def createTest35(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     if (math.isnan(col1ValuesMean)):
         exp_output_file.write('0\n')
     else:
-        exp_output_file.write('{}\n'.format(col1ValuesMean))
+        exp_output_file.write('{:0.2f}\n'.format(col1ValuesMean))
 
 def createTest36(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFact, selectivityDim2):
     output_file, exp_output_file = data_gen_utils.openFileHandles(36, TEST_DIR=TEST_BASE_DIR)
@@ -284,7 +284,7 @@ def createTest36(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFa
     if (math.isnan(col2ValuesMean)):
         exp_output_file.write('0.0,')
     else:
-        exp_output_file.write('{},'.format(col2ValuesMean))
+        exp_output_file.write('{:0.2f},'.format(col2ValuesMean))
     if (math.isnan(col3ValuesSum)):
         exp_output_file.write('0\n')
     else:
@@ -323,7 +323,7 @@ def createTest37(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     if (math.isnan(col1ValuesMean)):
         exp_output_file.write('0\n')
     else:
-        exp_output_file.write('{}\n'.format(col1ValuesMean))
+        exp_output_file.write('{:0.2f}\n'.format(col1ValuesMean))
     
 def generateMilestoneFourFiles(dataSizeFact, dataSizeDim1, dataSizeDim2, zipfianParam, numDistinctElements, randomSeed=47):
     np.random.seed(randomSeed)

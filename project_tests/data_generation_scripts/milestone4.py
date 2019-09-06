@@ -208,6 +208,7 @@ def createTest34(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     preJoinFact = factTable[dfFactTableMask]
     preJoinDim1 = dimTable1[dfDimTableMask]
     joinedTable = preJoinFact.merge(preJoinDim1, left_on = 'col1', right_on = 'col1', suffixes=('','_right'))
+    print(joinedTable.columns())
     col2ValuesSum = joinedTable['col2'].sum()
     col1ValuesMean = joinedTable['col1_right'].mean()
     if (math.isnan(col2ValuesSum)):

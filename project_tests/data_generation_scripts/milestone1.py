@@ -9,6 +9,7 @@ import struct
 import pandas as pd
 
 import data_gen_utils
+import math
 
 # note this is the base path where we store the data files we generate
 TEST_BASE_DIR = "/cs165/generated_data"

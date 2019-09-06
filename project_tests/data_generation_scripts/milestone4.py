@@ -204,7 +204,7 @@ def createTest34(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     output_file.write('print(a1,a2)\n')
     # generate expected results
     dfFactTableMask = (factTable['col2'] < int(selectivityFact * (dataSizeFact / 5)))
-    dfDimTableMask = (dimTable1['col1'] < int((dataSizeDim1/5) * selectivityDim1))
+    dfDimTableMask = (dimTable1['col3'] < int((dataSizeDim1/5) * selectivityDim1))
     preJoinFact = factTable[dfFactTableMask]
     preJoinDim1 = dimTable1[dfDimTableMask]
     joinedTable = preJoinFact.merge(preJoinDim1, left_on = 'col4', right_on = 'col1', suffixes=('','_right'))
@@ -224,11 +224,11 @@ def createTest35(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     output_file.write('-- join test 2 - hash. Select + Join + aggregation\n')
     output_file.write('-- Performs the join using hashing\n')
     output_file.write('-- Query in SQL:\n')
-    output_file.write('-- SELECT sum(tbl5_fact.col2), avg(tbl5_dim1.col1) FROM tbl5_fact,tbl5_dim1 WHERE tbl5_fact.col1=tbl5_dim1.col1 AND tbl5_fact.col2 < {} AND tbl5_dim1.col3<{};\n'.format(int(selectivityFact * (dataSizeFact / 5)), int((dataSizeDim1/5) * selectivityDim1)))
+    output_file.write('-- SELECT sum(tbl5_fact.col2), avg(tbl5_dim1.col1) FROM tbl5_fact,tbl5_dim1 WHERE tbl5_fact.col1=tbl5_dim1.col1 AND tbl5_fact.col2 < {} AND tbl5_dim1.col1<{};\n'.format(int(selectivityFact * (dataSizeFact / 5)), int((dataSizeDim1/5) * selectivityDim1)))
     output_file.write('--\n')
     output_file.write('--\n')
     output_file.write('p1=select(db1.tbl5_fact.col2,null, {})\n'.format(int(selectivityFact * (dataSizeFact / 5))))
-    output_file.write('p2=select(db1.tbl5_dim1.col3,null, {})\n'.format(int((dataSizeDim1/5) * selectivityDim1)))
+    output_file.write('p2=select(db1.tbl5_dim1.col1,null, {})\n'.format(int((dataSizeDim1/5) * selectivityDim1)))
     output_file.write('f1=fetch(db1.tbl5_fact.col1,p1)\n')
     output_file.write('f2=fetch(db1.tbl5_dim1.col1,p2)\n')
     output_file.write('t1,t2=join(f1,p1,f2,p2,hash)\n')
@@ -239,7 +239,7 @@ def createTest35(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     output_file.write('print(a1,a2)\n')
     # generate expected results
     dfFactTableMask = (factTable['col2'] < int(selectivityFact * (dataSizeFact / 5)))
-    dfDimTableMask = (dimTable1['col1'] < int((dataSizeDim1/5) * selectivityDim1))
+    dfDimTableMask = (dimTable1['col3'] < int((dataSizeDim1/5) * selectivityDim1))
     preJoinFact = factTable[dfFactTableMask]
     preJoinDim1 = dimTable1[dfDimTableMask]
     joinedTable = preJoinFact.merge(preJoinDim1, left_on = 'col4', right_on = 'col1', suffixes=('','_right'))
@@ -282,7 +282,7 @@ def createTest36(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFa
     col2ValuesMean = joinedTable['col2'].mean()
     col3ValuesSum = joinedTable['col2_right'].sum()
     if (math.isnan(col2ValuesMean)):
-        exp_output_file.write('0.0,')
+        exp_output_file.write('0.00,')
     else:
         exp_output_file.write('{:0.2f},'.format(col2ValuesMean))
     if (math.isnan(col3ValuesSum)):
@@ -310,7 +310,7 @@ def createTest37(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     output_file.write('print(a1,a2)\n')
     # generate expected results
     dfFactTableMask = (factTable['col2'] < int(selectivityFact * (dataSizeFact / 5)))
-    dfDimTableMask = (dimTable1['col1'] < int((dataSizeDim1/5) * selectivityDim1))
+    dfDimTableMask = (dimTable1['col3'] < int((dataSizeDim1/5) * selectivityDim1))
     preJoinFact = factTable[dfFactTableMask]
     preJoinDim1 = dimTable1[dfDimTableMask]
     joinedTable = preJoinFact.merge(preJoinDim1, left_on = 'col4', right_on = 'col1', suffixes=('','_right'))

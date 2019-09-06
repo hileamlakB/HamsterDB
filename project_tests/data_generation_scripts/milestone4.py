@@ -207,7 +207,7 @@ def createTest34(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     dfDimTableMask = (dimTable1['col3'] < int((dataSizeDim1/5) * selectivityDim1))
     preJoinFact = factTable[dfFactTableMask]
     preJoinDim1 = dimTable1[dfDimTableMask]
-    joinedTable = preJoinFact.merge(preJoinDim1, left_on = 'col4', right_on = 'col1', suffixes=('','_right'))
+    joinedTable = preJoinFact.merge(preJoinDim1, left_on = 'col1', right_on = 'col1', suffixes=('','_right'))
     col2ValuesSum = joinedTable['col2'].sum()
     col1ValuesMean = joinedTable['col1_right'].mean()
     if (math.isnan(col2ValuesSum)):
@@ -242,7 +242,7 @@ def createTest35(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     dfDimTableMask = (dimTable1['col3'] < int((dataSizeDim1/5) * selectivityDim1))
     preJoinFact = factTable[dfFactTableMask]
     preJoinDim1 = dimTable1[dfDimTableMask]
-    joinedTable = preJoinFact.merge(preJoinDim1, left_on = 'col4', right_on = 'col1', suffixes=('','_right'))
+    joinedTable = preJoinFact.merge(preJoinDim1, left_on = 'col1', right_on = 'col1', suffixes=('','_right'))
     col2ValuesSum = joinedTable['col2'].sum()
     col1ValuesMean = joinedTable['col1_right'].mean()
     if (math.isnan(col2ValuesSum)):
@@ -313,7 +313,7 @@ def createTest37(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     dfDimTableMask = (dimTable1['col3'] < int((dataSizeDim1/5) * selectivityDim1))
     preJoinFact = factTable[dfFactTableMask]
     preJoinDim1 = dimTable1[dfDimTableMask]
-    joinedTable = preJoinFact.merge(preJoinDim1, left_on = 'col4', right_on = 'col1', suffixes=('','_right'))
+    joinedTable = preJoinFact.merge(preJoinDim1, left_on = 'col1', right_on = 'col1', suffixes=('','_right'))
     col2ValuesSum = joinedTable['col2'].sum()
     col1ValuesMean = joinedTable['col1_right'].mean()
     if (math.isnan(col2ValuesSum)):

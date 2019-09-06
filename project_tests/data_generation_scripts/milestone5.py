@@ -12,7 +12,8 @@ import math
 import data_gen_utils
 
 # note this is the base path to the data files we generate
-TEST_BASE_DIR = "/cs165/generated_data"
+# TEST_BASE_DIR = "/cs165/generated_data"
+TEST_BASE_DIR = "/Users/lostrong/cs165-2019-base/project_tests/data_generation_scripts"
 
 # note this is the base path that _POINTS_ to the data files we generate
 DOCKER_TEST_BASE_DIR = "/cs165/staff_test"
@@ -121,7 +122,6 @@ def createTest39(dataTable, approxSelectivity):
 
 
 def createTests40(dataTable):
-    # generate test 38
     output_file, exp_output_file = data_gen_utils.openFileHandles(40, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- Correctness test: Update values\n')
     output_file.write('--\n')

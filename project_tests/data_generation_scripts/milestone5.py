@@ -246,6 +246,7 @@ def createRandomDeletes(dataTable, numberOfUpdates, output_file):
         output_file.write('d1=select(db1.tbl5.col1,{},{})\n'.format(col1Val, col1Val+1))
         output_file.write('relational_delete(db1.tbl5,d1)\n')
         output_file.write('--\n')
+        dataTable = dataTable[dataTable.col1!=col1Val]
     return dataTable
 
 def createRandomInserts(dataTable, numberOfInserts, output_file):

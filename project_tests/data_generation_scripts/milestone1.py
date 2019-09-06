@@ -319,7 +319,7 @@ def createTestNine(dataTable, dataSizeTableTwo, approxSelectivity):
 	output1 = np.round(col1pluscol2.mean())
 	if (math.isnan(output1)):
 		exp_output_file.write('0,')
-    else:
+	else:
 		exp_output_file.write('{:0.2f},'.format(output1))
 
 	output2 = dataTable[totalMask]['col2'].min()
@@ -332,11 +332,11 @@ def createTestNine(dataTable, dataSizeTableTwo, approxSelectivity):
 	exp_output_file.write(str(output3) + ',')
 	if (math.isnan(output4)):
 		exp_output_file.write('0,')
-    else:
+	else:
 		exp_output_file.write('{:0.2f},'.format(output4))
-    if (math.isnan(output5)):
+	if (math.isnan(output5)):
 		exp_output_file.write('0,')
-    else:
+	else:
 		exp_output_file.write('{:0.2f}\n'.format(output5))
 	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 

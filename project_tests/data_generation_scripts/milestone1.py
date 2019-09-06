@@ -337,7 +337,7 @@ def createTestNine(dataTable, dataSizeTableTwo, approxSelectivity):
 	if (math.isnan(output5)):
 		exp_output_file.write('0,')
 	else:
-		exp_output_file.write('{:0.2f}\n'.format(output5))
+		exp_output_file.write('{}\n'.format(output5))
 	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def generateTestsMidwayCheckin(dataTable):

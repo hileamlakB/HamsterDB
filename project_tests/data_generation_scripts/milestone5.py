@@ -227,8 +227,8 @@ def createRandomUpdates(dataTable, numberOfUpdates, output_file):
     dataSize = len(dataTable)
     for i in range(numberOfUpdates):
         updatePos = np.random.randint(1, dataSize-1)
-        col2Val = dataTable.loc[updatePos,'col2']
-        col1Val = dataTable.loc[updatePos,'col1']
+        col2Val = dataTable.values[updatePos][1]
+        col1Val = dataTable.values[updatePos][0]
         output_file.write('-- UPDATE tbl5 SET col1 = {} WHERE col2 = {};\n'.format(col1Val+1, col2Val))
         output_file.write('u1=select(db1.tbl5.col2,{},{})\n'.format(col2Val, col2Val+1))
         output_file.write('relational_update(db1.tbl5.col1,u1,{})\n'.format(col1Val+1))
@@ -241,7 +241,7 @@ def createRandomDeletes(dataTable, numberOfUpdates, output_file):
     for i in range(numberOfUpdates):
         dataSize = len(dataTable)
         updatePos = np.random.randint(1, dataSize-1)
-        col1Val = dataTable.loc[updatePos,'col1']
+        col1Val = dataTable.values[updatePos][0]
         output_file.write('-- DELETE FROM tbl5 WHERE col1 = {};\n'.format(col1Val))
         output_file.write('d1=select(db1.tbl5.col1,{},{})\n'.format(col1Val, col1Val+1))
         output_file.write('relational_delete(db1.tbl5,d1)\n')

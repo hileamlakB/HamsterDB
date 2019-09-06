@@ -236,6 +236,7 @@ def createTests16And17(dataTable, dataSize):
     for i in range(100):
         output_file16.write('s{}=select(db1.tbl3_batch.col2,{},{})\n'.format(i, query_starts[i], query_starts[i] + offset))
         output_file17.write('s{}=select(db1.tbl3_batch.col2,{},{})\n'.format(i, query_starts[i], query_starts[i] + offset))
+    output_file17.write('batch_execute()\n')
     for i in range(100):
         output_file16.write('f{}=fetch(db1.tbl3_batch.col3,s{})\n'.format(i,i))
         output_file17.write('f{}=fetch(db1.tbl3_batch.col3,s{})\n'.format(i,i))

@@ -130,7 +130,7 @@ def createTest32(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFa
     output_file.write('col3joined=fetch(db1.tbl5_fact.col3,t2)\n')
     output_file.write('a1=avg(col2joined)\n')
     output_file.write('a2=sum(col3joined)\n')
-    output_file.write('print(out1,out2)\n')
+    output_file.write('print(a1,a2)\n')
     # generate expected results
     dfFactTableMask = (factTable['col2'] < int((dataSizeFact/5) * selectivityFact))
     dfDimTableMask = (dimTable2['col1'] < int(dataSizeDim2 * selectivityDim2))
@@ -165,7 +165,7 @@ def createTest33(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFa
     output_file.write('col3joined=fetch(db1.tbl5_fact.col3,t2)\n')
     output_file.write('a1=avg(col2joined)\n')
     output_file.write('a2=sum(col3joined)\n')
-    output_file.write('print(out1,out2)\n')
+    output_file.write('print(a1,a2)\n')
     # generate expected results
     dfFactTableMask = (factTable['col2'] < int((dataSizeFact/5) * selectivityFact))
     dfDimTableMask = (dimTable2['col1'] < int(dataSizeDim2 * selectivityDim2))
@@ -201,7 +201,7 @@ def createTest34(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     output_file.write('col1joined=fetch(db1.tbl5_dim1.col1,t2)\n')
     output_file.write('a1=sum(col2joined)\n')
     output_file.write('a2=avg(col1joined)\n')
-    output_file.write('print(out1,out2)\n')
+    output_file.write('print(a1,a2)\n')
     # generate expected results
     dfFactTableMask = (factTable['col2'] < int(selectivityFact * (dataSizeFact / 5)))
     dfDimTableMask = (dimTable1['col1'] < int((dataSizeDim1/5) * selectivityDim1))
@@ -236,7 +236,7 @@ def createTest35(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     output_file.write('col1joined=fetch(db1.tbl5_dim1.col1,t2)\n')
     output_file.write('a1=sum(col2joined)\n')
     output_file.write('a2=avg(col1joined)\n')
-    output_file.write('print(out1,out2)\n')
+    output_file.write('print(a1,a2)\n')
     # generate expected results
     dfFactTableMask = (factTable['col2'] < int(selectivityFact * (dataSizeFact / 5)))
     dfDimTableMask = (dimTable1['col1'] < int((dataSizeDim1/5) * selectivityDim1))
@@ -272,7 +272,7 @@ def createTest36(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFa
     output_file.write('col2t2joined=fetch(db1.tbl5_dim2.col2,t2)\n')
     output_file.write('a1=avg(col2joined)\n')
     output_file.write('a2=sum(col2t2joined)\n')
-    output_file.write('print(out1,out2)\n')
+    output_file.write('print(a1,a2)\n')
     # generate expected results
     dfFactTableMask = (factTable['col2'] < int((dataSizeFact/5) * selectivityFact))
     dfDimTableMask = (dimTable2['col1'] < int(dataSizeDim2 * selectivityDim2))
@@ -307,7 +307,7 @@ def createTest37(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     output_file.write('col1joined=fetch(db1.tbl5_dim1.col1,t2)\n')
     output_file.write('a1=sum(col2joined)\n')
     output_file.write('a2=avg(col1joined)\n')
-    output_file.write('print(out1,out2)\n')
+    output_file.write('print(a1,a2)\n')
     # generate expected results
     dfFactTableMask = (factTable['col2'] < int(selectivityFact * (dataSizeFact / 5)))
     dfDimTableMask = (dimTable1['col1'] < int((dataSizeDim1/5) * selectivityDim1))

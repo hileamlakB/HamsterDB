@@ -317,7 +317,7 @@ def createTestNine(dataTable, dataSizeTableTwo, approxSelectivity):
 	col1pluscol2 = dataTable[totalMask]['col1'] + dataTable[totalMask]['col2']
 	col3minuscol2 = dataTable[totalMask]['col3'] - dataTable[totalMask]['col2']
 	# round any mean
-	output1 = np.round(col1pluscol2.mean())
+	output1 = np.round(col1pluscol2.mean(), PLACES_TO_ROUND)
 	if (math.isnan(output1)):
 		exp_output_file.write('0,')
 	else:
@@ -326,7 +326,7 @@ def createTestNine(dataTable, dataSizeTableTwo, approxSelectivity):
 	output2 = dataTable[totalMask]['col2'].min()
 	output3 = dataTable[totalMask]['col3'].max()
 	# round any mean
-	output4 = np.round(col3minuscol2.mean())
+	output4 = np.round(col3minuscol2.mean(), PLACES_TO_ROUND)
 	output5 = col3minuscol2.sum()
 	exp_output_file.write(str(output1) + ',')
 	exp_output_file.write(str(output2) + ',')

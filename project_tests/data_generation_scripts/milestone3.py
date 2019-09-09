@@ -285,8 +285,8 @@ def createTests26And27(dataTable, dataSize):
         values = dataTable[dfSelectMask1]['col3']
         mean_result = np.round(values.mean(), PLACES_TO_ROUND)
         if (math.isnan(mean_result)):
-            exp_output_file26.write('0\n')
-            exp_output_file27.write('0\n')
+            exp_output_file26.write('0.00\n')
+            exp_output_file27.write('0.00\n')
         else:
             exp_output_file26.write('{:0.2f}\n'.format(mean_result))
             exp_output_file27.write('{:0.2f}\n'.format(mean_result))

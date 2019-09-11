@@ -1,3 +1,5 @@
+### This is a test dummy example of running a couple generated tests ###
+
 #### TO BE RUN INSIDE DOCKER #####
 # run from base dirctory as ./infra_scripts/test.sh
 

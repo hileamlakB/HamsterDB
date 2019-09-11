@@ -16,6 +16,7 @@ WORKDIR /cs165
 #   build-essential is needed for Make
 #   gcc is needed for compilation of C
 #   linux tools are for utilities such as `perf` for counters / performance measurement
+#   psmisc convenience utilities for managing processes (e.g. killall processes by name)
 #   valgrind for memory issue debugging
 #   tmux for multiplexing between multiple windows within your interactive docker shell
 #   python 2.7.x
@@ -27,6 +28,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     gcc \
     linux-tools-$(uname -r) linux-tools-generic \
+    psmisc \
     python \
     python-pip \
     tmux \

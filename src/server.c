@@ -40,6 +40,8 @@
  *      How will you ensure different queries invoke different execution paths in your code?
  **/
 char* execute_DbOperator(DbOperator* query) {
+    // there is a small memory leak here (when combined with other parts of your database.)
+    // as practice with something like valgrind and to develop intuition on memory leaks, find and fix the memory leak. 
     if(!query)
     {
         return "165";

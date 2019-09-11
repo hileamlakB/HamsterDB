@@ -9,6 +9,7 @@ import struct
 import pandas as pd
 
 import data_gen_utils
+import math
 
 # note this is the base path where we store the data files we generate
 TEST_BASE_DIR = "/cs165/generated_data"
@@ -317,16 +318,26 @@ def createTestNine(dataTable, dataSizeTableTwo, approxSelectivity):
 	col3minuscol2 = dataTable[totalMask]['col3'] - dataTable[totalMask]['col2']
 	# round any mean
 	output1 = np.round(col1pluscol2.mean(), PLACES_TO_ROUND)
+	if (math.isnan(output1)):
+		exp_output_file.write('0,')
+	else:
+		exp_output_file.write('{:0.2f},'.format(output1))
+
 	output2 = dataTable[totalMask]['col2'].min()
 	output3 = dataTable[totalMask]['col3'].max()
 	# round any mean
 	output4 = np.round(col3minuscol2.mean(), PLACES_TO_ROUND)
 	output5 = col3minuscol2.sum()
-	exp_output_file.write(str(output1) + ',')
 	exp_output_file.write(str(output2) + ',')
 	exp_output_file.write(str(output3) + ',')
-	exp_output_file.write(str(output4) + ',')
-	exp_output_file.write(str(output5) + '\n')
+	if (math.isnan(output4)):
+		exp_output_file.write('0,')
+	else:
+		exp_output_file.write('{:0.2f},'.format(output4))
+	if (math.isnan(output5)):
+		exp_output_file.write('0,')
+	else:
+		exp_output_file.write('{}\n'.format(output5))
 	data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 def generateTestsMidwayCheckin(dataTable):

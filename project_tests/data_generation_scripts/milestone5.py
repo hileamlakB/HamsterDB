@@ -12,7 +12,8 @@ import math
 import data_gen_utils
 
 # note this is the base path to the data files we generate
-TEST_BASE_DIR = "/cs165/generated_data"
+# TEST_BASE_DIR = "/cs165/generated_data"
+TEST_BASE_DIR = "/Users/lostrong/cs165-2019-base/project_tests/data_generation_scripts"
 
 # note this is the base path that _POINTS_ to the data files we generate
 DOCKER_TEST_BASE_DIR = "/cs165/staff_test"
@@ -121,7 +122,6 @@ def createTest39(dataTable, approxSelectivity):
 
 
 def createTests40(dataTable):
-    # generate test 38
     output_file, exp_output_file = data_gen_utils.openFileHandles(40, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- Correctness test: Update values\n')
     output_file.write('--\n')
@@ -141,7 +141,8 @@ def createTests40(dataTable):
     output_file.write('relational_update(db1.tbl5.col1,u4,-40)\n')
     output_file.write('u5=select(db1.tbl5.col1,-5,-4)\n')
     output_file.write('relational_update(db1.tbl5.col1,u5,-50)\n')
-    # update dataTable
+    output_file.write('shutdown\n')
+   # update dataTable
     dfSelectMaskEq = dataTable['col1'] == -1
     dataTable.loc[dfSelectMaskEq,'col1']=-10
 
@@ -227,8 +228,8 @@ def createRandomUpdates(dataTable, numberOfUpdates, output_file):
     dataSize = len(dataTable)
     for i in range(numberOfUpdates):
         updatePos = np.random.randint(1, dataSize-1)
-        col2Val = dataTable.loc[updatePos,'col2']
-        col1Val = dataTable.loc[updatePos,'col1']
+        col2Val = dataTable.values[updatePos][1]
+        col1Val = dataTable.values[updatePos][0]
         output_file.write('-- UPDATE tbl5 SET col1 = {} WHERE col2 = {};\n'.format(col1Val+1, col2Val))
         output_file.write('u1=select(db1.tbl5.col2,{},{})\n'.format(col2Val, col2Val+1))
         output_file.write('relational_update(db1.tbl5.col1,u1,{})\n'.format(col1Val+1))
@@ -241,11 +242,12 @@ def createRandomDeletes(dataTable, numberOfUpdates, output_file):
     for i in range(numberOfUpdates):
         dataSize = len(dataTable)
         updatePos = np.random.randint(1, dataSize-1)
-        col1Val = dataTable.loc[updatePos,'col1']
+        col1Val = dataTable.values[updatePos][0]
         output_file.write('-- DELETE FROM tbl5 WHERE col1 = {};\n'.format(col1Val))
         output_file.write('d1=select(db1.tbl5.col1,{},{})\n'.format(col1Val, col1Val+1))
         output_file.write('relational_delete(db1.tbl5,d1)\n')
         output_file.write('--\n')
+        dataTable = dataTable[dataTable.col1!=col1Val]
     return dataTable
 
 def createRandomInserts(dataTable, numberOfInserts, output_file):
@@ -270,13 +272,13 @@ def createRandomSelects(dataTable, numberOfQueries, output_file, exp_output_file
         output_file.write('-- SELECT col1 FROM tbl5 WHERE col2 >= {} AND col2 < {};\n'.format(selectValLess, selectValGreater))
         output_file.write('s1=select(db1.tbl5.col2,{},{})\n'.format(selectValLess, selectValGreater))
         output_file.write('f1=fetch(db1.tbl5.col1,s1)\n')
-        output_file.write('--\n')
+        output_file.write('print(f1)\n')
         dfSelectMaskGT = dataTable['col2'] >= selectValLess
         dfSelectMaskLT = dataTable['col2'] < selectValGreater
         output = dataTable[dfSelectMaskGT & dfSelectMaskLT]['col1']
         if len(output) > 0:
             exp_output_file.write(output.to_string(header=False,index=False))
-            exp_output_file.write('\n\n')
+            exp_output_file.write('\n')
         
 
 def createTest43(dataTable):

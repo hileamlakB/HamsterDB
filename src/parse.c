@@ -209,7 +209,9 @@ DbOperator* parse_insert(char* query_command, message* send_message) {
  *      What if such command requires multiple arguments?
  **/
 DbOperator* parse_command(char* query_command, message* send_message, int client_socket, ClientContext* context) {
-    DbOperator *dbo = NULL; // = malloc(sizeof(DbOperator)); // calloc?
+    // a second option is to malloc the dbo here (instead of inside the parse commands). Either way, you should track the dbo
+    // and free it when the variable is no longer needed. 
+    DbOperator *dbo = NULL; // = malloc(sizeof(DbOperator));
 
     if (strncmp(query_command, "--", 2) == 0) {
         send_message->status = OK_DONE;

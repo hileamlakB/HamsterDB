@@ -141,7 +141,8 @@ def createTests40(dataTable):
     output_file.write('relational_update(db1.tbl5.col1,u4,-40)\n')
     output_file.write('u5=select(db1.tbl5.col1,-5,-4)\n')
     output_file.write('relational_update(db1.tbl5.col1,u5,-50)\n')
-    # update dataTable
+    output_file.write('shutdown\n')
+   # update dataTable
     dfSelectMaskEq = dataTable['col1'] == -1
     dataTable.loc[dfSelectMaskEq,'col1']=-10
 
@@ -271,13 +272,13 @@ def createRandomSelects(dataTable, numberOfQueries, output_file, exp_output_file
         output_file.write('-- SELECT col1 FROM tbl5 WHERE col2 >= {} AND col2 < {};\n'.format(selectValLess, selectValGreater))
         output_file.write('s1=select(db1.tbl5.col2,{},{})\n'.format(selectValLess, selectValGreater))
         output_file.write('f1=fetch(db1.tbl5.col1,s1)\n')
-        output_file.write('--\n')
+        output_file.write('print(f1)\n')
         dfSelectMaskGT = dataTable['col2'] >= selectValLess
         dfSelectMaskLT = dataTable['col2'] < selectValGreater
         output = dataTable[dfSelectMaskGT & dfSelectMaskLT]['col1']
         if len(output) > 0:
             exp_output_file.write(output.to_string(header=False,index=False))
-            exp_output_file.write('\n\n')
+            exp_output_file.write('\n')
         
 
 def createTest43(dataTable):

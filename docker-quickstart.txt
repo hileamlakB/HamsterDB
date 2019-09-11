@@ -1,8 +1,11 @@
 1. If your host machine is MacOS or Windows, 
     install Docker Desktop from the Docker website: https://docs.docker.com/install/ . 
     If you are already using a linux machine, install a Docker Server.
+    Note if you are running Docker Toolbox (some older OSes can only support Docker Toolbox), we will not be supporting you.
+    In that case we recommend you first upgrade your OS and then try Docker Desktop installation again.
 
-2. Navigate to your CS165 project root. When you run `ls` you should be able to see a file named `dockerfile`. 
+2. At this point you have Docker Desktop or Docker Server installed on your host machine.
+    Navigate to your CS165 project root. When you run `ls` you should be able to see a file named `dockerfile`. 
     In short, the dockerfile tells docker how to prepare and build an image that is required for this project.
     We will use a `cs165` image that runs Ubuntu 18.04.
     Generally, it is not required of you to modify the dockerfile, unless:
@@ -11,7 +14,7 @@
     Docker's reference on dockerfile syntax available here: https://docs.docker.com/engine/reference/builder/
 
 3. Run `docker build -t cs165 .` . We have also made a convenience command in the project root Makefile that also does this `make build`.
-    This command triggers Docker to build the cs165 image from the dockerfile in the current directory,
+    Take the time to understandThis command triggers Docker to build the cs165 image from the dockerfile in the current directory,
     and tags it with the name `cs165`. 
     From here on, note that you will need to rerun this command anytime after you change your dockerfile,
     to persist those new changes to your local image (otherwise you will still be running off your old local image).

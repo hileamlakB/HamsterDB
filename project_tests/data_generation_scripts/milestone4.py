@@ -38,7 +38,6 @@ class ZipfianDistribution:
         total = 0.0
         for k in range(1,numElements+1,1):
             total += (1.0/math.pow(k, zipfianParam))
-        print(total)
         return total
 
     def drawRandomSample(self, unifSample):

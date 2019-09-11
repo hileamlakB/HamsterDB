@@ -1,5 +1,9 @@
-# CS165 Staff Note: Students do not need to modify this build file
-# This is for command for deploying related to docker prep/setup/running
+# CS165 Staff Note: Generally students do not need to modify this build file
+# This contains Makefile endpoints/commands for deploying related to docker prep/setup/running
+# 
+# NOTE: If you need to make your own targets, add them to the customized section at the end
+# 	We will periodically update the targets related to staff automated testing as the semester
+# 	progresses. In which case you will need to pull upstream from distribution code
 
 
 ###################### Begin STAFF ONLY ########################
@@ -39,8 +43,7 @@ prep_build:
 # Note FS binding, is one-way. read-only into the docker.
 #
 # run_mile: prep_build
-#	
-#
+#	#  TBD	
 #
 #
 #
@@ -50,17 +53,17 @@ prep_build:
 # 	runs the corresponding generated test DSLs 
 #	and checks the output against corresponding EXP file.
 # 
-run_test:
-	echo "Running test # $(test_id)"
-	$(eval DOCKER_CONT_ID := $(shell cat status.current_container_id | awk '{print $1}'))
-	# # check if there is server running already
-	# $(eval SERVER_NUM_RUNNING := $(shell docker exec $(DOCKER_CONT_ID) ps aux | grep ./server | wc -l))
-	$(DOCKER_CMD) exec -d $(DOCKER_CONT_ID) bash -c "killall server"
-	sleep 1;
-	# Now do Testing Procedures
-	$(DOCKER_CMD) exec -d $(DOCKER_CONT_ID) bash -c "cd /cs165/src; ./server > last_server.out &; echo $! > status.current_server_pid"
-	sleep 1;
-	$(DOCKER_CMD) exec $(DOCKER_CONT_ID) bash -c "cd /cs165/src; ./client < /cs165/staff_test/test$(test_id)gen.dsl > last_output.out; diff -B -w last_output.out /cs165/staff_test/test$(test_id)gen.exp > /cs165/infra_outputs/test$(test_id)gen.diff; exit"
+# run_test:
+#	echo "Running test # $(test_id)"
+#	$(eval DOCKER_CONT_ID := $(shell cat status.current_container_id | awk '{print $1}'))
+#	# # check if there is server running already
+#	# $(eval SERVER_NUM_RUNNING := $(shell docker exec $(DOCKER_CONT_ID) ps aux | grep ./server | wc -l))
+#	$(DOCKER_CMD) exec -d $(DOCKER_CONT_ID) bash -c "killall server"
+#	sleep 1;
+#	# Now do Testing Procedures
+#	$(DOCKER_CMD) exec -d $(DOCKER_CONT_ID) bash -c "cd /cs165/src; ./server > last_server.out &; echo $! > status.current_server_pid"
+#	sleep 1;
+#	$(DOCKER_CMD) exec $(DOCKER_CONT_ID) bash -c "cd /cs165/src; ./client < /cs165/staff_test/test$(test_id)gen.dsl > last_output.out; diff -B -w last_output.out /cs165/staff_test/test$(test_id)gen.exp > /cs165/infra_outputs/test$(test_id)gen.diff; exit"
 
 # usage `make startcontainer outputdir=<ABSOLUTE_PATH1> testdir=<ABSOLUTE_PATH2>`
 #	where ABSOLUTE_PATH1 is the place to output runtime records

@@ -100,3 +100,15 @@ The other way is to add it during the compilation process. Instead of running
 just `make`, you can run:
 
 > `make CFLAGS+="-DLOG -DLOG_ERR -DLOG_INFO"
+
+## Generating your own tests (inside `project_tests/data_generation_scripts`)
+In the `project_tests/data_generation_scripts` directory we have several python scripts that allow generation
+of test templates for base data CSVs, DSL query files, and EXP expected output files for a battery of tests
+separated by milestone number (1-5). 
+Note that these tests are cumulative by nature within each milestone. 
+So for instance, M1 covers tests 01-09 and builds on each other 
+(a test may modify data loaded/inserted by an earlier test within the same milestone number).
+
+Read `project_tests/data_generation_scripts/README.md` for more details on how to generate and store a copy of tests locally.
+We suggest you keep your generated tests in a directory which you can access between the docker container and your host file system.
+See the root `Dockerfile` and `Makefile` for more about where you can mount a tests folder between container and host.

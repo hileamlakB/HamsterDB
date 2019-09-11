@@ -45,27 +45,26 @@ prep_build:
 #
 #
 
+# If a container is already successfully running after `make startcontainer outputdir=<ABSOLUTE_PATH1> testdir=<ABSOLUTE_PATH2>`
 # This endpoint takes a `test_id` argument, from 01 up to 43, 
 # 	runs the corresponding generated test DSLs 
 #	and checks the output against corresponding EXP file.
 # 
-# run_test: prep_build
-# 	echo "Running test # $(test_id)"
-# 	$(eval DOCKER_CONT_ID := $(shell cat status.current_container_id | awk '{print $1}'))
-#	# check if there is server running already
-#	$(eval SERVER_NUM_RUNNING := $(shell docker exec $(DOCKER_CONT_ID) ps aux | grep ./server | wc -l))
-# 	ifeq ($(SERVER_NUM_RUNNING), 0)
-#		# nothing needed
-#	else
-#		# need to kill server
-#		docker exec $(DOCKER_CONT_ID) killall ./server
-#	endif
-# 	# Now do Testing Procedures
-#	$(DOCKER_CMD) exec -d $(DOCKER_CONT_ID) bash -c `cd /cs165/src; ./server > last_server.out &; echo $! > status.current_server_pid`
-# 	sleep 1;
-# 	$(DOCKER_CMD) exec $(DOCKER_CONT_ID) bash -c "cd /cs165/src; ./client < /cs165/staff_test/test$(test_id)gen.dsl > last_output.out; diff -B -w last_output.out /cs165/staff_test/test$(test_id)gen.exp; exit"
-# 	$(eval SERVER_ID := $(shell cat status.current_server_pid | awk '{print $1}'))
+run_test:
+	echo "Running test # $(test_id)"
+	$(eval DOCKER_CONT_ID := $(shell cat status.current_container_id | awk '{print $1}'))
+	# # check if there is server running already
+	# $(eval SERVER_NUM_RUNNING := $(shell docker exec $(DOCKER_CONT_ID) ps aux | grep ./server | wc -l))
+	$(DOCKER_CMD) exec -d $(DOCKER_CONT_ID) bash -c "killall server"
+	sleep 1;
+	# Now do Testing Procedures
+	$(DOCKER_CMD) exec -d $(DOCKER_CONT_ID) bash -c "cd /cs165/src; ./server > last_server.out &; echo $! > status.current_server_pid"
+	sleep 1;
+	$(DOCKER_CMD) exec $(DOCKER_CONT_ID) bash -c "cd /cs165/src; ./client < /cs165/staff_test/test$(test_id)gen.dsl > last_output.out; diff -B -w last_output.out /cs165/staff_test/test$(test_id)gen.exp > /cs165/infra_outputs/test$(test_id)gen.diff; exit"
 
+# usage `make startcontainer outputdir=<ABSOLUTE_PATH1> testdir=<ABSOLUTE_PATH2>`
+#	where ABSOLUTE_PATH1 is the place to output runtime records
+#	where ABSOLUTE_PATH2 is the place to for reading test cases CSVs, DSLs and EXPs
 # starts a docker container, based off the `cs165` image that was last built and registered.
 # this target is used to kick off automated testing on staff grading server
 # note that staff_test mount point is one-way. read-only into the docker.

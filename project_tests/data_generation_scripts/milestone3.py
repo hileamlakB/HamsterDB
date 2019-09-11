@@ -188,7 +188,7 @@ def createTest22(dataTable, dataSize):
     dfSelectMask2High = dataTable['col2'] < (val2 + offset2)
     dfTotalMask = dfSelectMask1Low & dfSelectMask1High & dfSelectMask2Low & dfSelectMask2High
     values = dataTable[dfTotalMask]['col1']
-    exp_output_file.write(values.to_string(header=False,index=False))
+    exp_output_file.write(data_gen_utils.outputPrint(values))
     exp_output_file.write('\n\n')
     exp_output_file.write(str(values.sum()) + '\n')
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
@@ -222,8 +222,8 @@ def createTests23And24(dataTable, dataSize):
         values = dataTable[dfSelectMask1]['col3']
         mean_result = values.sum()
         if (math.isnan(mean_result)):
-            exp_output_file23.write('0\n')
-            exp_output_file24.write('0\n')
+            exp_output_file23.write('0.00\n')
+            exp_output_file24.write('0.00\n')
         else:
             exp_output_file23.write(str(mean_result) + '\n')
             exp_output_file24.write(str(mean_result) + '\n')
@@ -285,8 +285,8 @@ def createTests26And27(dataTable, dataSize):
         values = dataTable[dfSelectMask1]['col3']
         mean_result = np.round(values.mean(), PLACES_TO_ROUND)
         if (math.isnan(mean_result)):
-            exp_output_file26.write('0\n')
-            exp_output_file27.write('0\n')
+            exp_output_file26.write('0.00\n')
+            exp_output_file27.write('0.00\n')
         else:
             exp_output_file26.write('{:0.2f}\n'.format(mean_result))
             exp_output_file27.write('{:0.2f}\n'.format(mean_result))
@@ -378,7 +378,7 @@ def createTest30(dataTable, dataSize):
         values = dataTable[dfSelectMask1]['col3']
         mean_result = values.sum()
         if (math.isnan(mean_result)):
-            exp_output_file.write('0\n')
+            exp_output_file.write('0.00\n')
         else:
             exp_output_file.write(str(mean_result) + '\n')
     data_gen_utils.closeFileHandles(output_file, exp_output_file)

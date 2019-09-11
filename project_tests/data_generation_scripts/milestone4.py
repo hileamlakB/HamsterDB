@@ -140,7 +140,7 @@ def createTest32(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFa
     col2ValuesMean = joinedTable['col2'].mean()
     col3ValuesSum = joinedTable['col3'].sum()
     if (math.isnan(col2ValuesMean)):
-        exp_output_file.write('0,')
+        exp_output_file.write('0.00,')
     else:
         exp_output_file.write('{:0.2f},'.format(col2ValuesMean))
     if (math.isnan(col3ValuesSum)):
@@ -175,7 +175,7 @@ def createTest33(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFa
     col2ValuesMean = joinedTable['col2'].mean()
     col3ValuesSum = joinedTable['col3'].sum()
     if (math.isnan(col2ValuesMean)):
-        exp_output_file.write('0,')
+        exp_output_file.write('0.00,')
     else:
         exp_output_file.write('{:0.2f},'.format(col2ValuesMean))
     if (math.isnan(col3ValuesSum)):
@@ -215,7 +215,7 @@ def createTest34(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     else:
         exp_output_file.write('{},'.format(col2ValuesSum))
     if (math.isnan(col1ValuesMean)):
-        exp_output_file.write('0\n')
+        exp_output_file.write('0.00\n')
     else:
         exp_output_file.write('{:0.2f}\n'.format(col1ValuesMean))
 
@@ -250,7 +250,7 @@ def createTest35(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     else:
         exp_output_file.write('{},'.format(col2ValuesSum))
     if (math.isnan(col1ValuesMean)):
-        exp_output_file.write('0\n')
+        exp_output_file.write('0.00\n')
     else:
         exp_output_file.write('{:0.2f}\n'.format(col1ValuesMean))
 

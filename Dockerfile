@@ -1,4 +1,7 @@
 ### Welcome to CS 165 Docker Procedure
+#   Most people should not have to change this too much.
+#   Should you need customization for development reasons, 
+#     see the Customization section of this Dockerfile near the bottom of the file.
 
 # declare parent image
 # start from ubuntu 18.04 base docker image (specified by Docker hub itself)
@@ -7,26 +10,23 @@ FROM ubuntu:18.04
 # specify working directory inside the new docker container, creating it, if does not exist
 WORKDIR /cs165
 
-
-# copy everything from this dir to the docker container
-# NOTE: this is now DEPRECATED and replaced by host FS mounting via the container run cmd
-# COPY ./src /cs165
-
-# install any pre-reqs and dependencies needed?
-# CMD sudo apt-get install build-essential
-
-# define any environmental variables you need?
-ENV MYLABEL helloworld
-
-# keep these commands together for "cache busting" within docker layers
-# build-essential is needed for Make
-# gcc is needed for compilation of C
-# tmux you can use for switching between multiple windows 
-#   within your interactive docker shell
-#   for more on tmux here's a helpful cheatsheet: https://tmuxcheatsheet.com/
+# NOTE: This Run Statement is Staff Only for Setup. Students should not modify this part.
+#   We keep these commands together for "caching" within docker layers.
+# What are all these dependencies?
+#   build-essential is needed for Make
+#   gcc is needed for compilation of C
+#   linux tools are for utilities such as `perf` for counters / performance measurement
+#   valgrind for memory issue debugging
+#   tmux for multiplexing between multiple windows within your interactive docker shell
+#   python 2.7.x
+#   python stat packages: scipy, pandas. dependencies for test generation
+#   strace for stack profiling & debugging
+#   mutt for email formatting, this is required on our staff automated tests
+#       emailing you summaries when your trial runs are done
 RUN apt-get update && apt-get install -y \
     build-essential \
     gcc \
+    linux-tools-$(uname -r) linux-tools-generic \
     python \
     python-pip \
     tmux \
@@ -36,6 +36,24 @@ RUN apt-get update && apt-get install -y \
     && \
     pip install scipy pandas
 
-# start by cleaning and making, and then starting a shell
+###################### Begin Customization ########################
+
+####  NOTE: IF NEEDED, ADD ADDITIONAL IMAGE SETUP NEEDS FOR YOUR DEV REASONS HERE ####
+# e.g. install your favorite dev tools:
+# for more on Docker 'layering' for space amplification control:
+#   https://stackoverflow.com/questions/39223249/
+
+# RUN apt-get install emacs
+
+
+# define any environmental variables you need?
+# ENV MYLABEL helloworld
+
+###################### End Customization ##########################
+
+# start by cleaning and making, and then starting a shell with tmux
+# tmux is a nice window multiplexer / manager within a single terminal
+# for a quick rundown of tmux window management shortcuts:
+#   https://tmuxcheatsheet.com/
 CMD cd src
 CMD make clean && make all && /bin/bash && tmux

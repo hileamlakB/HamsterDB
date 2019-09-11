@@ -5,12 +5,15 @@
 This repository contains the distribution code for CS165 Fall 2019.
 More details about the project: http://daslab.seas.harvard.edu/classes/cs165/project.html
 
+We suggest you fork this project, and create a git remote so you can pull patches to
+the starter code periodically should the course staff need to release any during the semester.
 
 Please make sure that your project/repo are set to private.
 You'll still need to share read access with cs165 staff.
 
 We recommend that throughout the semester, you make git tags at each of
 the checkpoints so that it's easier to manage the progress of your project.
+
 
 ## Client-Server code
 We have included a simple unix socket implementation of an interactive
@@ -67,3 +70,21 @@ The other way is to add it during the compilation process. Instead of running
 just `make`, you can run:
 
 > `make CFLAGS+="-DLOG -DLOG_ERR -DLOG_INFO"
+
+## Creating a git remote for starter code distribution patches
+To first create a git remote for the distribution code, run
+`git remote add distro git@code.harvard.edu:wwq724/cs165-2019-starter-code.git`
+
+To receive patches you can pull from this new remote point:
+`git pull origin distro`
+
+We will announce major patches during points in the semester.
+We anticipate that patches would mostly be if any updates, issues or ambiguities arise in test generation, 
+or infrastructure integration or changes to accomodate the automated testing of your code base in 
+the docker environment. Should you run into a git merge conflict, due to progress commits you have made, you may have to manually triage yourself. 
+For more on git merge conflict handling, see: https://help.github.com/en/articles/resolving-a-merge-conflict-using-the-command-line
+
+## Understanding How the Docker Environment Works
+
+Please read `docker-quickstart.txt`, `Dockerfile` and `Makefile` in this directory, to get a better understanding of how
+the pieces of your C source and skeleton code integrate with Docker containers as a location for runtime.

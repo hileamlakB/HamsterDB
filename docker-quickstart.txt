@@ -19,10 +19,12 @@
     From here on, note that you will need to rerun this command anytime after you change your dockerfile,
     to persist those new changes to your local image (otherwise you will still be running off your old local image).
 
-    Now you can confirm this image has been created/updated, by running: `docker image list`. This will show images, by their (repository) name, version tags, Image ID and last modified/cretaed, as well as disk space occupied on the host system.
+    Now you can confirm this image has been created/updated, by running: `docker image list`. 
+    This will show images, by their (repository) name, version tags, Image ID and last modified/cretaed, 
+    as well as disk space occupied on the host system.
 
-    Note that for advanced use, during the `docker build` step is when you can specify other hardware resource usage constraints on the image
-    (memory limits, cpu sharing, etc).
+    Note that for advanced use, during the `docker build` step is when you can specify other hardware resource usage constraints 
+    on the image (memory limits, cpu sharing, etc).
     You may read more on the advanced options here: https://docs.docker.com/engine/reference/commandline/build/
 
 4. To start a container in interactive mode (a container will be spun out of the cs165 image, and execute and leave off in interactive shell mode,
@@ -35,13 +37,18 @@ This means you can choose to develop your project inside the Docker container it
 or you can also use your host system editor/IDE, and simply run/enter the container to do your builds and tests.
 We leave your preferred workflow up to your discretion, these are merely two common approaches you can take.
 
-Note that you can customize the `docker container run` options to also specify hardware resources available to your container and other advanced options.
+Note that you can customize the `docker container run` options to 
+also specify hardware resources available to your container and other advanced options.
 More on how to do that here: https://docs.docker.com/engine/reference/commandline/container_run/
 
-Feel free to modify this project root Makefile, by adding your own new targets (e.g. for your own testing). 
+You can customize the project root Makefile, by adding your own new targets (e.g. for your own testing). 
+You can do this at the bottom of the file marked for customization.
 Do not change the ones needed for automated testing which we have labeled. That will be how we grade you.
 
-5. Maintaining your Docker space usage. You may notice that containers can hang around if not specified with the --rm option when they are run.
+5. Stopping containers and maintaining your Docker space usage. 
+You may notice that containers can hang around if not specified with the --rm option when they are run.
 These take up space on your hard disk! 
 You can periodically use the `docker system prune` command to cleanup stopped containers and dangling images.
+Note you can only prune stopped containers. You can find these by running `docker container list`.
+You can use the `docker container kill <CONTAINERID>` command to stop a specific container.
 For more details on related commands see this resource: https://linuxize.com/post/how-to-remove-docker-images-containers-volumes-and-networks/

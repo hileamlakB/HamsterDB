@@ -123,7 +123,7 @@ def createTestFour(dataTable):
 	output_file, exp_output_file = data_gen_utils.openFileHandles(4, TEST_DIR=TEST_BASE_DIR)
 	output_file.write('-- Load Test Data 2\n')
 	output_file.write('--\n')
-	output_file.write('-- Load+create Data and shut down of tbl2 which has 4 attributes\n')
+	output_file.write('-- Load+create+insert Data and shut down of tbl2 which has 4 attributes\n')
 	output_file.write('create(tbl,\"tbl2\",db1,4)\n')
 	output_file.write('create(col,\"col1\",db1.tbl2)\n')
 	output_file.write('create(col,\"col2\",db1.tbl2)\n')
@@ -292,7 +292,7 @@ def createTestNine(dataTable, dataSizeTableTwo, approxSelectivity):
 	selectValLess2 = np.random.randint(int(-1 * (dataSizeTableTwo/2)), highestHighVal)
 	selectValGreater1 = selectValLess1 + offset
 	selectValGreater2 = selectValLess2 + offset
-	output_file.write('-- SELECT avg(col1+col2), min (col2), max(col3), avg(col3-col2), sum(col3-col2) FROM tbl2 WHERE (col1 >= {} AND col1 < {}) AND (col2 >= {} AND col2 < {});\n'.format(selectValLess1, selectValGreater1, selectValLess2, selectValGreater2))
+	output_file.write('-- SELECT avg(col1+col2), min(col2), max(col3), avg(col3-col2), sum(col3-col2) FROM tbl2 WHERE (col1 >= {} AND col1 < {}) AND (col2 >= {} AND col2 < {});\n'.format(selectValLess1, selectValGreater1, selectValLess2, selectValGreater2))
 	output_file.write('s1=select(db1.tbl2.col1,{},{})\n'.format(selectValLess1, selectValGreater1))
 	output_file.write('sf1=fetch(db1.tbl2.col2,s1)\n')
 	output_file.write('s2=select(s1,sf1,{},{})\n'.format(selectValLess2, selectValGreater2))

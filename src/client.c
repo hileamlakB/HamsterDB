@@ -42,7 +42,7 @@ int connect_client() {
     size_t len;
     struct sockaddr_un remote;
 
-    log_info("Attempting to connect...\n");
+    log_info("-- Attempting to connect...\n");
 
     if ((client_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
         log_err("L%d: Failed to create socket.\n", __LINE__);
@@ -57,7 +57,7 @@ int connect_client() {
         return -1;
     }
 
-    log_info("Client connected at socket: %d.\n", client_socket);
+    log_info("-- Client connected at socket: %d.\n", client_socket);
     return client_socket;
 }
 
@@ -138,7 +138,7 @@ int main(void)
                     log_err("Failed to receive message.");
                 }
                 else {
-		            log_info("Server closed connection\n");
+		            log_info("-- Server closed connection\n");
 		        }
                 exit(1);
             }

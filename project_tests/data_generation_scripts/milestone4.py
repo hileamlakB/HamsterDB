@@ -113,7 +113,7 @@ def createTest32(factTable, dimTable2, dataSizeFact, dataSizeDim2, selectivityFa
     output_file, exp_output_file = data_gen_utils.openFileHandles(32, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- First join test - nested-loop. Select + Join + aggregation\n')   
     output_file.write('-- Performs the join using nested loops\n')
-    output_file.write('-- Do this only on reasonable sized tables! (O(n^2)\n')
+    output_file.write('-- Do this only on reasonable sized tables! (O(n^2))\n')
     output_file.write('-- Query in SQL:\n')
     output_file.write('-- SELECT avg(tbl5_fact.col2), sum(tbl5_fact.col3) FROM tbl5_fact,tbl5_dim2 WHERE tbl5_fact.col4=tbl5_dim2.col1 AND tbl5_fact.col2 < {} AND tbl5_dim2.col1<{};\n'.format(int((dataSizeFact/5) * selectivityFact), int(selectivityDim2 * dataSizeDim2)))
     output_file.write('--\n')
@@ -186,7 +186,7 @@ def createTest34(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     output_file, exp_output_file = data_gen_utils.openFileHandles(34, TEST_DIR=TEST_BASE_DIR)
     output_file.write('-- Join test 2 - nested-loop. Select + Join + aggregation\n')
     output_file.write('-- Performs the join using nested loops\n')
-    output_file.write('-- Do this only on reasonable sized tables! (O(n^2)\n')
+    output_file.write('-- Do this only on reasonable sized tables! (O(n^2))\n')
     output_file.write('-- Query in SQL:\n')
     output_file.write('-- SELECT sum(tbl5_fact.col2), avg(tbl5_dim1.col1) FROM tbl5_fact,tbl5_dim1 WHERE tbl5_fact.col1=tbl5_dim1.col1 AND tbl5_fact.col2 < {} AND tbl5_dim1.col3<{};\n'.format(int(selectivityFact * (dataSizeFact / 5)), int((dataSizeDim1/5) * selectivityDim1)))
     output_file.write('--\n')
@@ -320,7 +320,7 @@ def createTest37(factTable, dimTable1, dataSizeFact, dataSizeDim1, selectivityFa
     else:
         exp_output_file.write('{},'.format(col2ValuesSum))
     if (math.isnan(col1ValuesMean)):
-        exp_output_file.write('0\n')
+        exp_output_file.write('0.00\n')
     else:
         exp_output_file.write('{:0.2f}\n'.format(col1ValuesMean))
     

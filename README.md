@@ -113,7 +113,7 @@ Read `project_tests/data_generation_scripts/README.md` for more details on how t
 We suggest you keep your generated tests in a directory which you can access between the docker container and your host file system.
 See the root `Dockerfile` and `Makefile` for more about where you can mount a tests folder between container and host.
 
-## Running a smoke test for Milestone x
+## Running a smoke test for Milestone x [To-Be-Released]
 We provide you lite convenience scripts for quick diffing of your client outputs.
 You can run the following make target `run_mile` and `run_test`, which run a
 battery of test cases up to the end of a designated milestone, and run a single test case, respectively.

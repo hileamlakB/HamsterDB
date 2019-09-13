@@ -25,7 +25,7 @@ WORKDIR /cs165
 #   strace for stack profiling & debugging
 #   mutt for email formatting, this is required on our staff automated tests
 #       emailing you summaries when your trial runs are done
-RUN apt-get update && apt-get install -y \
+RUN bash -c 'apt-get update && apt-get install -y \
     build-essential \
     gcc \
     linux-tools-$(uname -r) linux-tools-generic \
@@ -38,7 +38,7 @@ RUN apt-get update && apt-get install -y \
     strace \
     mutt \
     && \
-    pip install scipy pandas
+    pip install scipy pandas'
 
 ###################### Begin Customization ########################
 

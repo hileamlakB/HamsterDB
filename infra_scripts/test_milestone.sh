@@ -1,3 +1,11 @@
+#### CS 165 milestone test script           ####
+# this script takes generated tests,
+# and kicks off running a test for each,
+# via a hacky call of makefile target for a
+# single test case to be run
+#
+#### Contact: Wilson Qin                    ####
+
 UPTOMILE="${1:-5}"
 
 MAX_AVAILABLE_MS=5

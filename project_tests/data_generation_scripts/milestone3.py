@@ -205,7 +205,7 @@ def createTests23And24(dataTable, dataSize):
     output_file24.write('-- Test for a non-clustered index select followed by an aggregate (control-test)\n')
     output_file24.write('--\n')
     output_file24.write('-- Query form in SQL:\n')
-    output_file24.write('-- SELECT avg(col3) FROM tbl4 WHERE (col2 >= _ and col2 < _);\n')
+    output_file24.write('-- SELECT sum(col3) FROM tbl4 WHERE (col2 >= _ and col2 < _);\n')
     output_file24.write('--\n')
     for i in range(10):
         val1 = np.random.randint(0, int((dataSize/5) - offset))
@@ -220,13 +220,13 @@ def createTests23And24(dataTable, dataSize):
         # generate expected results
         dfSelectMask1 = (dataTable['col2'] >= val1) & (dataTable['col2'] < (val1 + offset))
         values = dataTable[dfSelectMask1]['col3']
-        mean_result = values.sum()
-        if (math.isnan(mean_result)):
-            exp_output_file23.write('0.00\n')
-            exp_output_file24.write('0.00\n')
+        sum_result = values.sum()
+        if (math.isnan(sum_result)):
+            exp_output_file23.write('0\n')
+            exp_output_file24.write('0\n')
         else:
-            exp_output_file23.write(str(mean_result) + '\n')
-            exp_output_file24.write(str(mean_result) + '\n')
+            exp_output_file23.write(str(sum_result) + '\n')
+            exp_output_file24.write(str(sum_result) + '\n')
     data_gen_utils.closeFileHandles(output_file23, exp_output_file23)
     data_gen_utils.closeFileHandles(output_file24, exp_output_file24)
 
@@ -365,7 +365,7 @@ def createTest30(dataTable, dataSize):
     output_file.write('-- Test for a non-clustered index select followed by an aggregate\n')
     output_file.write('--\n')
     output_file.write('-- Query form in SQL:\n')
-    output_file.write('-- SELECT avg(col3) FROM tbl4_clustered_btree WHERE (col2 >= _ and col2 < _);\n')
+    output_file.write('-- SELECT sum(col3) FROM tbl4_clustered_btree WHERE (col2 >= _ and col2 < _);\n')
     output_file.write('--\n')
     for i in range(5):
         val1 = np.random.randint(0, int((dataSize/5) - offset))
@@ -376,11 +376,11 @@ def createTest30(dataTable, dataSize):
         # generate expected results
         dfSelectMask1 = (dataTable['col2'] >= val1) & (dataTable['col2'] < (val1 + offset))
         values = dataTable[dfSelectMask1]['col3']
-        mean_result = values.sum()
-        if (math.isnan(mean_result)):
-            exp_output_file.write('0.00\n')
+        sum_result = values.sum()
+        if (math.isnan(sum_result)):
+            exp_output_file.write('0\n')
         else:
-            exp_output_file.write(str(mean_result) + '\n')
+            exp_output_file.write(str(sum_result) + '\n')
     data_gen_utils.closeFileHandles(output_file, exp_output_file)
 
 

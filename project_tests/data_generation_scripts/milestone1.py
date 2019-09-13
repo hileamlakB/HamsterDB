@@ -319,7 +319,7 @@ def createTestNine(dataTable, dataSizeTableTwo, approxSelectivity):
 	# round any mean
 	output1 = np.round(col1pluscol2.mean(), PLACES_TO_ROUND)
 	if (math.isnan(output1)):
-		exp_output_file.write('0,')
+		exp_output_file.write('0.00,')
 	else:
 		exp_output_file.write('{:0.2f},'.format(output1))
 
@@ -331,7 +331,7 @@ def createTestNine(dataTable, dataSizeTableTwo, approxSelectivity):
 	exp_output_file.write(str(output2) + ',')
 	exp_output_file.write(str(output3) + ',')
 	if (math.isnan(output4)):
-		exp_output_file.write('0,')
+		exp_output_file.write('0.00,')
 	else:
 		exp_output_file.write('{:0.2f},'.format(output4))
 	if (math.isnan(output5)):

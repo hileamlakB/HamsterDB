@@ -16,7 +16,7 @@ RAND_SEED=42
 
 # create milestone 1 data
 cd project_tests/data_generation_scripts
-python milestone1.py $DATA_SIZE $RAND_SEED $ABS_TEST_DIR
+python milestone1.py $DATA_SIZE $RAND_SEED $ABS_TEST_DIR $ABS_TEST_DIR
 
 # setup code
 cd ../../src
@@ -34,3 +34,4 @@ echo "running test 2"
 ./server > $STUDENT_OUTPUT_DIR/test02gen.server.debug.out &
 sleep 1
 ./client < ../$REL_TEST_DIR/test02gen.dsl
+if pgrep server; then pkill server; fi

@@ -102,7 +102,7 @@ just `make`, you can run:
 > `make CFLAGS+="-DLOG -DLOG_ERR -DLOG_INFO"
 
 ## Generating your own tests (inside `project_tests/data_generation_scripts`)
-In the `project_tests/data_generation_scripts` directory we have several python scripts that allow generation
+iIn the `project_tests/data_generation_scripts` directory we have several python scripts that allow generation
 of test templates for base data CSVs, DSL query files, and EXP expected output files for a battery of tests
 separated by milestone number (1-5). 
 Note that these tests are cumulative by nature within each milestone. 
@@ -112,3 +112,10 @@ So for instance, M1 covers tests 01-09 and builds on each other
 Read `project_tests/data_generation_scripts/README.md` for more details on how to generate and store a copy of tests locally.
 We suggest you keep your generated tests in a directory which you can access between the docker container and your host file system.
 See the root `Dockerfile` and `Makefile` for more about where you can mount a tests folder between container and host.
+
+## Running a smoke test for Milestone x
+We provide you lite convenience scripts for quick diffing of your client outputs.
+You can run the following make target `run_mile` and `run_test`, which run a
+battery of test cases up to the end of a designated milestone, and run a single test case, respectively.
+The following command runs all milestone 1 tests in order, and suppresses extra make printouts of moving directories etc:
+`make run_mile mile_id=1 --no-print-directory`

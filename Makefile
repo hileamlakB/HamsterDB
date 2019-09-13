@@ -57,11 +57,11 @@ run_test:
 	@# check if there is server running already
 	@# $(eval SERVER_NUM_RUNNING := $(shell docker exec $(DOCKER_CONT_ID) ps aux | grep ./server | wc -l))
 	@$(DOCKER_CMD) exec -d $(DOCKER_CONT_ID) bash -c "if pgrep myServer; then pkill myServer; fi"
-	@sleep 1;
+	@#sleep 1;
 	@# Now do Testing Procedures
 	@$(DOCKER_CMD) exec -d $(DOCKER_CONT_ID) bash -c 'cd /cs165/src; ./server > last_server.out &'
 	@$(DOCKER_CMD) exec -d $(DOCKER_CONT_ID) bash -c "cd /cs165/src; ps aux | grep ./server | tr -s ' ' | cut -f 2 -d ' ' | head -n 1 > status.current_server_pid"
-	@sleep 1;
+	@#sleep 1;
 	@$(DOCKER_CMD) exec $(DOCKER_CONT_ID) bash -c "cd /cs165/src; ./client < /cs165/staff_test/test$(test_id)gen.dsl > last_output.out; ../infra_scripts/verify_output_standalone.sh $(test_id) last_output.out /cs165/staff_test/test$(test_id)gen.exp last_output_cleaned.out; exit"
 
 # usage `make startcontainer outputdir=<ABSOLUTE_PATH1> testdir=<ABSOLUTE_PATH2>`

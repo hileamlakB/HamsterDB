@@ -28,7 +28,8 @@ WORKDIR /cs165
 RUN bash -c 'apt-get update && apt-get install -y \
     build-essential \
     gcc \
-    linux-tools-$(uname -r) linux-tools-generic \
+    # enable linux-tools once MacOS linuxkit instruction support is patched and released
+    #linux-tools-$(uname -r) linux-tools-generic \
     sse4.2-support \
     psmisc \
     python \

@@ -19,7 +19,7 @@ To first create a git remote for the distribution code, run
 `git remote add distro git@code.harvard.edu:wwq724/cs165-2019-starter-code.git`
 
 To receive patches you can pull from this new remote point:
-`git pull origin distro`
+`git pull distro master`
 
 We will announce major patches during points in the semester.
 We anticipate that patches would mostly be if any updates, issues or ambiguities arise in test generation, 

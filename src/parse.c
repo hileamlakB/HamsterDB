@@ -6,7 +6,7 @@
  * database operator.
  */
 
-#define _BSD_SOURCE
+#define _DEFAULT_SOURCE
 #include <string.h>
 #include <stdbool.h>
 #include <stddef.h>

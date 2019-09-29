@@ -53,8 +53,22 @@ Note you can only prune stopped containers. You can find these by running `docke
 You can use the `docker container kill <CONTAINERID>` command to stop a specific container.
 For more details on related commands see this resource: https://linuxize.com/post/how-to-remove-docker-images-containers-volumes-and-networks/
 
-6. Other common issues:
-Students running on Windows will run into issues if trying to write socket files in directories that are
-bound between the Windows filesystem and the Docker Container's linux filesystem. 
-The solution to avoid these issues is to write socket files needed for server-client communication
-in only Docker container accessible directories, to avoid clashing with Windows conventions for sockets.
+6. Important Subnotes for Varied Host OS Users:
+
+    The following sub-note is for Windows 10 Linux Subsystem Users (WSL) only: 
+    We recommend you consult the protocol in this article: 
+    https://nickjanetakis.com/blog/setting-up-docker-for-windows-and-wsl-to-work-flawlessly .
+    In short, you can easily run our build system in the Windows 10 WSL (in say, an Ubuntu environment) while
+    running Docker containers in windows. This happens by using an unencrypted TCP connection between the WSL
+    and your Windows Docker. Note that this is a 'hacky' workaround, and is insecure if you are connected to unencrypted/public wifi
+    (at worst, adversaries could potentially give commands to your Windows Docker to run arbitrarily).
+    Therefore, we recommend you enable the "Expose daemon on tcp://localhost:2375 without TLS" option with caution.
+    Turn it off when you don't need it for testing.
+
+    The following sub-note is for Mac users:
+    Intel Macs support a different practice for reporting for some intra-cpu hardware performance counters, 
+    such as CPU branch mis-predictions.
+    For these counters, perf stats will likely report "<not supported>", this is to be expected.
+
+    If you are running Docker inside a VM host yourself on top of your Host OS, you will likely also encounter 
+    similar lack of reporting for certain intra-cpu hardware performance counters. This is to be expected.

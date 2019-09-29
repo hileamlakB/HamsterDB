@@ -53,5 +53,4 @@ function verify_output
 
 }
 
-verify_output 'Test:' $1 $2 $3 $4
-
+verify_output 'Test:' $1 $2 $3 $4 $5

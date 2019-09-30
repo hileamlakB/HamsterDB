@@ -15,20 +15,18 @@ WORKDIR /cs165
 # What are all these dependencies?
 #   build-essential is needed for Make
 #   gcc is needed for compilation of C
-#   linux tools are for utilities such as `perf` for counters / performance measurement
 #   sse4.2-support for SIMD support
 #   psmisc convenience utilities for managing processes (e.g. killall processes by name)
 #   valgrind for memory issue debugging
 #   tmux for multiplexing between multiple windows within your interactive docker shell
 #   python 2.7.x
-#   python stat packages: scipy, pandas. dependencies for test generation
 #   strace for stack profiling & debugging
 #   mutt for email formatting, this is required on our staff automated tests
 #       emailing you summaries when your trial runs are done
 RUN bash -c 'apt-get update && apt-get install -y \
+    apt-utils \
     build-essential \
     gcc \
-    linux-tools-$(uname -r) linux-tools-generic \
     sse4.2-support \
     psmisc \
     python \
@@ -36,9 +34,20 @@ RUN bash -c 'apt-get update && apt-get install -y \
     tmux \
     valgrind \
     strace \
-    mutt \
-    && \
-    pip install scipy pandas'
+    mutt'
+    
+#   python stat packages: scipy, pandas. dependencies for test generation
+RUN bash -c 'pip install scipy pandas'
+
+#   linux tools are for utilities such as `perf` for counters / performance measurement
+# enable linux-tools once MacOS linuxkit instruction support is patched and released
+RUN bash -c 'apt-get install -y linux-tools-common linux-tools-generic && \
+    # symlink proper linux tools to the perf shortcut \
+    cd /usr/lib/linux-tools && \
+    cd `ls -1 | head -n1` && \
+    rm -f /usr/bin/perf && \
+    ln -s `pwd`/perf /usr/bin/perf'
+
 
 ###################### Begin Customization ########################
 

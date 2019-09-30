@@ -19,7 +19,7 @@ To first create a git remote for the distribution code, run
 `git remote add distro git@code.harvard.edu:wwq724/cs165-2019-starter-code.git`
 
 To receive patches you can pull from this new remote point:
-`git pull origin distro`
+`git pull distro master`
 
 We will announce major patches during points in the semester.
 We anticipate that patches would mostly be if any updates, issues or ambiguities arise in test generation, 
@@ -113,7 +113,7 @@ Read `project_tests/data_generation_scripts/README.md` for more details on how t
 We suggest you keep your generated tests in a directory which you can access between the docker container and your host file system.
 See the root `Dockerfile` and `Makefile` for more about where you can mount a tests folder between container and host.
 
-## Running a smoke test for Milestone x
+## Running a smoke test for Milestone x [To-Be-Released]
 We provide you lite convenience scripts for quick diffing of your client outputs.
 You can run the following make target `run_mile` and `run_test`, which run a
 battery of test cases up to the end of a designated milestone, and run a single test case, respectively.

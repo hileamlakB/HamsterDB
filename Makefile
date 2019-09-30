@@ -6,9 +6,21 @@
 # 	progresses. In which case you will need to pull upstream from distribution code
 
 
-###################### Begin STAFF ONLY ########################
-
+# This is where Docker will find your project directory path, 
+#	only used for Docker volume binding purposes
 BASE_DIR := $(shell pwd)
+
+# NOTE: IF YOU ARE USING Windows 10 WSL then you need something else in the first part of the `pwd` 
+#	in order to docker bind your Windows (c drive) contents to the Windows Docker
+# uncomment the following, changing what is necessary to match your Windows path to your project:
+# BASE_DIR := "C:\Users/MY_WINDOWS_USERNAME/REST_OF_PATH/cs165-2019-base"
+
+
+ifdef CS165_PROD
+BASE_DIR := $(shell pwd)
+endif
+
+###################### Begin STAFF ONLY ########################
 
 DOCKER_CMD := docker
 
@@ -23,7 +35,7 @@ build:
 # runs a docker container, based off the `cs165` image that was last built and registered
 # kicks off a test bash script and then stops the container
 run:
-	$(eval DOCKER_CONT_ID := $(shell docker container run \
+	$(eval DOCKER_CONT_ID := $(shell $(DOCKER_CMD) container run \
 		-v $(BASE_DIR)/src:/cs165/src \
 		-v $(BASE_DIR)/project_tests:/cs165/project_tests \
 		-v $(BASE_DIR)/infra_scripts:/cs165/infra_scripts \
@@ -35,7 +47,7 @@ run:
 
 prep_build:
 	$(eval DOCKER_CONT_ID := $(shell cat status.current_container_id | awk '{print $1}'))
-	$(DOCKER_CMD) exec $(DOCKER_CONT_ID) bash -c "cd /cs165/src; make distclean; make; exit"
+	$(DOCKER_CMD) exec $(DOCKER_CONT_ID) bash /cs165/infra_scripts/prep_build.sh
 
 # This endpoint runs a milestone on an already running docker container, 
 # based off the `cs165` image that was last built and registered.

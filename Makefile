@@ -54,28 +54,12 @@ prep_build:
 # this target is used to kick off a test by optionally a milestone #. 
 # Note FS binding, is one-way. read-only into the docker.
 #
-# provide `mile_id` on the make commandline
+# provide `mile_id` and `restart_server_wait` on the make commandline
+# e.g. run milestone1 and wait 5s between each server restart: 
+#	`make run_mile mile_id=1 server_wait=5`
 run_mile: prep_build
-	@infra_scripts/test_milestone.sh $(mile_id)
-
-# If a container is already successfully running after `make startcontainer outputdir=<ABSOLUTE_PATH1> testdir=<ABSOLUTE_PATH2>`
-# This endpoint takes a `test_id` argument, from 01 up to 43, 
-# 	runs the corresponding generated test DSLs 
-#	and checks the output against corresponding EXP file.
-# 
-run_test:
-	@# echo "Running test # $(test_id)"
 	@$(eval DOCKER_CONT_ID := $(shell cat status.current_container_id | awk '{print $1}'))
-	@# check if there is server running already
-	@# $(eval SERVER_NUM_RUNNING := $(shell docker exec $(DOCKER_CONT_ID) ps aux | grep ./server | wc -l))
-	@$(DOCKER_CMD) exec -d $(DOCKER_CONT_ID) bash -c "if pgrep server; then pkill server; fi"
-	@#sleep 1;
-	@# Now do Testing Procedures
-	@$(DOCKER_CMD) exec -d $(DOCKER_CONT_ID) bash -c 'cd /cs165/src; ./server > last_server.out &'
-	@$(DOCKER_CMD) exec -d $(DOCKER_CONT_ID) bash -c "cd /cs165/src; ps aux | grep ./server | tr -s ' ' | cut -f 2 -d ' ' | head -n 1 > status.current_server_pid"
-	@#sleep 1;
-	@$(DOCKER_CMD) exec $(DOCKER_CONT_ID) bash -c "cd /cs165/src; ./client < /cs165/staff_test/test$(test_id)gen.dsl > last_output.out; ../infra_scripts/verify_output_standalone.sh $(test_id) last_output.out /cs165/staff_test/test$(test_id)gen.exp last_output_cleaned.out; exit"
-	@echo "run_test $(test_id) target completed"
+	@$(DOCKER_CMD) exec $(DOCKER_CONT_ID) bash /cs165/infra_scripts/test_milestone.sh $(mile_id) $(server_wait)
 
 # usage `make startcontainer outputdir=<ABSOLUTE_PATH1> testdir=<ABSOLUTE_PATH2>`
 #	where ABSOLUTE_PATH1 is the place to output runtime records

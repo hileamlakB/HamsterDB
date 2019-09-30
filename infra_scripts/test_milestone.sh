@@ -44,7 +44,7 @@ function killserver () {
     if [ $(($SERVER_NUM_RUNNING)) -ne 0 ]; then
         # kill any servers existing
         if pgrep server; then 
-            echo "Killing server: $(pkill -9 server)"
+            pkill -9 server
         fi
     fi
 }
@@ -74,7 +74,13 @@ do
             sleep $WAIT_SECONDS_TO_RECOVER_DATA
         fi
 
+        SERVER_NUM_RUNNING=`ps aux | grep server | wc -l`
+        if [ $(($SERVER_NUM_RUNNING)) -lt 1 ]; then
+            echo "Warning: no server running at this point. Your server may have crashed early."
+        fi
+
         /cs165/infra_scripts/run_test.sh $TEST_ID
+        sleep 1
     fi
 done
 

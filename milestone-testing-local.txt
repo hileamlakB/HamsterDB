@@ -7,15 +7,18 @@ The following command does that for you (assuming you are running this in your b
 and have these two folders existing there in relative locations already):
 `make startcontainer outputdir=$(pwd)/outputs testdir=$(pwd)/test_data`
 
-`make run_mile mile_id=1 testdir=$(pwd)/test_data outputdir=$(pwd)/outputs`
-Would be the corresponding command that runs milestone number 1. Each milestone (except the 5th and last) contains 10 tests.
-You can see the Make target `run_mile` and the corresponding script it calls, that is kept in infra_scripts/, to further
+`make run_mile mile_id=1 server_wait=2`
+Would be the corresponding command that runs milestone number 1, with waiting 2 seconds between each server restart 
+(some client tests shutdown the server, thus a restart is needed before the next test).
+Each milestone contains a collection of tests.
+Note that you may want to vary server_wait if you anticipate that your server will recover persisted data more slowly than the default wait.
+You can see the Make target `run_mile` and the corresponding script it calls, that is kept in `infra_scripts/test_milestone.sh`, to further
 understand how the test battery for each milestone is structured under the hood.
+You can see that there is a `infra_scripts/run_test.sh`, which the test_milestone.sh calls, for one test at a time. 
 
-There is a sub target called `run_test` which can be run similarly, but just for one test (e.g. test 02)
-`make run_test test_id=02 testdir=$(pwd)/test_data outputdir=$(pwd)/outputs`
-
-You may want to use these for convenience, but manually trigger your client/server when you do specific debugging,
-hopping into your docker container.
+You may want to use these for convenience, when you manually trigger your client/server when you do specific debugging
+in your docker container.
 
 Remember you can `docker attach` to your container to run client/server commands directly inside.
+Note that `exit` in a container will kill the container, consult the Docker documentation online 
+to learn the detach and escape shortcuts (to keep container alive but leave the interactive mode).

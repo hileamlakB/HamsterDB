@@ -17,6 +17,11 @@ LDFLAGS =
 LIBS =
 INCLUDES = include
 
+
+# this is the DB server and client's unix socket path
+# Note: the extra backslash is for escaping the quotes for makefile format
+SOCK_PATH=\"/tmp/cs165_unix_socket\"
+
 ####### Automatic dependency magic #######
 # Set-up dependency directory
 DEPSDIR := .deps
@@ -25,7 +30,7 @@ DEPFILES := $(wildcard $(DEPSDIR)/*.d)
 ifneq ($(DEPFILES),)
 include $(DEPFILES)
 endif
-DEPCFLAGS = -MD -MF $(DEPSDIR)/$*.d -MP
+DEPCFLAGS = -MD -MF $(DEPSDIR)/$*.d -MP -DSOCK_PATH=$(SOCK_PATH)
 
 # Dependency compilation
 ifneq ($(DEP_CC),$(CC) $(CFLAGS) $(DEPCFLAGS) $(O))
@@ -58,7 +63,7 @@ server: server.o parse.o utils.o db_manager.o client_context.o
 	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 clean:
-	rm -f client server *.o *~ *.bak core *.core cs165_unix_socket
+	rm -f client server *.o *~ *.bak core *.core $(SOCK_PATH)
 	rm -rf .deps
 
 distclean: clean

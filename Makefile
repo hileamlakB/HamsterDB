@@ -13,7 +13,7 @@ BASE_DIR := $(shell pwd)
 # NOTE: IF YOU ARE USING Windows 10 WSL then you need something else in the first part of the `pwd` 
 #	in order to docker bind your Windows (c drive) contents to the Windows Docker
 # uncomment the following, changing what is necessary to match your Windows path to your project:
-# BASE_DIR := "C:\Users/MY_WINDOWS_USERNAME/REST_OF_PATH/cs165-2019-base"
+# BASE_DIR := "//c/Users/MY_WINDOWS_USERNAME/REST_OF_PATH/cs165-2019-base"
 
 
 ifdef CS165_PROD

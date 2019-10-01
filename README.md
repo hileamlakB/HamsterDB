@@ -89,6 +89,7 @@ process it, and then send back the result if it was asked to.
 
 ## Logging (inside `src/`)
 
+
 We have included a couple useful logging functions in utils.c.
 These logging functions depend on #ifdef located within the code.
 There are multiple ways to enable logging. One way is by adding your own
@@ -102,7 +103,8 @@ just `make`, you can run:
 > `make CFLAGS+="-DLOG -DLOG_ERR -DLOG_INFO"
 
 ## Generating your own tests (inside `project_tests/data_generation_scripts`)
-iIn the `project_tests/data_generation_scripts` directory we have several python scripts that allow generation
+iIn the `project_tests/data_generation_scripts` directory we 
+have several python scripts that allow generation
 of test templates for base data CSVs, DSL query files, and EXP expected output files for a battery of tests
 separated by milestone number (1-5). 
 Note that these tests are cumulative by nature within each milestone. 
@@ -115,7 +117,7 @@ See the root `Dockerfile` and `Makefile` for more about where you can mount a te
 
 ## Running a smoke test for Milestone x [To-Be-Released]
 We provide you lite convenience scripts for quick diffing of your client outputs.
-You can run the following make target `run_mile` and `run_test`, which run a
-battery of test cases up to the end of a designated milestone, and run a single test case, respectively.
+You can run the following make target `run_mile`, which runs a
+battery of test cases up to the end of a designated milestone.
 The following command runs all milestone 1 tests in order, and suppresses extra make printouts of moving directories etc:
 `make run_mile mile_id=1 --no-print-directory`

@@ -1,8 +1,8 @@
-# CS165 Fall 2019
+# CS165 Fall 2021
 
 ## Introduction
 
-This repository contains the distribution code for CS165 Fall 2019.
+This repository contains the distribution code for CS165 Fall 2021.
 More details about the project: http://daslab.seas.harvard.edu/classes/cs165/project.html
 
 We suggest you fork this project, and create a git remote so you can pull patches to

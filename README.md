@@ -16,7 +16,7 @@ the checkpoints so that it's easier to manage the progress of your project.
 
 ## Creating a git remote for starter code distribution patches
 To first create a git remote for the distribution code, run
-`git remote add distro git@code.harvard.edu:wwq724/cs165-2019-starter-code.git`
+`git remote add distro git@code.harvard.edu:sap835/cs165-2021-starter-code.git`
 
 To receive patches you can pull from this new remote point:
 `git pull distro master`

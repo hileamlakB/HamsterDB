@@ -18,13 +18,13 @@ the checkpoints so that it's easier to manage the progress of your project.
 
 The repository for the project is public and Github does not allow the creation of private forks for public repositories. The correct way of creating a private fork by duplicating the repo is documented here.
 
-Log in to code.harvard.edu and add the ssh key of your computer to your code.harvard.edu account. (Refer here)
+Log in to code.harvard.edu and add the ssh key of your computer to your code.harvard.edu account. (Refer https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)
 
 Create a bare clone of the repository. (This is temporary and will be removed so just do it wherever.)
 
 > `git clone --bare git@code.harvard.edu:sap835/cs165-2021-starter-code.git`
 
-Create a new private repository on your Github(code.harvard.edu) and name it say "cs165-project". (Refer here)
+Create a new private repository on your Github(code.harvard.edu) and name it say "cs165-project". (Refer https://docs.github.com/en/get-started/quickstart/create-a-repo)
 
 Mirror-push your bare clone to your new 'cs165-project' repository.
 Replace <your_username> with your actual code.harvard.edu username in the url below.

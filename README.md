@@ -15,11 +15,81 @@ We recommend that throughout the semester, you make git tags at each of
 the checkpoints so that it's easier to manage the progress of your project.
 
 ## Creating a git remote for starter code distribution patches
-To first create a git remote for the distribution code, run
-`git remote add distro git@code.harvard.edu:sap835/cs165-2021-starter-code.git`
 
-To receive patches you can pull from this new remote point:
-`git pull distro master`
+The repository for the project is public and Github does not allow the creation of private forks for public repositories. The correct way of creating a private fork by duplicating the repo is documented here.
+
+Log in to code.harvard.edu and add the ssh key of your computer to your code.harvard.edu account. (Refer here)
+
+Create a bare clone of the repository. (This is temporary and will be removed so just do it wherever.)
+
+> `git clone --bare git@code.harvard.edu:sap835/cs165-2021-starter-code.git`
+
+Create a new private repository on your Github(code.harvard.edu) and name it say "cs165-project". (Refer here)
+
+Mirror-push your bare clone to your new 'cs165-project' repository.
+Replace <your_username> with your actual code.harvard.edu username in the url below.
+
+>`cd cs165-2021-starter-code.git`
+
+>`git push --mirror git@code.harvard.edu:<your_username>/cs165-project.git`
+
+
+
+Remove the temporary local repository you created in step 1.
+
+>`cd ..`
+
+>`rm -rf cs165-2021-starter-code.git`
+
+
+
+You can now clone your cs165-project repository on your machine (in our case in the 'code' folder).
+
+>`cd ~/code`
+
+>`git clone git@code.harvard.edu:<your_username>/cs165-project.git`
+
+
+Add the original repo as remote to fetch (potential) future changes. Make sure you also disable push on the remote (as you are not allowed to push to it anyway).
+
+>`cd cs165-project`
+
+>`git remote add upstream git@code.harvard.edu:sap835/cs165-2021-starter-code.git`
+
+>`git remote set-url --push upstream DISABLE`
+
+
+You can list all your remotes with git remote -v. 
+
+>`git remote -v`
+
+
+You should see:
+
+
+>`origin    git@code.harvard.edu:<your_username>/cs165-project.git (fetch)`
+
+>`origin    git@code.harvard.edu:<your_username>/cs165-project.git (push)`
+
+>`upstream    git@code.harvard.edu:sap835/cs165-2021-starter-code.git (fetch)`
+
+>`upstream    DISABLE (push)`
+
+
+When you push, do so on origin with git push origin.
+
+>`git push origin`
+
+
+
+When you want to pull changes from upstream you can just fetch the remote and rebase on top of your work.
+
+  >`git fetch upstream`
+  
+  >`git rebase upstream/master`
+
+
+And solve the conflicts if any
 
 We will announce major patches during points in the semester.
 We anticipate that patches would mostly be if any updates, issues or ambiguities arise in test generation, 

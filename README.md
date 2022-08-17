@@ -1,8 +1,8 @@
-# CS165 Fall 2021
+# CS165 Fall 2022
 
 ## Introduction
 
-This repository contains the distribution code for CS165 Fall 2021.
+This repository contains the distribution code for CS165 Fall 2022.
 More details about the project: http://daslab.seas.harvard.edu/classes/cs165/project.html
 
 We suggest you fork this project, and create a git remote so you can pull patches to
@@ -22,14 +22,14 @@ Log in to code.harvard.edu and add the ssh key of your computer to your code.har
 
 Create a bare clone of the repository. (This is temporary and will be removed so just do it wherever.)
 
-> `git clone --bare git@code.harvard.edu:sap835/cs165-2021-starter-code.git`
+> `git clone --bare git@code.harvard.edu:uts797/cs165-2022-starter-code.git`
 
 Create a new private repository on your Github(code.harvard.edu) and name it say "cs165-project". (Refer https://docs.github.com/en/get-started/quickstart/create-a-repo)
 
 Mirror-push your bare clone to your new 'cs165-project' repository.
 Replace <your_username> with your actual code.harvard.edu username in the url below.
 
->`cd cs165-2021-starter-code.git`
+>`cd cs165-2022-starter-code.git`
 
 >`git push --mirror git@code.harvard.edu:<your_username>/cs165-project.git`
 
@@ -39,7 +39,7 @@ Remove the temporary local repository you created in step 1.
 
 >`cd ..`
 
->`rm -rf cs165-2021-starter-code.git`
+>`rm -rf cs165-2022-starter-code.git`
 
 
 
@@ -54,7 +54,7 @@ Add the original repo as remote to fetch (potential) future changes. Make sure y
 
 >`cd cs165-project`
 
->`git remote add upstream git@code.harvard.edu:sap835/cs165-2021-starter-code.git`
+>`git remote add upstream git@code.harvard.edu:uts797/cs165-2022-starter-code.git`
 
 >`git remote set-url --push upstream DISABLE`
 
@@ -71,7 +71,7 @@ You should see:
 
 >`origin    git@code.harvard.edu:<your_username>/cs165-project.git (push)`
 
->`upstream    git@code.harvard.edu:sap835/cs165-2021-starter-code.git (fetch)`
+>`upstream    git@code.harvard.edu:uts797/cs165-2022-starter-code.git (fetch)`
 
 >`upstream    DISABLE (push)`
 

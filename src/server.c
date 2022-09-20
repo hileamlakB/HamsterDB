@@ -33,34 +33,43 @@
 /** execute_DbOperator takes as input the DbOperator and executes the query.
  * This should be replaced in your implementation (and its implementation possibly moved to a different file).
  * It is currently here so that you can verify that your server and client can send messages.
- * 
- * Getting started hints: 
+ *
+ * Getting started hints:
  *      What are the structural attributes of a `query`?
  *      How will you interpret different queries?
  *      How will you ensure different queries invoke different execution paths in your code?
  **/
-char* execute_DbOperator(DbOperator* query) {
+char *execute_DbOperator(DbOperator *query)
+{
     // there is a small memory leak here (when combined with other parts of your database.)
-    // as practice with something like valgrind and to develop intuition on memory leaks, find and fix the memory leak. 
-    if(!query)
+    // as practice with something like valgrind and to develop intuition on memory leaks, find and fix the memory leak.
+    if (!query)
     {
-        return "165";
+        return "1657";
     }
-    if(query && query->type == CREATE){
-        if(query->operator_fields.create_operator.create_type == _DB){
-            if (create_db(query->operator_fields.create_operator.name).code == OK) {
-                return "165";
-            } else {
-                return "Failed";
+    if (query && query->type == CREATE)
+    {
+        if (query->operator_fields.create_operator.create_type == _DB)
+        {
+            struct Status ret_status = create_db(query->operator_fields.create_operator.name);
+            if (ret_status.code == OK)
+            {
+                return "Database Created Succesfully";
+            }
+            else
+            {
+                return ret_status.error_message;
             }
         }
-        else if(query->operator_fields.create_operator.create_type == _TABLE){
+        else if (query->operator_fields.create_operator.create_type == _TABLE)
+        {
             Status create_status;
-            create_table(query->operator_fields.create_operator.db, 
-                query->operator_fields.create_operator.name, 
-                query->operator_fields.create_operator.col_count, 
-                &create_status);
-            if (create_status.code != OK) {
+            create_table(query->operator_fields.create_operator.db,
+                         query->operator_fields.create_operator.name,
+                         query->operator_fields.create_operator.col_count,
+                         &create_status);
+            if (create_status.code != OK)
+            {
                 cs165_log(stdout, "adding a table failed.");
                 return "Failed";
             }
@@ -76,7 +85,10 @@ char* execute_DbOperator(DbOperator* query) {
  * This is the execution routine after a client has connected.
  * It will continually listen for messages from the client and execute queries.
  **/
-void handle_client(int client_socket) {
+// TODO: You want to handle multiple clients at the same time instead of one right here
+
+void handle_client(int client_socket)
+{
     int done = 0;
     int length = 0;
 
@@ -87,50 +99,57 @@ void handle_client(int client_socket) {
     message recv_message;
 
     // create the client context here
-    ClientContext* client_context = NULL;
+    ClientContext *client_context = NULL;
 
     // Continually receive messages from client and execute queries.
     // 1. Parse the command
     // 2. Handle request if appropriate
     // 3. Send status of the received message (OK, UNKNOWN_QUERY, etc)
     // 4. Send response to the request.
-    do {
+    do
+    {
         length = recv(client_socket, &recv_message, sizeof(message), 0);
-        if (length < 0) {
+        if (length < 0)
+        {
             log_err("Client connection closed!\n");
             exit(1);
-        } else if (length == 0) {
+        }
+        else if (length == 0)
+        {
             done = 1;
         }
 
-        if (!done) {
+        if (!done)
+        {
             char recv_buffer[recv_message.length + 1];
-            length = recv(client_socket, recv_buffer, recv_message.length,0);
+            length = recv(client_socket, recv_buffer, recv_message.length, 0);
             recv_message.payload = recv_buffer;
             recv_message.payload[recv_message.length] = '\0';
 
             // 1. Parse command
             //    Query string is converted into a request for an database operator
-            DbOperator* query = parse_command(recv_message.payload, &send_message, client_socket, client_context);
+            DbOperator *query = parse_command(recv_message.payload, &send_message, client_socket, client_context);
 
             // 2. Handle request
             //    Corresponding database operator is executed over the query
-            char* result = execute_DbOperator(query);
+            char *result = execute_DbOperator(query);
 
             send_message.length = strlen(result);
             char send_buffer[send_message.length + 1];
             strcpy(send_buffer, result);
             send_message.payload = send_buffer;
             send_message.status = OK_WAIT_FOR_RESPONSE;
-            
+
             // 3. Send status of the received message (OK, UNKNOWN_QUERY, etc)
-            if (send(client_socket, &(send_message), sizeof(message), 0) == -1) {
+            if (send(client_socket, &(send_message), sizeof(message), 0) == -1)
+            {
                 log_err("Failed to send message.");
                 exit(1);
             }
 
             // 4. Send response to the request
-            if (send(client_socket, result, send_message.length, 0) == -1) {
+            if (send(client_socket, result, send_message.length, 0) == -1)
+            {
                 log_err("Failed to send message.");
                 exit(1);
             }
@@ -147,14 +166,16 @@ void handle_client(int client_socket) {
  * This sets up the connection on the server side using unix sockets.
  * Returns a valid server socket fd on success, else -1 on failure.
  **/
-int setup_server() {
+int setup_server()
+{
     int server_socket;
     size_t len;
     struct sockaddr_un local;
 
     log_info("Attempting to setup server...\n");
 
-    if ((server_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+    if ((server_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
+    {
         log_err("L%d: Failed to create socket.\n", __LINE__);
         return -1;
     }
@@ -173,12 +194,14 @@ int setup_server() {
     */
 
     len = strlen(local.sun_path) + sizeof(local.sun_family) + 1;
-    if (bind(server_socket, (struct sockaddr *)&local, len) == -1) {
+    if (bind(server_socket, (struct sockaddr *)&local, len) == -1)
+    {
         log_err("L%d: Socket failed to bind.\n", __LINE__);
         return -1;
     }
 
-    if (listen(server_socket, 5) == -1) {
+    if (listen(server_socket, 5) == -1)
+    {
         log_err("L%d: Failed to listen on socket.\n", __LINE__);
         return -1;
     }
@@ -190,15 +213,16 @@ int setup_server() {
 // After handling the client, it will exit.
 // You WILL need to extend this to handle MULTIPLE concurrent clients
 // and remain running until it receives a shut-down command.
-// 
+//
 // Getting Started Hints:
-//      How will you extend main to handle multiple concurrent clients? 
+//      How will you extend main to handle multiple concurrent clients?
 //      Is there a maximum number of concurrent client connections you will allow?
 //      What aspects of siloes or isolation are maintained in your design? (Think `what` is shared between `whom`?)
 int main(void)
 {
     int server_socket = setup_server();
-    if (server_socket < 0) {
+    if (server_socket < 0)
+    {
         exit(1);
     }
 
@@ -208,7 +232,8 @@ int main(void)
     socklen_t t = sizeof(remote);
     int client_socket = 0;
 
-    if ((client_socket = accept(server_socket, (struct sockaddr *)&remote, &t)) == -1) {
+    if ((client_socket = accept(server_socket, (struct sockaddr *)&remote, &t)) == -1)
+    {
         log_err("L%d: Failed to accept a new connection.\n", __LINE__);
         exit(1);
     }

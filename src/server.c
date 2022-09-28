@@ -43,10 +43,13 @@ char *execute_DbOperator(DbOperator *query)
 {
     // there is a small memory leak here (when combined with other parts of your database.)
     // as practice with something like valgrind and to develop intuition on memory leaks, find and fix the memory leak.
+
+    // free query before you return here
     if (!query)
     {
-        return "1657";
+        return "Unkown query";
     }
+
     if (query && query->type == CREATE)
     {
         if (query->operator_fields.create_operator.create_type == _DB)
@@ -54,6 +57,7 @@ char *execute_DbOperator(DbOperator *query)
             struct Status ret_status = create_db(query->operator_fields.create_operator.name);
             if (ret_status.code == OK)
             {
+                // return empty if successful
                 return "Database Created Succesfully";
             }
             else
@@ -73,9 +77,37 @@ char *execute_DbOperator(DbOperator *query)
                 cs165_log(stdout, "adding a table failed.");
                 return "Failed";
             }
-            return "165";
+            return "Table created successfully";
         }
-    }
+        else if (query->operator_fields.create_operator.create_type == _TABLE)
+        {
+            Status create_status;
+            create_table(query->operator_fields.create_operator.db,
+                         query->operator_fields.create_operator.name,
+                         query->operator_fields.create_operator.col_count,
+                         &create_status);
+            if (create_status.code != OK)
+            {
+                cs165_log(stdout, "adding a table failed.");
+                return "Failed";
+            }
+            return "Table created successfully";
+        }
+        else if (query->operator_fields.create_operator.create_type == _COLUMN)
+        {
+            Status create_status;
+            create_column(query->operator_fields.create_operator.table,
+                          query->operator_fields.create_operator.name,
+                          false,
+                          &create_status);
+            if (create_status.code != OK)
+            {
+                cs165_log(stdout, "adding a column failed.");
+                return "Failed";
+            }
+            return "Column created successfully";
+        }
+        }
     free(query);
     return "165";
 }

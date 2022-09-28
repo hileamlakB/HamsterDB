@@ -84,6 +84,60 @@ DbOperator *parse_create_tbl(char *create_arguments)
     return dbo;
 }
 
+DbOperator *parse_create_col(char *create_arguments)
+{
+    message_status status = OK_DONE;
+    char **create_arguments_index = &create_arguments;
+    char *col_name = next_token(create_arguments_index, &status);
+    char *db_table_name = next_token(create_arguments_index, &status);
+
+    // not enough arguments
+    if (status == INCORRECT_FORMAT)
+    {
+        return NULL;
+    }
+    // Get the table name free of quotation marks
+    col_name = trim_quotes(col_name);
+    // read and chop off last char, which should be a ')'
+    int last_char = strlen(db_table_name) - 1;
+    if (db_table_name[last_char] != ')')
+    {
+        return NULL;
+    }
+    // replace the ')' with a null terminating character.
+    db_table_name[last_char] = '\0';
+
+    // split the db_name and the table_name
+    char *db_name = strsep(&db_table_name, ".");
+    char *table_name = db_table_name;
+
+    // check that the database argument is the current active database
+    if (!current_db || strcmp(current_db->name, db_name) != 0)
+    {
+        // should this check be done during parsing?
+        // isn't that a bit unclean
+        cs165_log(stdout, "query unsupported. Bad db name");
+        return NULL; // QUERY_UNSUPPORTED
+    }
+
+    // make sure table exists
+    Table *table = lookup_table(current_db, table_name);
+    if (!table)
+    {
+        cs165_log(stdout, "query unsupported. Bad table name");
+        return NULL;
+    }
+
+    // make create dbo for table
+    DbOperator *dbo = malloc(sizeof(DbOperator));
+    dbo->type = CREATE;
+    dbo->operator_fields.create_operator.create_type = _COLUMN;
+    strcpy(dbo->operator_fields.create_operator.name, col_name);
+    dbo->operator_fields.create_operator.db = current_db;
+    dbo->operator_fields.create_operator.table = table;
+    return dbo;
+}
+
 /**
  * This method takes in a string representing the arguments to create a database.
  * It parses those arguments, checks that they are valid, and creates a database.
@@ -159,6 +213,10 @@ DbOperator *parse_create(char *create_arguments)
             {
                 dbo = parse_create_tbl(tokenizer_copy);
             }
+            else if (strcmp(token, "col") == 0)
+            {
+                dbo = parse_create_col(tokenizer_copy);
+            }
             else
             {
                 mes_status = UNKNOWN_COMMAND;
@@ -194,7 +252,7 @@ DbOperator *parse_insert(char *query_command, message *send_message)
             return NULL;
         }
         // lookup the table and make sure it exists.
-        Table *insert_table = lookup_table(table_name);
+        Table *insert_table = lookup_table(current_db, table_name);
         if (insert_table == NULL)
         {
             send_message->status = OBJECT_NOT_FOUND;
@@ -266,8 +324,6 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
         handle = NULL;
     }
 
-    cs165_log(stdout, "QUERY: %s\n", query_command);
-
     // by default, set the status to acknowledge receipt of command,
     //   indication to client to now wait for the response from the server.
     //   Note, some commands might want to relay a different status back to the client.
@@ -292,6 +348,44 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
         query_command += 17;
         dbo = parse_insert(query_command, send_message);
     }
+    else if (strncmp(query_command, "load", 4) == 0)
+    {
+        query_command += 4;
+        dbo = parse_load(query_command, send_message);
+
+        printf("LOADING FILE");
+    }
+    else if (strncmp(query_command, "use", 3) == 0)
+    {
+    }
+    else if (strncmp(query_command, "fetch", 5) == 0)
+    {
+    }
+    else if (strncmp(query_command, "shutdown", 8) == 0)
+    {
+    }
+    else if (strncmp(query_command, "select", 6) == 0)
+    {
+    }
+    else if (strncmp(query_command, "add", 3) == 0)
+    {
+    }
+    else if (strncmp(query_command, "sub", 3) == 0)
+    {
+    }
+    else if (strncmp(query_command, "avg", 3) == 0)
+    {
+    }
+    else if (strncmp(query_command, "sum", 3) == 0)
+    {
+    }
+    else if (strncmp(query_command, "min", 3) == 0)
+    {
+    }
+    else if (strncmp(query_command, "max", 3) == 0)
+    {
+    }
+
     // I suppose this is a place to support more commands.
 
     if (dbo == NULL)

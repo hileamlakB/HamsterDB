@@ -55,7 +55,26 @@ struct Comparator;
 typedef struct Column
 {
     char name[MAX_SIZE_NAME];
-    int *data;
+    Db *db;
+    Table *table;
+
+    // mmaped file
+    int fd;
+    // fd should be initialized to 0 at first
+    // When I am keeping track of the fd, I am taking into account
+    // the number of fd's I could keep as well as the cost of
+    // opening and closing files which is the alternative
+
+    // These values should be initalized during column
+    // creation
+    char *file;
+    size_t location;
+    size_t mape_size;
+    char *pending_i;
+    size_t pending_i_t;
+    char *pending_delete;
+    size_t pending_delete_t;
+
     // You will implement column indexes later.
     // void *index;
     // struct ColumnIndex *index;
@@ -64,10 +83,10 @@ typedef struct Column
     // metadata
     // the first index of these metadetas indicate
     // if the the data has been calculated before
-    int count;
-    int min[2];
-    int max[2];
-    int sum[2];
+    size_t count;
+    size_t min[2];
+    size_t max[2];
+    size_t sum[2];
 
 } Column;
 
@@ -91,6 +110,8 @@ typedef struct Table
     Column *columns;
     size_t col_count;
     size_t table_length;
+    // this is an auto incrementing id
+    size_t last_id;
     // what is table_length, the ai thinks it is, the number of rows in the table
     // for now I will take table_length to be the number of columns in the columns array
 } Table;
@@ -249,7 +270,8 @@ typedef struct InsertOperator
  */
 typedef struct LoadOperator
 {
-    char *file_name;
+    Column *column;
+    char *data;
 } LoadOperator;
 /*
  * union type holding the fields of any operator
@@ -295,6 +317,13 @@ char **execute_db_operator(DbOperator *query);
 void db_operator_free(DbOperator *query);
 
 // serilize.c
+
+typedef struct serialize_data
+{
+    char *data;
+    size_t size;
+
+} serialize_data;
 
 char *generic_serializer(int (*)(char *, size_t, unsigned char[4], void *), void *);
 void generic_deserializer(void (*)(void *, char *, Status *), FILE *, void *, Status *);

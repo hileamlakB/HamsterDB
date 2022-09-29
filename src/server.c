@@ -107,7 +107,12 @@ char *execute_DbOperator(DbOperator *query)
             }
             return "Column created successfully";
         }
-        }
+    }
+
+    else if (query && query->type == LOAD)
+    {
+        batch_write(query->operator_fields.load_operator.column, query->operator_fields.load_operator.data);
+    }
     free(query);
     return "165";
 }

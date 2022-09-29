@@ -290,6 +290,7 @@ void load_file(int client_socket, char *file_name)
 
         flush_load(client_socket, column_names[i], colums[i], column_i[i]);
     }
+    munmap(file, size);
 }
 
 /**

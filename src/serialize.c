@@ -192,13 +192,14 @@ Column deserialize_column(FILE *column_file, Status *status)
 
 // cptable - copies  a table data into a string and returns the number of bytes copied
 // the copy format is
-// meta_data_size.name.number_of_columns.col1_name.col2_name.....
+// meta_data_size.name.id.number_of_columns.col1_name.col2_name.....
 int cptable(char *dst, size_t mx_size, unsigned char npages[4], void *source)
 {
     Table *table = (Table *)source;
 
-    size_t printed = snprintf(dst, mx_size, "%u%u%u%u.%s.%zu.",
+    size_t printed = snprintf(dst, mx_size, "%u%u%u%u.%u.%s.%zu.",
                               npages[0], npages[1], npages[2], npages[3],
+                              table->last_id,
                               table->name,
                               table->col_count);
 

@@ -7,6 +7,7 @@
 #include <string.h>
 #include "utils.h"
 #include "client_context.h"
+#include <assert.h>
 
 // In this class, there will always be only one active database at a time
 Db *current_db;

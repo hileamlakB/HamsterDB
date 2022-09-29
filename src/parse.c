@@ -231,6 +231,37 @@ DbOperator *parse_create(char *create_arguments)
     return dbo;
 }
 
+DbOperator *parse_load(char *query_command, message *send_message)
+{
+    char *token;
+    token = strsep(&query_command, ",");
+    // not enough arguments if token is NULL
+    if (token == NULL)
+    {
+        return NULL;
+    }
+    else
+    {
+        Column *col = parse_column_name(token);
+        if (col == NULL)
+        {
+            return NULL;
+        }
+
+        token = strsep(&query_command, ",");
+        if (token != NULL)
+        {
+            return NULL;
+        }
+
+        DbOperator *dbo = malloc(sizeof(DbOperator));
+        dbo->type = LOAD;
+        dbo->operator_fields.load_operator.column = col;
+        dbo->operator_fields.load_operator.data = query_command;
+
+        return dbo;
+    }
+}
 /**
  * parse_insert reads in the arguments for a create statement and
  * then passes these arguments to a database function to insert a row.
@@ -352,8 +383,6 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
     {
         query_command += 4;
         dbo = parse_load(query_command, send_message);
-
-        printf("LOADING FILE");
     }
     else if (strncmp(query_command, "use", 3) == 0)
     {

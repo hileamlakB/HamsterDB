@@ -59,8 +59,8 @@ $(DEPSDIR)/stamp $(BUILDSTAMP):
 client: client.o utils.o
 	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS) -g
 
-server: server.o parse.o utils.o db_manager.o client_context.o load.o serialize.o
-	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
+server: server.o parse.o utils.o db_manager.o client_context.o load.o serialize.o read_write.o
+	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS) -g
 
 clean:
 	rm -f client server *.o *~ *.bak core *.core $(SOCK_PATH)

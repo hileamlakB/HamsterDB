@@ -10,6 +10,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+// 12 including negative sign
+#define MAX_INT_LENGTH 12
+
 /**
  * Error codes used to indicate the outcome of an API call
  **/
@@ -132,5 +135,10 @@ char *catnstr(int n, ...);
 
 // line_length
 size_t line_length(char *);
+
+// takes an integer of length len and returns a padded string
+// of length MAX_INT_LENGTH, that can easly be converted to integer
+// using atoi
+char *zeropadd(char *, int);
 
 #endif /* __UTILS_H__ */

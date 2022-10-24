@@ -3,22 +3,14 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <assert.h>
+#include <string.h>
 #include <sys/mman.h>
 
 #include "cs165_api.h"
 #include "unistd.h"
 
-size_t write2map(size_t fd, char *file, size_t index, size_t map_size, char *data, size_t size)
-{
-
-    assert(fd != 0);
-    assert(file);
-    assert(index + size <= map_size);
-
-    // write to the mmaped file
-    memcpy(file + index, data, size);
-    return size;
-}
+// creats and opens a file cor a column
 void create_colf(Column *col)
 {
     if (col->fd != 0)
@@ -26,9 +18,10 @@ void create_colf(Column *col)
         return;
     }
 
-    // handle possible failures of catnstr
-    char *file_name = catnstr(4, col->db->name, ".", col->table->name, ".", col->name);
-    size_t fd = open(file_name, O_CREAT | O_RDWR, 0666);
+    // file name should be set for this function to work
+    char *file_name = catnstr(2, "dbdir/", col->file_name);
+
+    int fd = open(file_name, O_CREAT | O_RDWR, 0666);
     if (fd == -1)
     {
         // do something about file fialing to write
@@ -43,9 +36,9 @@ void create_colf(Column *col)
     write(fd, meta_data.data, meta_data.size);
 
     free(meta_data.data);
-    free(file_name);
 }
 
+// creates a map to the equivalent column map
 void map_col(Column *column)
 {
 
@@ -78,7 +71,7 @@ void map_col(Column *column)
     size_t pa_offset = offset & ~(sysconf(_SC_PAGE_SIZE) - 1);
     // Map file into memory using mmap
 
-    char *file = (char *)mmap(NULL, map_size, PROT_READ | PROT_READ, MAP_PRIVATE, column->fd, pa_offset);
+    char *file = (char *)mmap(NULL, map_size, PROT_READ | PROT_WRITE, MAP_SHARED, column->fd, pa_offset);
     if (file == MAP_FAILED)
     {
         // do something about file fialing to write
@@ -88,24 +81,51 @@ void map_col(Column *column)
     column->file = file;
     column->location = offset - pa_offset;
     column->map_size = map_size;
+
+    // expland the file to meet map size
+    lseek(column->fd, offset + map_size, SEEK_SET);
+    write(column->fd, "", map_size);
+    // ftruncate(column->fd, offset + map_size);
 }
+
+// flushes data from column to mapped file
+// using the write2map function
 void flush_col(Column *column)
 {
+    if (column->fd == 0)
+    {
+        // This will automatically write the metadat
+        create_colf(column);
+        return;
+    }
 
-    // check if there is a map
-    // check if the map has enough space for write
-    // remap
-    // write to the map
+    if (column->fd == 0)
+    {
+        // do something about file fialing to write
+        log_err("Error opening file for column write");
+        return;
+    }
+    lseek(column->fd, 0, SEEK_SET);
+
+    serialize_data column_data = serialize_column(column);
+    write(column->fd, column_data.data, column_data.size);
+}
+
+// write size data to column from data
+void write_col(Column *column, char *data, size_t size)
+{
+
+    if (!data || size == 0)
+    {
+        return;
+    }
 
     if (!column->file)
     {
         map_col(column);
     }
 
-    // handle the case there is no map even after mapping
-
-    // check if the map has enough space for write
-    if (column->location + column->pending_i_t > column->map_size)
+    if (column->location >= column->map_size)
     {
         // remap
         munmap(column->file, column->map_size);
@@ -113,54 +133,41 @@ void flush_col(Column *column)
         map_col(column);
     }
 
-    // data might be bigger even after remapping, this isonly possible
-    // if we are writing from a very large file, which could only be done
-    // through the load function, thus the load function should put a limit on this
+    size_t write_size = size < column->map_size - column->location ? size : column->map_size - column->location;
 
-    column->location += write2map(
-        column->fd,
-        column->file,
-        column->location,
-        column->map_size,
-        column->pending_i,
-        column->pending_i_t);
+    // write to the mmaped file
+
+    memcpy(column->file + column->location, data, write_size);
+    column->location += write_size;
+
+    write_col(column, data + write_size, size - write_size);
 }
 
-void write_col(Column *column, char *data, size_t size)
+// creats and opens a file cor a column
+void flush_table(Table *table)
 {
+    int file = open(table->file_name, O_CREAT | O_RDWR, 0666);
+    lseek(file, 0, SEEK_SET);
 
-    int max_size = sysconf(_SC_PAGESIZE);
-
-    // check if a writing could happen to a pending write
-    if (column->pending_i_t + size < max_size)
+    serialize_data table_data = serialize_table(table);
+    write(file, table_data.data, table_data.size);
+    for (size_t i = 0; i < table->col_count; i++)
     {
-        memcpy(column->pending_i + column->pending_i_t, data, size);
-        column->pending_i_t += size;
-        return;
+        flush_col(table->columns + i);
     }
-
-    // caching might not be the best idea in the world in this case
-    flush_col(column);
-
-    // write the data into cache
-    if (column->pending_i_t + size < max_size)
-    {
-        memcpy(column->pending_i + column->pending_i_t, data, size);
-        column->pending_i_t += size;
-        return;
-    }
-
-    // if even after caching the data is too big, write it directly
-    // if data is bigger than map size, the write2map function will graciously fails
-    column->location += write2map(
-        column->fd,
-        column->file,
-        column->location,
-        column->map_size,
-        data,
-        size);
 }
 
-void write_table(Table *table, char *data)
+void flush_db(Db *db)
 {
+    chdir("dbdir");
+    int file = open(db->name, O_CREAT | O_RDWR, 0666);
+    lseek(file, 0, SEEK_SET);
+
+    serialize_data db_data = serialize_db(db);
+    write(file, db_data.data, db_data.size);
+    for (size_t i = 0; i < db->tables_size; i++)
+    {
+        flush_table(db->tables + i);
+    }
+    chdir("..");
 }

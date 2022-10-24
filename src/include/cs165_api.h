@@ -55,8 +55,8 @@ struct Comparator;
 typedef struct Column
 {
     char name[MAX_SIZE_NAME];
-    Db *db;
-    Table *table;
+
+    char *file_name; // file name
 
     // mmaped file
     int fd;
@@ -67,9 +67,12 @@ typedef struct Column
 
     // These values should be initalized during column
     // creation
-    char *file;
-    size_t location;
-    size_t mape_size;
+    char *file;      // mapped file
+    size_t location; // location in the mapped file
+
+    size_t map_size; // size of the mapp
+
+    // possible writing cache ontop of the mapped file for more control
     char *pending_i;
     size_t pending_i_t;
     char *pending_delete;
@@ -90,6 +93,8 @@ typedef struct Column
 
 } Column;
 
+extern Column empty_column;
+
 /**
  * table
  * Defines a table structure, which is composed of multiple columns.
@@ -107,6 +112,7 @@ typedef struct Column
 typedef struct Table
 {
     char name[MAX_SIZE_NAME];
+    char *file_name;
     Column *columns;
     size_t col_count;
     size_t table_length;
@@ -272,7 +278,9 @@ typedef struct LoadOperator
 {
     Column *column;
     char *data;
+    size_t size;
 } LoadOperator;
+
 /*
  * union type holding the fields of any operator
  */
@@ -281,6 +289,7 @@ typedef union OperatorFields
     CreateOperator create_operator;
     InsertOperator insert_operator;
     LoadOperator load_operator;
+    Comparator select_operator;
 } OperatorFields;
 /*
  * DbOperator holds the following fields:
@@ -298,6 +307,8 @@ typedef struct DbOperator
 } DbOperator;
 
 extern Db *current_db;
+extern Column empty_column;
+extern Table empty_table;
 
 /*
  * Use this command to see if databases that were persisted start up properly. If files
@@ -325,20 +336,27 @@ typedef struct serialize_data
 
 } serialize_data;
 
-char *generic_serializer(int (*)(char *, size_t, unsigned char[4], void *), void *);
 void generic_deserializer(void (*)(void *, char *, Status *), FILE *, void *, Status *);
 
-char *serialize_column(Column *);
+serialize_data serialize_column(Column *);
 Column deserialize_column(FILE *, Status *);
 
-char *serialize_table(Table *);
+serialize_data serialize_table(Table *);
 Table deserialize_table(FILE *, Status *);
 
-char *serialize_db(Db *);
+serialize_data serialize_db(Db *);
 Db deserialize_db(FILE *, Status *);
 
 // load.c
 FILE *load_table(Db *, char *);
 FILE *load_column(Db *, Table *, char *);
+
+// read_write.c
+
+void write_col(Column *, char *, size_t);
+void flush_col(Column *);
+
+void flush_table(Table *);
+void flush_db(Db *);
 
 #endif /* CS165_H */

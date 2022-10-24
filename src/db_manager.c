@@ -11,6 +11,8 @@
 
 // In this class, there will always be only one active database at a time
 Db *current_db;
+Column empty_column;
+Table empty_table;
 
 Column *create_column(Table *table, char *name, bool sorted, Status *ret_status)
 {
@@ -27,8 +29,10 @@ Column *create_column(Table *table, char *name, bool sorted, Status *ret_status)
 		return NULL;
 	}
 
-	Column column;
+	Column column = empty_column;
+
 	strcpy(column.name, name);
+	column.file_name = catnstr(5, current_db->name, ".", table->name, ".", name);
 
 	if (table->col_count <= table->table_length)
 	{
@@ -71,9 +75,10 @@ Table *create_table(Db *db, const char *name, size_t num_columns, Status *ret_st
 		return NULL;
 	}
 
-	Table table;
+	Table table = empty_table;
 
 	strcpy(table.name, name);
+	table.file_name = catnstr(3, db->name, ".", name);
 	table.col_count = num_columns;
 	table.table_length = 0;
 	// you can support flexible number of columns later
@@ -125,6 +130,9 @@ Status create_db(const char *db_name)
 		.to_remove = NULL,
 		.to_close = NULL,
 	};
+
+	// create a dir for the db
+	mkdir("dbdir", 0777);
 
 	// makesure name of db isn't too long and doesn't already exist
 	if (strlen(db_name) > MAX_SIZE_NAME)

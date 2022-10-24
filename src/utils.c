@@ -226,6 +226,39 @@ size_t line_length(char *file)
     return i;
 }
 
+char *zeropadd(char *str, int length)
+{
+
+    char *padd_str = malloc(MAX_INT_LENGTH + 1);
+    if (!padd_str)
+    {
+        return NULL;
+    }
+
+    int zeros = MAX_INT_LENGTH - length;
+    int num = atoi(str);
+
+    int i;
+    if (num < 0)
+    {
+        i = 1;
+        padd_str[0] = '-';
+        num = -num;
+    }
+    else
+    {
+        i = 0;
+    }
+
+    for (; i < zeros; i++)
+    {
+        padd_str[i] = '0';
+    }
+
+    sprintf(padd_str + i, "%d", num);
+    return padd_str;
+}
+
 /* The following three functions will show output on the terminal
  * based off whether the corresponding level is defined.
  * To see log output, define LOG.

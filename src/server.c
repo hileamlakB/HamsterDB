@@ -47,7 +47,8 @@ char *execute_DbOperator(DbOperator *query)
     // free query before you return here
     if (!query)
     {
-        return "Unkown query";
+        return "";
+        // return "Unkown query";
     }
 
     if (query && query->type == CREATE)
@@ -57,8 +58,9 @@ char *execute_DbOperator(DbOperator *query)
             struct Status ret_status = create_db(query->operator_fields.create_operator.name);
             if (ret_status.code == OK)
             {
+                return "";
                 // return empty if successful
-                return "Database Created Succesfully";
+                // return "Database Created Succesfully";
             }
             else
             {
@@ -77,7 +79,8 @@ char *execute_DbOperator(DbOperator *query)
                 cs165_log(stdout, "adding a table failed.");
                 return "Failed";
             }
-            return "Table created successfully";
+            return "";
+            // return "Table created successfully";
         }
         else if (query->operator_fields.create_operator.create_type == _TABLE)
         {
@@ -91,7 +94,8 @@ char *execute_DbOperator(DbOperator *query)
                 cs165_log(stdout, "adding a table failed.");
                 return "Failed";
             }
-            return "Table created successfully";
+            return "";
+            // return "Table created successfully";
         }
         else if (query->operator_fields.create_operator.create_type == _COLUMN)
         {
@@ -105,16 +109,27 @@ char *execute_DbOperator(DbOperator *query)
                 cs165_log(stdout, "adding a column failed.");
                 return "Failed";
             }
-            return "Column created successfully";
+            return "";
+            // return "Column created successfully";
         }
     }
 
     else if (query && query->type == LOAD)
     {
-        batch_write(query->operator_fields.load_operator.column, query->operator_fields.load_operator.data);
+        write_col(query->operator_fields.load_operator.column,
+                  query->operator_fields.load_operator.data,
+                  query->operator_fields.load_operator.size);
+        return "";
+        // return "File Loaded";
     }
-    free(query);
-    return "165";
+    else if (query && query->type == SHUTDOWN)
+    {
+        shutdown_server();
+        return "";
+        // return "Shutting down";
+    }
+
+    return "";
 }
 
 /**
@@ -146,6 +161,7 @@ void handle_client(int client_socket)
     do
     {
         length = recv(client_socket, &recv_message, sizeof(message), 0);
+
         if (length < 0)
         {
             log_err("Client connection closed!\n");
@@ -158,8 +174,10 @@ void handle_client(int client_socket)
 
         if (!done)
         {
+
             char recv_buffer[recv_message.length + 1];
             length = recv(client_socket, recv_buffer, recv_message.length, 0);
+            log_info("Received message of length: %d %s\n", length, recv_buffer);
             recv_message.payload = recv_buffer;
             recv_message.payload[recv_message.length] = '\0';
 
@@ -278,4 +296,18 @@ int main(void)
     handle_client(client_socket);
 
     return 0;
+}
+
+Status shutdown_server()
+{
+
+    // cache everything to file
+    flush_db(current_db);
+    exit(0);
+    // Think about delaying the exit after sending the ack message
+
+    // close all open files
+    // for good practice
+
+    // make sure to only close one socket at a time one you implement multiple clients
 }

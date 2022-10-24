@@ -12,64 +12,6 @@
 
 // common serilizers
 
-// generic_serializer, takes in a copy function and a source,
-// and returns a serialized version of the source using the copy function
-char *generic_serializer(int (*cpfunc)(char *, size_t, unsigned char[4], void *), void *source)
-{
-
-    // size of metadata
-    union
-    {
-        unsigned int integer;
-        unsigned char byte[4]; // string representtion of metadata size
-    } intbyte;
-
-    int max_size = sysconf(_SC_PAGESIZE);
-
-    // change metadata to string
-    char *metadata = (char *)calloc(sizeof(char), max_size);
-    if (!metadata)
-    {
-        // consider having state variable here to indicate error
-        return NULL;
-    }
-
-    // The format of the meta data is stirng is as follows:
-    // "number_metada_pages.name.count.min_set.min.max_set.max.sum_set.sum"
-    intbyte.integer = 1;
-    int printed = (*cpfunc)(metadata, max_size, intbyte.byte, source);
-
-    if (printed > max_size)
-    {
-
-        int npages = (printed / max_size) + 1;
-        intbyte.integer = npages;
-
-        max_size = npages * sysconf(_SC_PAGESIZE);
-        char *new_meta_data = (char *)realloc(metadata, sizeof(char) * max_size);
-        if (!new_meta_data)
-        {
-            free(metadata);
-            // consider having state variable here to indicate error
-            return NULL;
-        }
-        metadata = new_meta_data;
-        printed = cpfunc(metadata, max_size, intbyte.byte, source);
-    }
-
-    // pad the remaining space with spaces
-    if (printed < max_size)
-    {
-        for (int i = printed - 1; i < max_size - 1; i++)
-        {
-            metadata[i] = ' ';
-        }
-        metadata[max_size - 1] = '\0';
-        // consider having state variable here to indicate error
-    }
-    return metadata;
-}
-
 // generic_deserializer, takes in a File pointer and destination and the copy the file into
 // the appropriate data time through the copy function
 void generic_deserializer(void (*cpfunc)(void *, char *, Status *), FILE *file, void *dest, Status *status)
@@ -83,25 +25,23 @@ void generic_deserializer(void (*cpfunc)(void *, char *, Status *), FILE *file, 
     };
 
     int initial_offset = ftell(file);
+
     fseek(file, 0, SEEK_SET);
 
     // get the number of pages in the metadata
-    union
-    {
-        unsigned int integer;
-        unsigned char byte[4];
-    } intbyte;
+    char num_pages[MAX_INT_LENGTH];
 
     // handle every possible failure of fread
-    size_t read = fread(intbyte.byte, sizeof(unsigned char), 4, file);
-    if (read != 4)
+    size_t read = fread(num_pages, sizeof(unsigned char), MAX_INT_LENGTH, file);
+    if (read == 4)
     {
         fseek(file, initial_offset, SEEK_SET);
         status->code = ERROR;
         return;
     }
+    size_t npages = atoi(strsep((char **)&num_pages, "."));
 
-    int meta_size = intbyte.integer * sysconf(_SC_PAGESIZE);
+    int meta_size = npages * sysconf(_SC_PAGESIZE);
 
     // get the metadata
     char *metadata = (char *)calloc(sizeof(char), meta_size);
@@ -126,23 +66,36 @@ void generic_deserializer(void (*cpfunc)(void *, char *, Status *), FILE *file, 
 
 // cpcol - copies  a column data into a string and returns the number of bytes copied
 // the copy format is
-// "pages_used.name.count.min_set.min.max_set.max.sum_set.sum"
+// "pages_used.name.count.min_set.min.max_set.max.sum_set.sum."
 // this function is a helper function fo the serialize column function
-int cpcol(char *dst, size_t mx_size, unsigned char npages[4], void *source)
+serialize_data serialize_column(Column *column)
 {
 
-    Column *column = (Column *)source;
+    // 8 is the number ints that are being stored as a string
+    size_t page_size = MAX_INT_LENGTH * 8 + strlen(column->name);
+    size_t n_pages = (page_size / sysconf(_SC_PAGESIZE)) + 1;
 
-    return snprintf(dst, mx_size, "%u%u%u%u.%s.%d.%d.%d.%d.%d.%d.%d",
-                    npages[0], npages[1], npages[2], npages[3],
-                    column->name,
-                    column->count,
-                    column->min[0],
-                    column->min[1],
-                    column->max[0],
-                    column->max[1],
-                    column->sum[0],
-                    column->sum[1]);
+    page_size = n_pages * sysconf(_SC_PAGESIZE);
+
+    char *meta_data = malloc(page_size);
+
+    size_t printed = snprintf(meta_data, page_size, "%zu.%s.%zu.%zu.%zu.%zu.%zu.%zu.%zu.",
+                              n_pages,
+                              column->name,
+                              column->count,
+                              column->min[0],
+                              column->min[1],
+                              column->max[0],
+                              column->max[1],
+                              column->sum[0],
+                              column->sum[1]);
+
+    // check the size of printed
+
+    return (serialize_data){
+        .data = meta_data,
+        .size = printed,
+    };
 }
 
 // cp2col - does the opposit of cpcol
@@ -168,15 +121,6 @@ void cp2col(void *dest, char *metadata, Status *status)
     column->sum[1] = atoi(strsep(&metadata, "."));
 }
 
-// serialize_column - uses the format
-// <npages>.<column_name>.<count>.<min>.<max>.<sum>
-// to serialize a column data into a string
-// returns null if there is an error
-char *serialize_column(Column *column)
-{
-    return generic_serializer(&cpcol, (void *)column);
-}
-
 // deserialize_column - reverse of serialize_column,
 // takes in a file pointer and deserialize the string into
 // a column data
@@ -192,40 +136,50 @@ Column deserialize_column(FILE *column_file, Status *status)
 
 // cptable - copies  a table data into a string and returns the number of bytes copied
 // the copy format is
-// meta_data_size.name.id.number_of_columns.col1_name.col2_name.....
-int cptable(char *dst, size_t mx_size, unsigned char npages[4], void *source)
+// last_id.name.number_of_columns.col1_name.col2_name.....
+serialize_data serialize_table(Table *table)
 {
-    Table *table = (Table *)source;
 
-    size_t printed = snprintf(dst, mx_size, "%u%u%u%u.%u.%s.%zu.",
-                              npages[0], npages[1], npages[2], npages[3],
+    // 8 is the number ints that are being stored as a string
+    size_t page_size = MAX_INT_LENGTH * 2 + strlen(table->name);
+
+    char *meta_data = malloc(page_size);
+    size_t printed = snprintf(meta_data, page_size, "%zu.%s.%zu.",
                               table->last_id,
                               table->name,
                               table->col_count);
 
-    dst += printed;
     for (size_t i = 0; i < table->col_count; i++)
     {
 
         for (int k = 0; table->columns[i].name[k] != '\0'; k++)
         {
-            if (printed + 1 >= mx_size)
+            if (printed + MAX_SIZE_NAME >= page_size)
             {
-                return printed + 1;
+                page_size += sysconf(_SC_PAGESIZE);
+                char *new_meta_data = realloc(meta_data, page_size);
+                if (!new_meta_data)
+                {
+                    free(meta_data);
+                    return (serialize_data){
+                        .data = NULL,
+                        .size = 0,
+                    };
+                }
+                meta_data = new_meta_data;
             }
-            *dst = table->columns[i].name[k];
-            dst++;
+            meta_data[printed] = table->columns[i].name[k];
             printed++;
         }
-        if (printed + 1 >= mx_size)
-        {
-            return printed + 1;
-        }
-        *dst = '.';
-        dst++;
+
+        meta_data[printed] = '.';
         printed++;
     }
-    return printed;
+
+    return (serialize_data){
+        .data = meta_data,
+        .size = printed,
+    };
 }
 
 // cp2table - does the opposit of cptable
@@ -246,6 +200,8 @@ void cp2table(void *dest, char *metadata, Status *status)
     // it is a result of an outisde editing of the db file
     // this isn't handled here
     // get the name
+    size_t id = atoi(strsep(&metadata, "."));
+    table->last_id = id;
     strcpy(table->name, strsep(&metadata, "."));
     table->col_count = atoi(strsep(&metadata, "."));
 
@@ -275,14 +231,6 @@ void cp2table(void *dest, char *metadata, Status *status)
     }
 }
 
-// serialize_table - uses the format
-// <npages>.<table_name>.<col_count>.<col1>.<col2>...<coln>
-// to serialize a table data into a string
-char *serialize_table(Table *table)
-{
-    return generic_serializer(&cptable, (void *)table);
-}
-
 Table deserialize_table(FILE *table_file, Status *status)
 {
     Table table;
@@ -294,40 +242,48 @@ Table deserialize_table(FILE *table_file, Status *status)
 
 // cpdb - copies  a db data into a string and returns the number of bytes copied
 // the copy format is
-// meta_data_size.name.number_of_tables.table1_name.table2_name.....
-int cpdb(char *dst, size_t mx_size, unsigned char npages[4], void *source)
+// name.number_of_tables.table1_name.table2_name.....
+serialize_data serialize_db(Db *db)
 {
-    Db *db = (Db *)source;
 
-    size_t printed = snprintf(dst, mx_size, "%u%u%u%u.%s.%ld.",
-                              npages[0], npages[1], npages[2], npages[3],
+    size_t page_size = MAX_INT_LENGTH * 1 + strlen(db->name);
+    char *meta_data = malloc(page_size + strlen(db->name));
+
+    size_t printed = snprintf(meta_data, page_size, "%s.%zu.",
                               db->name,
                               db->tables_size);
 
-    dst += printed;
     for (size_t i = 0; i < db->tables_size; i++)
     {
 
-        // cpy table name, while making sure that writing string is under dst
+        // cpy table name, while making sure that writing string is under meta_data
         for (int k = 0; db->tables[i].name[k] != '\0'; k++)
         {
-            if (printed + 1 >= mx_size)
+            if (printed + MAX_SIZE_NAME >= page_size)
             {
-                return printed + 1;
+                page_size += sysconf(_SC_PAGESIZE);
+                char *new_meta_data = realloc(meta_data, page_size);
+                if (!new_meta_data)
+                {
+                    free(meta_data);
+                    return (serialize_data){
+                        .data = NULL,
+                        .size = 0,
+                    };
+                }
+                meta_data = new_meta_data;
             }
-            *dst = db->tables[i].name[k];
-            dst++;
+            meta_data[printed] = db->tables[i].name[k];
+
             printed++;
         }
-        if (printed + 1 >= mx_size)
-        {
-            return printed + 1;
-        }
-        *dst = '.';
-        dst++;
+        meta_data[printed] = '.';
         printed++;
     }
-    return printed;
+    return (serialize_data){
+        .data = meta_data,
+        .size = printed,
+    };
 }
 
 // cp2db - does the opposit of cpdb
@@ -372,13 +328,6 @@ void cp2db(void *dest, char *metadata, Status *status)
 
         db->tables[i] = deserialize_table(table_file, status);
     };
-}
-
-// serialize_db - uses the format
-// <npages>.<db_name>.<table_count>.<table1>.<table2>...<tablen>
-char *serialize_db(Db *db)
-{
-    return generic_serializer(&cpdb, (void *)db);
 }
 
 // deserialize_db - reverse of serialize_db, copies string from

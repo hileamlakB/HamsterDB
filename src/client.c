@@ -87,10 +87,10 @@ void communicate_server(int client_socket, message send_message)
         log_err("Failed to send query payload.");
         exit(1);
     }
-
     // Always wait for server response (even if it is just an OK message)
     if ((len = recv(client_socket, &recv_message, sizeof(message), 0)) > 0)
     {
+        printf("recieved shit");
         if ((recv_message.status == OK_WAIT_FOR_RESPONSE || recv_message.status == OK_DONE) &&
             (int)recv_message.length > 0)
         {
@@ -120,6 +120,8 @@ void communicate_server(int client_socket, message send_message)
     }
 }
 
+// flush_load - flushes at most one page size of column data from the load buffer
+// to backend
 void flush_load(int client_socet, char *col_name, char *col_data, size_t data_size)
 {
 
@@ -135,12 +137,21 @@ void flush_load(int client_socet, char *col_name, char *col_data, size_t data_si
         exit(1);
     }
 
-    sprintf(load_query, "load(%s,", col_name);
-    memcpy(load_query + name_len + 6, col_data, data_size);
-    load_query[name_len + 6 + data_size] = ')';
-    load_query[name_len + 7 + data_size] = '\0';
+    size_t total_len = sprintf(load_query, "load(%s,%zu,", col_name,
+                               data_size);
 
-    send_message.length = name_len + 7 + data_size;
+    // +6 comes from load()
+    memcpy(load_query + total_len, col_data, data_size);
+    total_len += data_size;
+
+    load_query[total_len] = ')';
+    load_query[total_len + 1] = '\0';
+    total_len += 1;
+
+    load_query = realloc(load_query, sizeof(char) * (total_len));
+
+    send_message.length = total_len;
+
     send_message.payload = load_query;
 
     // passing the send message like this might not be a good idea
@@ -206,6 +217,7 @@ void load_file(int client_socket, char *file_name)
 
     size_t cycle_reads = line_len + 1;
     size_t loaded = 0;
+
     // read the whole file
     while (loaded < size)
     {
@@ -254,8 +266,12 @@ void load_file(int client_socket, char *file_name)
                         column_i[last] = 0;
                     }
 
-                    strcpy(colums[last] + column_i[last], line_buffer + str_i);
-                    column_i[last] += col_len;
+                    char *zero_padded = zeropadd(line_buffer + str_i, col_len);
+                    strcpy(colums[last] + column_i[last], zero_padded);
+                    free(zero_padded);
+
+                    // since each entry is padded with fixed number of zeros
+                    column_i[last] += MAX_INT_LENGTH;
                     colums[last][column_i[last]] = ',';
                     column_i[last] += 1;
                     last += 1;
@@ -272,8 +288,18 @@ void load_file(int client_socket, char *file_name)
                 exit(1);
             }
 
-            strcpy(colums[last] + column_i[last], line_buffer + str_i);
-            column_i[last] += (j - str_i);
+            if (column_i[last] + (j - str_i) > PAGE_SIZE)
+            {
+                // flush the column to database if it is full
+                flush_load(client_socket, column_names[last], colums[last], column_i[last]);
+                column_i[last] = 0;
+            }
+
+            char *zero_padded = zeropadd(line_buffer + str_i, j - str_i);
+            strcpy(colums[last] + column_i[last], zero_padded);
+            free(zero_padded);
+
+            column_i[last] += MAX_INT_LENGTH;
             colums[last][column_i[last]] = ',';
             column_i[last] += 1;
 

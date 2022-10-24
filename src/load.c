@@ -15,7 +15,3 @@ FILE *load_column(Db *db, Table *table, char *column_name)
     char *file_name = catnstr(4, db->name, ".", table->name, ".", column_name);
     return fopen(file_name, "r");
 }
-
-int write_db();
-int write_table();
-int write_column();

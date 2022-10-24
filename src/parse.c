@@ -35,6 +35,81 @@ char *next_token(char **tokenizer, message_status *status)
 }
 
 /**
+ * Takes a pointer to a string.
+ * returns the equivalent select opertor
+ * takes an input of the format
+ * select(db1.tbl1.col1,null,20)
+ **/
+DbOperator *parse_select(char *create_arguments)
+{
+    message_status status = OK_DONE;
+    char *tokenizer = create_arguments;
+    char *db_name = next_token(&tokenizer, &status);
+    char *tbl_name = next_token(&tokenizer, &status);
+    char *col_name = next_token(&tokenizer, &status);
+    char *low = next_token(&tokenizer, &status);
+    char *high = next_token(&tokenizer, &status);
+    if (status != OK_DONE)
+    {
+        return NULL;
+    }
+
+    // check that the database argument is the current active database
+    if (!current_db || strcmp(current_db->name, db_name) != 0)
+    {
+        // should this check be done during parsing?
+        // isn't that a bit unclean
+        cs165_log(stdout, "query unsupported. Bad db name");
+        return NULL; // QUERY_UNSUPPORTED
+    }
+
+    // make sure table exists
+    Table *table = lookup_table(current_db, tbl_name);
+    if (!table)
+    {
+        cs165_log(stdout, "query unsupported. Bad table name");
+        return NULL;
+    }
+
+    // make sure column exists
+    Column *column = lookup_column(table, col_name);
+    if (!column)
+    {
+        cs165_log(stdout, "query unsupported. Bad column name");
+        return NULL;
+    }
+
+    // create the operator
+    DbOperator *select_op = malloc(sizeof(DbOperator));
+    select_op->type = SELECT;
+    select_op->operator_fields.select_operator.p_low = atol(low);
+    select_op->operator_fields.select_operator.p_high = atol(high);
+    select_op->operator_fields.select_operator.gen_col->column_pointer.column = column;
+
+    return select_op;
+}
+
+// /**
+//  * Takes a pointer to a string.
+//  * returns the equivalent insert opertor
+//  * takes an input of the format
+//  * insert(db1.tbl1.col1,10)
+//  **/
+// DbOperator *parse_insert(char *create_arguments)
+// {
+//     message_status status = OK_DONE;
+//     char *tokenizer = create_arguments;
+//     char *db_name = next_token(&tokenizer, &status);
+//     char *tbl_name = next_token(&tokenizer, &status);
+//     char *col_name = next_token(&tokenizer, &status);
+//     char *value = next_token(&tokenizer, &status);
+//     if (status != OK_DONE)
+//     {
+//         return NULL;
+//     }
+// }
+
+/**
  * This method takes in a string representing the arguments to create a table.
  * It parses those arguments, checks that they are valid, and creates a table.
  **/
@@ -231,10 +306,54 @@ DbOperator *parse_create(char *create_arguments)
     return dbo;
 }
 
+Column *parse_column_name(char *token)
+{
+
+    char *db_name = strsep(&token, ".");
+    char *table_name = strsep(&token, ".");
+    char *column_name = strsep(&token, ".");
+
+    // Get the table name free of quotation marks
+    db_name = trim_quotes(db_name);
+    table_name = trim_quotes(table_name);
+    column_name = trim_quotes(column_name);
+
+    // check what the end value of a column_name is
+
+    // check that the database argument is the current active database
+    if (!current_db || strcmp(current_db->name, db_name) != 0)
+    {
+        // should this check be done during parsing?
+        // isn't that a bit unclean
+        cs165_log(stdout, "query unsupported. Bad db name");
+        return NULL; // QUERY_UNSUPPORTED
+    }
+
+    // make sure table exists
+    Table *table = lookup_table(current_db, table_name);
+    if (!table)
+    {
+        cs165_log(stdout, "query unsupported. Bad table name");
+        return NULL;
+    }
+
+    // make sure column exists
+    Column *column = lookup_column(table, column_name);
+    if (!column)
+    {
+        cs165_log(stdout, "query unsupported. Bad column name");
+        return NULL;
+    }
+
+    return column;
+}
+
 DbOperator *parse_load(char *query_command, message *send_message)
 {
-    char *token;
-    token = strsep(&query_command, ",");
+    char *token = strsep(&query_command, ",");
+    // remove the first bracket
+    token += 1;
+
     // not enough arguments if token is NULL
     if (token == NULL)
     {
@@ -245,18 +364,14 @@ DbOperator *parse_load(char *query_command, message *send_message)
         Column *col = parse_column_name(token);
         if (col == NULL)
         {
-            return NULL;
-        }
-
-        token = strsep(&query_command, ",");
-        if (token != NULL)
-        {
+            send_message->status = INCORRECT_FORMAT;
             return NULL;
         }
 
         DbOperator *dbo = malloc(sizeof(DbOperator));
         dbo->type = LOAD;
         dbo->operator_fields.load_operator.column = col;
+        dbo->operator_fields.load_operator.size = atoi(strsep(&query_command, ","));
         dbo->operator_fields.load_operator.data = query_command;
 
         return dbo;
@@ -266,7 +381,6 @@ DbOperator *parse_load(char *query_command, message *send_message)
  * parse_insert reads in the arguments for a create statement and
  * then passes these arguments to a database function to insert a row.
  **/
-
 DbOperator *parse_insert(char *query_command, message *send_message)
 {
     unsigned int columns_inserted = 0;
@@ -392,9 +506,13 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
     }
     else if (strncmp(query_command, "shutdown", 8) == 0)
     {
+        dbo = malloc(sizeof(DbOperator));
+        dbo->type = SHUTDOWN;
     }
     else if (strncmp(query_command, "select", 6) == 0)
     {
+        dbo = parse_select(query_command);
+        dbo->type = SELECT;
     }
     else if (strncmp(query_command, "add", 3) == 0)
     {

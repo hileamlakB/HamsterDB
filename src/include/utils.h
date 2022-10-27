@@ -141,4 +141,8 @@ size_t line_length(char *);
 // using atoi
 char *zeropadd(char *, int);
 
+// does the opposit of zeropadd by extracting a number from a string
+// until reaching a separator character
+int zerounpadd(char *, char);
+
 #endif /* __UTILS_H__ */

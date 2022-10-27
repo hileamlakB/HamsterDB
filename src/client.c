@@ -90,7 +90,7 @@ void communicate_server(int client_socket, message send_message)
     // Always wait for server response (even if it is just an OK message)
     if ((len = recv(client_socket, &recv_message, sizeof(message), 0)) > 0)
     {
-        printf("recieved shit");
+
         if ((recv_message.status == OK_WAIT_FOR_RESPONSE || recv_message.status == OK_DONE) &&
             (int)recv_message.length > 0)
         {

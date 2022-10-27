@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <unistd.h>
 #include "utils.h"
 
 #define ANSI_COLOR_RED "\x1b[31m"
@@ -111,7 +112,7 @@ void close_files(files *head)
     while (head != NULL)
     {
         files *next = head->next;
-        fclose(head->data);
+        close(*(int *)head->data);
         free(head);
         head = next;
     }
@@ -257,6 +258,34 @@ char *zeropadd(char *str, int length)
 
     sprintf(padd_str + i, "%d", num);
     return padd_str;
+}
+
+// extracts a number from a string until reaching a separator
+// and returns the unpadded number
+// opposeit of zeropadd
+int zerounpadd(char *data, char sep)
+{
+    int i = 0;
+    int num = 0;
+    int sign = 1;
+    while (data[i] != sep)
+    {
+        if (data[i] == '-')
+        {
+            sign = -1;
+            continue;
+        }
+
+        // assums the characters are numeric if not
+        // it will fail
+        if (data[i] < '0' || data[i] > '9')
+        {
+            break;
+        }
+        num = num * 10 + (data[i] - '0');
+        i++;
+    }
+    return num * sign;
 }
 
 /* The following three functions will show output on the terminal

@@ -1,6 +1,10 @@
 #include "cs165_api.h"
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include <unistd.h>
 #include <dirent.h>
 #include <errno.h>
@@ -11,6 +15,7 @@
 
 // In this class, there will always be only one active database at a time
 Db *current_db;
+linkedList *var_pool;
 Column empty_column;
 Table empty_table;
 
@@ -32,7 +37,9 @@ Column *create_column(Table *table, char *name, bool sorted, Status *ret_status)
 	Column column = empty_column;
 
 	strcpy(column.name, name);
-	column.file_name = catnstr(5, current_db->name, ".", table->name, ".", name);
+	char *file_path = catnstr(6, "dbdir/", current_db->name, ".", table->name, ".", name); // hanle possible failure
+
+	strcpy(column.file_path, file_path);
 
 	if (table->col_count <= table->table_length)
 	{
@@ -160,4 +167,31 @@ Status create_db(const char *db_name)
 	close_files(props.to_close);
 
 	return (Status){.code = OK};
+}
+
+Status load_db(const char *db_name)
+{
+	assert(current_db == NULL);
+
+	// make sure the db folder exists
+	// if does load db, table, and column
+
+	char *file_name = catnstr(2, "dbdir/", db_name);
+
+	if (access(file_name, F_OK) == -1)
+	{
+		return (Status){.code = ERROR, .error_message = "Database doesn't exist"};
+	}
+
+	int fd = open(file_name, O_RDWR);
+
+	if (fd < 0)
+	{
+		return (Status){.code = ERROR, .error_message = "System Failure: error opening file"};
+	}
+
+	Status status;
+	current_db = malloc(sizeof(Db));
+	*current_db = deserialize_db(fd, &status);
+	return status;
 }

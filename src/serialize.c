@@ -5,62 +5,22 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+#include <errno.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/un.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/stat.h>
+
 #include <unistd.h>
 #include <assert.h>
 #include "utils.h"
 #include "cs165_api.h"
 
 // common serilizers
-
-// generic_deserializer, takes in a File pointer and destination and the copy the file into
-// the appropriate data time through the copy function
-void generic_deserializer(void (*cpfunc)(void *, char *, Status *), FILE *file, void *dest, Status *status)
-{
-    // keep track of important activies incase of failure
-    retrack_props props = {
-        .to_free = NULL,
-        .outside = NULL,
-        .to_remove = NULL,
-        .to_close = NULL,
-    };
-
-    int initial_offset = ftell(file);
-
-    fseek(file, 0, SEEK_SET);
-
-    // get the number of pages in the metadata
-    char num_pages[MAX_INT_LENGTH];
-
-    // handle every possible failure of fread
-    size_t read = fread(num_pages, sizeof(unsigned char), MAX_INT_LENGTH, file);
-    if (read == 4)
-    {
-        fseek(file, initial_offset, SEEK_SET);
-        status->code = ERROR;
-        return;
-    }
-    size_t npages = atoi(strsep((char **)&num_pages, "."));
-
-    int meta_size = npages * sysconf(_SC_PAGESIZE);
-
-    // get the metadata
-    char *metadata = (char *)calloc(sizeof(char), meta_size);
-    if (!metadata || prepend(&props.to_free, metadata) != 0)
-    {
-        status->code = ERROR;
-        retrack(props, "Deserialization failed");
-        fseek(file, initial_offset, SEEK_SET);
-        // consider having state variable here to indicate error
-        return;
-    }
-
-    fread(metadata, sizeof(char), meta_size, file);
-
-    (*cpfunc)(dest, metadata, status);
-
-    fseek(file, initial_offset, SEEK_SET);
-    clean_up(props.to_free);
-}
 
 // column serializer
 
@@ -78,7 +38,7 @@ serialize_data serialize_column(Column *column)
     page_size = n_pages * sysconf(_SC_PAGESIZE);
 
     char *meta_data = malloc(page_size);
-
+    column->meta_data_size = n_pages;
     size_t printed = snprintf(meta_data, page_size, "%zu.%s.%zu.%zu.%zu.%zu.%zu.%zu.%zu.",
                               n_pages,
                               column->name,
@@ -106,6 +66,7 @@ void cp2col(void *dest, char *metadata, Status *status)
     Column *column = (Column *)dest;
     assert(column != NULL);
 
+    column->meta_data_size = atoi(strsep(&metadata, "."));
     // if there is any error in any of these files
     // it is a result of an outisde editing of the db file
     // this isn't handled here
@@ -119,16 +80,49 @@ void cp2col(void *dest, char *metadata, Status *status)
     column->max[1] = atoi(strsep(&metadata, "."));
     column->sum[0] = atoi(strsep(&metadata, "."));
     column->sum[1] = atoi(strsep(&metadata, "."));
+    status->code = OK;
 }
 
 // deserialize_column - reverse of serialize_column,
 // takes in a file pointer and deserialize the string into
 // a column data
-Column deserialize_column(FILE *column_file, Status *status)
+Column deserialize_column(char *file_path, Status *status)
 {
+
+    // open the file
+    int fd = open(file_path, O_RDWR, 0666);
+    if (fd == -1)
+    {
+        status->code = ERROR;
+        status->error_message = "Error opening file";
+        return (Column){.count = 0};
+    }
+
     // column to be returned
     Column column;
-    generic_deserializer(&cp2col, (void *)&column, column_file, status);
+    strcpy(column.file_path, file_path);
+    column.fd = fd;
+    // get the number of pages in the metadata
+    char num_pages[MAX_INT_LENGTH + 1];
+
+    read(fd, num_pages, MAX_INT_LENGTH);
+
+    int i = 0;
+    while (i < MAX_INT_LENGTH && num_pages[i] != '.')
+    {
+        i++;
+    }
+    num_pages[i] = '\0';
+
+    size_t npages = atoi(num_pages);
+
+    int meta_size = npages * sysconf(_SC_PAGESIZE);
+    char meta_data[meta_size];
+
+    lseek(fd, 0, SEEK_SET);
+    read(fd, meta_data, meta_size);
+    cp2col(&column, meta_data, status);
+
     return column;
 }
 
@@ -183,10 +177,11 @@ serialize_data serialize_table(Table *table)
 }
 
 // cp2table - does the opposit of cptable
-void cp2table(void *dest, char *metadata, Status *status)
+void cp2table(char *db_name, void *dest, char *metadata, Status *status)
 {
 
     Table *table = (Table *)dest;
+    // struct stat sb;
     assert(table != NULL);
 
     retrack_props props = {
@@ -199,6 +194,7 @@ void cp2table(void *dest, char *metadata, Status *status)
     // if there is any error in any of these files
     // it is a result of an outisde editing of the db file
     // this isn't handled here
+
     // get the name
     size_t id = atoi(strsep(&metadata, "."));
     table->last_id = id;
@@ -206,7 +202,7 @@ void cp2table(void *dest, char *metadata, Status *status)
     table->col_count = atoi(strsep(&metadata, "."));
 
     table->columns = (Column *)calloc(sizeof(Column), table->col_count);
-    if (!table->columns || prepend(&props.to_free, table->columns) != 0)
+    if (!table->columns)
     {
 
         *status = retrack(props, "Copying table meta datainto memory failed");
@@ -219,22 +215,37 @@ void cp2table(void *dest, char *metadata, Status *status)
     for (size_t i = 0; i < table->col_count; i++)
     {
         char *col_name = strsep(&metadata, ".");
-        FILE *col_file = load_column(current_db, table, col_name);
-        if (!col_file || prepend(&props.to_close, col_file) != 0)
+        char *col_ful_name = catnstr(6, "dbdir/", db_name, ".", table->name, ".", col_name);
+
+        if (!col_ful_name || prepend(&props.to_free, (void *)col_ful_name) != 0)
         {
             *status = retrack(props, "Copying table meta datainto memory failed");
             // consider having state variable here to indicate error
             return;
         }
 
-        table->columns[i] = deserialize_column(col_file, status);
+        table->columns[i] = deserialize_column(col_ful_name, status);
+        if (status->code != OK)
+        {
+            *status = retrack(props, "Copying table meta datainto memory failed");
+            // consider having state variable here to indicate error
+            return;
+        }
     }
+    clean_up(props.to_free);
 }
 
-Table deserialize_table(FILE *table_file, Status *status)
+Table deserialize_table(char *db_name, int table_file, Status *status)
 {
     Table table;
-    generic_deserializer(&cp2table, (void *)&table, table_file, status);
+
+    int sz = lseek(table_file, 0, SEEK_END);
+    char metadata[sz];
+    lseek(table_file, 0L, SEEK_SET);
+
+    read(table_file, metadata, sz);
+    cp2table(db_name, (void *)&table, metadata, status);
+
     return table;
 }
 
@@ -318,23 +329,30 @@ void cp2db(void *dest, char *metadata, Status *status)
     for (size_t i = 0; i < db->tables_size; i++)
     {
         char *table_name = strsep(&metadata, ".");
-        FILE *table_file = load_table(current_db, table_name);
-        if (!table_file || prepend(&props.to_close, table_file) != 0)
+        int table_file = load_table(db, table_name);
+        if (table_file <= 0 || prepend(&props.to_close, &table_file) != 0)
         {
             *status = retrack(props, "Copying table meta datainto memory failed");
             // consider having state variable here to indicate error
             return;
         }
 
-        db->tables[i] = deserialize_table(table_file, status);
+        db->tables[i] = deserialize_table(db->name, table_file, status);
     };
 }
 
 // deserialize_db - reverse of serialize_db, copies string from
 // file into a db struct
-Db deserialize_db(FILE *db_file, Status *status)
+Db deserialize_db(int fd, Status *status)
 {
     Db db;
-    generic_deserializer(&cp2db, (void *)&db, db_file, status);
+
+    int sz = lseek(fd, 0, SEEK_END);
+    char metadata[sz];
+    lseek(fd, 0L, SEEK_SET);
+
+    read(fd, metadata, sz);
+    cp2db((void *)&db, metadata, status);
+
     return db;
 }

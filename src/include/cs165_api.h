@@ -31,6 +31,7 @@ SOFTWARE.
 #include "utils.h"
 // Limits the size of a name in our database to 64 characters
 #define MAX_SIZE_NAME 64
+#define MAX_PATH_NAME 256 // path name at max = dir/db.table.column
 #define HANDLE_MAX_SIZE 64
 
 /**
@@ -42,6 +43,30 @@ SOFTWARE.
  * additional types.
  **/
 
+typedef struct vector
+{
+    int *values;
+    float value;
+    int size;
+} vector;
+
+typedef enum variable_type
+{
+    POSITION_VECTOR, // position vector
+    VALUE_VECTOR,    // int vectors
+    FLOAT_VALUE      // single values
+} variable_type;
+
+typedef struct Variable
+{
+    char *name;
+    vector result;
+    variable_type type;
+} Variable;
+
+typedef vector pos_vec;
+typedef vector val_vec;
+
 typedef enum DataType
 {
     INT,
@@ -52,11 +77,17 @@ typedef enum DataType
 struct Comparator;
 // struct ColumnIndex;
 
+typedef enum PrintType
+{
+    TUPLE,
+    SINGLE_FLOAT
+} PrintType;
+
 typedef struct Column
 {
     char name[MAX_SIZE_NAME];
 
-    char *file_name; // file name
+    char file_path[MAX_PATH_NAME];
 
     // mmaped file
     int fd;
@@ -67,8 +98,11 @@ typedef struct Column
 
     // These values should be initalized during column
     // creation
-    char *file;      // mapped file
-    size_t location; // location in the mapped file
+    char *file;       // mapped file
+    size_t file_size; // contains the file_size
+
+    // end should be serialized
+    size_t end; // offset of the last meaningfull character
 
     size_t map_size; // size of the mapp
 
@@ -86,6 +120,7 @@ typedef struct Column
     // metadata
     // the first index of these metadetas indicate
     // if the the data has been calculated before
+    size_t meta_data_size; // number of pages used for metadata
     size_t count;
     size_t min[2];
     size_t max[2];
@@ -231,6 +266,7 @@ typedef enum OperatorType
     SELECT,
     SHUTDOWN,
     FETCH,
+    PRINT,
     AVG,
     SUM,
     MIN,
@@ -281,6 +317,47 @@ typedef struct LoadOperator
     size_t size;
 } LoadOperator;
 
+typedef struct SelectOperator
+{
+    char *handler;
+    int *result;
+    int *low;
+    int *high;
+    Column *column;
+
+} SelectOperator;
+
+typedef struct FetchOperator
+{
+    char *handler;
+    Variable *variable;
+    Column *column;
+} FetchOperator;
+
+typedef struct PrintTuple
+{
+    int width;
+    int height;
+    Variable **data;
+} PrintTuple;
+
+typedef struct PrintOperator
+{
+    PrintType type;
+    union
+    {
+        PrintTuple tuple;
+        float value;
+    } data;
+} PrintOperator;
+
+typedef struct AvgOperator
+{
+    char *handler;
+    Variable *variable;
+
+} AvgOperator;
+
 /*
  * union type holding the fields of any operator
  */
@@ -289,7 +366,10 @@ typedef union OperatorFields
     CreateOperator create_operator;
     InsertOperator insert_operator;
     LoadOperator load_operator;
-    Comparator select_operator;
+    SelectOperator select_operator;
+    FetchOperator fetch_operator;
+    PrintOperator print_operator;
+    AvgOperator avg_operator;
 } OperatorFields;
 /*
  * DbOperator holds the following fields:
@@ -309,6 +389,7 @@ typedef struct DbOperator
 extern Db *current_db;
 extern Column empty_column;
 extern Table empty_table;
+extern linkedList *var_pool;
 
 /*
  * Use this command to see if databases that were persisted start up properly. If files
@@ -317,6 +398,9 @@ extern Table empty_table;
 Status db_startup();
 
 Status create_db(const char *db_name);
+
+// loads a database from disk
+Status load_db(const char *db_name);
 
 Table *create_table(Db *db, const char *name, size_t num_columns, Status *status);
 
@@ -336,27 +420,39 @@ typedef struct serialize_data
 
 } serialize_data;
 
-void generic_deserializer(void (*)(void *, char *, Status *), FILE *, void *, Status *);
+void generic_deserializer(void (*)(void *, char *, Status *), int, void *, Status *);
 
 serialize_data serialize_column(Column *);
-Column deserialize_column(FILE *, Status *);
+Column deserialize_column(char *, Status *);
 
 serialize_data serialize_table(Table *);
-Table deserialize_table(FILE *, Status *);
+Table deserialize_table(char *, int, Status *);
 
 serialize_data serialize_db(Db *);
-Db deserialize_db(FILE *, Status *);
+Db deserialize_db(int, Status *);
 
 // load.c
-FILE *load_table(Db *, char *);
-FILE *load_column(Db *, Table *, char *);
+int load_table(Db *, char *);
+int load_column(char *, Table *, char *);
 
 // read_write.c
-
+void create_colf(Column *);
 void write_col(Column *, char *, size_t);
 void flush_col(Column *);
 
 void flush_table(Table *);
 void flush_db(Db *);
+
+// select fetch
+void select_col(Column *, char *, int *, int *);
+void fetch_col(Column *, Variable *, char *);
+
+// var_pool.c
+void add_var(char *, vector, variable_type);
+Variable *find_var(char *);
+
+// server.c
+char *print_tuple(PrintOperator);
+void average(char *, Variable *);
 
 #endif /* CS165_H */

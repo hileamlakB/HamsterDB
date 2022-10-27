@@ -51,7 +51,7 @@ char *execute_DbOperator(DbOperator *query)
         // return "Unkown query";
     }
 
-    if (query && query->type == CREATE)
+    if (query->type == CREATE)
     {
         if (query->operator_fields.create_operator.create_type == _DB)
         {
@@ -114,13 +114,39 @@ char *execute_DbOperator(DbOperator *query)
         }
     }
 
-    else if (query && query->type == LOAD)
+    else if (query->type == LOAD)
     {
         write_col(query->operator_fields.load_operator.column,
                   query->operator_fields.load_operator.data,
                   query->operator_fields.load_operator.size);
         return "";
         // return "File Loaded";
+    }
+    else if (query->type == SELECT)
+    {
+        select_col(query->operator_fields.select_operator.column,
+                   query->operator_fields.select_operator.handler,
+                   query->operator_fields.select_operator.low,
+                   query->operator_fields.select_operator.high);
+        return "";
+        // return "File Loaded";
+    }
+    else if (query->type == FETCH)
+    {
+        fetch_col(query->operator_fields.fetch_operator.column,
+                  query->operator_fields.fetch_operator.variable,
+                  query->operator_fields.fetch_operator.handler);
+        return "";
+    }
+    else if (query->type == PRINT)
+    {
+        return print_tuple(query->operator_fields.print_operator);
+    }
+    else if (query->type == AVG)
+    {
+        average(query->operator_fields.avg_operator.handler,
+                query->operator_fields.avg_operator.variable);
+        return "";
     }
     else if (query && query->type == SHUTDOWN)
     {
@@ -132,12 +158,60 @@ char *execute_DbOperator(DbOperator *query)
     return "";
 }
 
+char *ftos(float value)
+{
+
+    char *str = malloc(sizeof(char) * MAX_INT_LENGTH);
+    sprintf(str, "%.2f", value);
+
+    return str;
+}
+
+char *print_tuple(PrintOperator print_operator)
+{
+    if (print_operator.type == SINGLE_FLOAT)
+    {
+        return ftos(print_operator.data.value);
+    }
+
+    int width = print_operator.data.tuple.width;
+    int height = print_operator.data.tuple.height;
+    Variable **results = print_operator.data.tuple.data;
+
+    // for commas and extra variables, we have + size
+    char *result = malloc(sizeof(char) * (width * MAX_INT_LENGTH * height + width));
+    char *result_i = result;
+    for (int row = 0; row < height; row++)
+    {
+        for (int col = 0; col < width; col++)
+        {
+            Variable *current_var = results[col];
+            int printed = sprintf(result_i, "%d,", current_var->result.values[row]);
+            result_i += printed;
+        }
+        sprintf(result_i - 1, "\n");
+    }
+    *(result_i - 1) = '\0';
+
+    return result;
+}
 /**
  * handle_client(client_socket)
  * This is the execution routine after a client has connected.
  * It will continually listen for messages from the client and execute queries.
  **/
 // TODO: You want to handle multiple clients at the same time instead of one right here
+
+void average(char *handler, Variable *variable)
+{
+    float sum = 0;
+    for (int i = 0; i < variable->result.size; i++)
+    {
+        sum += variable->result.values[i];
+    }
+
+    add_var(handler, (vector){.value = sum / variable->result.size, .size = 1}, FLOAT_VALUE);
+}
 
 void handle_client(int client_socket)
 {
@@ -177,7 +251,7 @@ void handle_client(int client_socket)
 
             char recv_buffer[recv_message.length + 1];
             length = recv(client_socket, recv_buffer, recv_message.length, 0);
-            log_info("Received message of length: %d %s\n", length, recv_buffer);
+
             recv_message.payload = recv_buffer;
             recv_message.payload[recv_message.length] = '\0';
 
@@ -300,7 +374,6 @@ int main(void)
 
 Status shutdown_server()
 {
-
     // cache everything to file
     flush_db(current_db);
     exit(0);

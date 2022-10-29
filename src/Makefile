@@ -63,6 +63,7 @@ server: server.o parse.o utils.o db_manager.o client_context.o serialize.o read_
 	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS) -g
 
 clean:
+	rm -rf dbdir
 	rm -f client server *.o *~ *.bak core *.core $(SOCK_PATH)
 	rm -rf .deps
 

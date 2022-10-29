@@ -123,7 +123,7 @@ DbOperator *parse_select(char *handle, char *select_argument)
 
     if (number_of_commas > 2)
     {
-        return parse_select_pos(handle, select_argument);
+        return parse_select_pos(handle, tokenizer);
     }
 
     char *name = next_token(&tokenizer, &status);
@@ -221,7 +221,7 @@ DbOperator *parse_print(char *print_argument)
     // rremove trailing parenthesis
     tokenizer[strlen(tokenizer) - 1] = '\0';
 
-    Variable **result_tupls = malloc(sizeof(int *) * (number_of_commas + 1));
+    Variable **result_tupls = malloc(sizeof(Variable *) * (number_of_commas + 1));
 
     int i = 0;
     int max_row = 0;

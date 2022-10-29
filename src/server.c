@@ -273,17 +273,32 @@ char *print_tuple(PrintOperator print_operator)
     int height = print_operator.data.tuple.height;
     Variable **results = print_operator.data.tuple.data;
 
-    // for commas and extra variables, we have + size
-    char *result = malloc(sizeof(char) * (width * MAX_INT_LENGTH * height + width));
+    // for commas and extra variables, we have + 1,  MAX_INT_LENGTH + 1
+    char *result = malloc(sizeof(char) * ((width * (MAX_INT_LENGTH + 1)) * height));
     char *result_i = result;
     for (int row = 0; row < height; row++)
     {
         for (int col = 0; col < width; col++)
         {
             Variable *current_var = results[col];
-            int printed = sprintf(result_i, "%d,", current_var->result.values[row]);
+            int printed;
+            if (current_var->type == INT_VALUE)
+            {
+                printed = sprintf(result_i, "%d", current_var->result.ivalue);
+            }
+            else if (current_var->type == FLOAT_VALUE)
+            {
+                printed = sprintf(result_i, "%.2f", current_var->result.fvalue);
+            }
+            else
+            {
+                printed = sprintf(result_i, "%d,", current_var->result.values[row]);
+            }
             result_i += printed;
+            sprintf(result_i, ",");
+            result_i++;
         }
+
         sprintf(result_i - 1, "\n");
     }
     *(result_i - 1) = '\0';

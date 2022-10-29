@@ -160,7 +160,7 @@ Status create_db(const char *db_name)
 	{
 		// DON"T KNOW WHAT THE EXCPECTED BEHAVIOUR IS
 		load_db(db_name);
-		return retrack(props, "Database already exists");
+		return retrack(props, "--Database already exists");
 	}
 
 	Db *active_db = (Db *)malloc(sizeof(Db));

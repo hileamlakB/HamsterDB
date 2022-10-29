@@ -221,10 +221,35 @@ size_t line_length(char *file)
     size_t i = 0;
     while (file[i] != '\0' && file[i] != '\n')
     {
-        // printf("%c", file[i]);
         i++;
     }
     return i;
+}
+
+String read_line(char *file)
+{
+    size_t size = 100;
+    char *line = malloc(size * sizeof(char));
+
+    size_t i = 0;
+    while (file[i] != '\0' && file[i] != '\n')
+    {
+        if (i + 1 > size)
+        {
+            size *= 2;
+            char *new_line = realloc(line, size * sizeof(char));
+            if (!new_line)
+            {
+                free(line);
+                return (String){.str = NULL, .len = 0};
+            }
+            line = new_line;
+        }
+        line[i] = file[i];
+        i++;
+    }
+    line[i] = '\0';
+    return (String){.str = line, .len = i};
 }
 
 char *zeropadd(char *str, int length)

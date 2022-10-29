@@ -136,6 +136,13 @@ char *catnstr(int n, ...);
 // line_length
 size_t line_length(char *);
 
+typedef struct String
+{
+    char *str;
+    size_t len;
+} String;
+String read_line(char *);
+
 // takes an integer of length len and returns a padded string
 // of length MAX_INT_LENGTH, that can easly be converted to integer
 // using atoi

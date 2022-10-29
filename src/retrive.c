@@ -16,7 +16,7 @@
 // satisfy the condition
 // right now it returns all at onces, but it should
 // return in a batche dmanner
-void select_col(Column *column, char *var_name, int *low, int *high)
+void select_col(Table *table, Column *column, char *var_name, int *low, int *high, Status *status)
 {
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
 
@@ -25,7 +25,7 @@ void select_col(Column *column, char *var_name, int *low, int *high)
     // may be have a reading map and a writing map separately
     // to start with just do a simple read
 
-    create_colf(column);
+    create_colf(table, column, status);
 
     if (column->fd == 0)
     {
@@ -60,7 +60,7 @@ void select_col(Column *column, char *var_name, int *low, int *high)
     add_var(var_name, (pos_vec){.values = result, .size = result_size, .value = 0}, POSITION_VECTOR);
 }
 
-void fetch_col(Column *column, Variable *var, char *var_name)
+void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Status *status)
 {
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
 
@@ -69,7 +69,7 @@ void fetch_col(Column *column, Variable *var, char *var_name)
     // may be have a reading map and a writing map separately
     // to start with just do a simple read
 
-    create_colf(column);
+    create_colf(table, column, status);
 
     if (column->fd == 0)
     {

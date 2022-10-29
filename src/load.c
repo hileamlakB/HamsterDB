@@ -8,5 +8,7 @@
 int load_table(Db *db, char *table_name)
 {
     char *file_name = catnstr(4, "dbdir/", db->name, ".", table_name);
-    return open(file_name, O_RDONLY);
+    int fd = open(file_name, O_RDONLY);
+    free(file_name);
+    return fd;
 }

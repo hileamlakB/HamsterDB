@@ -84,14 +84,22 @@ Table *create_table(Db *db, const char *name, size_t num_columns, Status *ret_st
 
 	Table table = empty_table;
 
-	strcpy(table.name, name);
-	table.file_name = catnstr(3, db->name, ".", name);
+	strncpy(table.name, name, MAX_SIZE_NAME);
+	char *file_path = catnstr(4, "dbdir/", db->name, ".", name);
+	if (!file_path || prepend(&props.to_free, file_path) != 0)
+	{
+		*ret_status = retrack(props, "System Failure: error allocating memory for internal use");
+		return NULL;
+	}
+
+	strcpy(table.file_path, file_path);
 	table.col_count = num_columns;
 	table.table_length = 0;
+
 	// you can support flexible number of columns later
 	// the same way you did for tables
-	table.columns = malloc(num_columns * sizeof(Column));
-	if (table.columns == NULL || prepend(&props.to_free, table.columns) != 0)
+	table.columns = calloc(num_columns, sizeof(Column));
+	if (table.columns == NULL || prepend(&props.outside, table.columns) != 0)
 	{
 		*ret_status = retrack(props, "System Failure: error allocating memory for columns");
 		return NULL;
@@ -141,10 +149,16 @@ Status create_db(const char *db_name)
 	// create a dir for the db
 	mkdir("dbdir", 0777);
 
-	// makesure name of db isn't too long and doesn't already exist
-	if (strlen(db_name) > MAX_SIZE_NAME)
+	// makesure db doesn't already exist
+	char *file_path = catnstr(2, "dbdir/", db_name);
+	if (!file_path || prepend(&props.to_free, file_path) != 0)
 	{
-		return retrack(props, "Database name too long");
+		return retrack(props, "System Failure: error allocating memory for internal use");
+	}
+
+	if (access(file_path, F_OK) == 0)
+	{
+		return retrack(props, "Database already exists");
 	}
 
 	Db *active_db = (Db *)malloc(sizeof(Db));
@@ -153,8 +167,10 @@ Status create_db(const char *db_name)
 		return retrack(props, "System Failure: error allocating memory for active_db");
 	}
 
-	strcpy(active_db->name, db_name);
-	//  this values I am not sure about yet
+	strncpy(active_db->name, db_name, MAX_SIZE_NAME);
+	strcpy(active_db->file_path, file_path);
+
+	active_db->tables = NULL;
 	active_db->tables_size = 0;
 	active_db->tables_capacity = 0;
 

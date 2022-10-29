@@ -49,9 +49,6 @@ serialize_data serialize_column(Column *column)
                               column->max[1],
                               column->sum[0],
                               column->sum[1]);
-
-    // check the size of printed
-
     return (serialize_data){
         .data = meta_data,
         .size = printed,
@@ -130,7 +127,7 @@ Column deserialize_column(char *file_path, Status *status)
 
 // cptable - copies  a table data into a string and returns the number of bytes copied
 // the copy format is
-// last_id.name.number_of_columns.col1_name.col2_name.....
+// rows.name.number_of_columns.col1_name.col2_name.....
 serialize_data serialize_table(Table *table)
 {
 
@@ -139,7 +136,7 @@ serialize_data serialize_table(Table *table)
 
     char *meta_data = malloc(page_size);
     size_t printed = snprintf(meta_data, page_size, "%zu.%s.%zu.",
-                              table->last_id,
+                              table->rows,
                               table->name,
                               table->col_count);
 
@@ -196,8 +193,8 @@ void cp2table(char *db_name, void *dest, char *metadata, Status *status)
     // this isn't handled here
 
     // get the name
-    size_t id = atoi(strsep(&metadata, "."));
-    table->last_id = id;
+    size_t rows = atoi(strsep(&metadata, "."));
+    table->rows = rows;
     strcpy(table->name, strsep(&metadata, "."));
     table->col_count = atoi(strsep(&metadata, "."));
 
@@ -217,7 +214,7 @@ void cp2table(char *db_name, void *dest, char *metadata, Status *status)
         char *col_name = strsep(&metadata, ".");
         char *col_ful_name = catnstr(6, "dbdir/", db_name, ".", table->name, ".", col_name);
 
-        if (!col_ful_name || prepend(&props.to_free, (void *)col_ful_name) != 0)
+        if (!col_ful_name || prepend(&props.to_free, col_ful_name) != 0)
         {
             *status = retrack(props, "Copying table meta datainto memory failed");
             // consider having state variable here to indicate error

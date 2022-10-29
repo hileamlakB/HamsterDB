@@ -17,6 +17,7 @@ machine please look into this as a a source of error. */
  **/
 #define _DEFAULT_SOURCE
 #include <stdlib.h>
+#include <assert.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdbool.h>
@@ -157,6 +158,7 @@ void flush_load(int client_socet, char *col_name, char *col_data, size_t data_si
     // passing the send message like this might not be a good idea
     // as the size might be big and may result in a longer copy time
     communicate_server(client_socet, send_message);
+    free(load_query);
 }
 
 void load_file(int client_socket, char *file_name)
@@ -169,25 +171,23 @@ void load_file(int client_socket, char *file_name)
     int exists = stat(file_name, &st);
     if (exists != 0)
     {
-        log_err("File does not exist");
-        exit(1);
+        log_err("File does not exist \n");
+        return;
     }
 
     // Map file into memory using mmap
     size_t size = st.st_size;
-    char *file = (char *)mmap(NULL, size, PROT_READ, MAP_PRIVATE, open(file_name, O_RDONLY), 0);
+    int fd = open(file_name, O_RDONLY);
+    char *file = (char *)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
 
     // get headers
-    size_t line_len = line_length(file);
-    char header_buffer[line_len + 1];
-    strncpy(header_buffer, file, line_len);
-    header_buffer[line_len] = '\0';
+    String header = read_line(file);
 
     // get the number of columns
     size_t num_columns = 0;
-    for (size_t i = 0; i < line_len; i++)
+    for (size_t i = 0; i < header.len; i++)
     {
-        if (header_buffer[i] == ',')
+        if (header.str[i] == ',')
         {
             num_columns++;
         }
@@ -195,128 +195,124 @@ void load_file(int client_socket, char *file_name)
     num_columns += 1;
 
     // extract column
-
     char *column_names[num_columns];
     size_t column_i[num_columns];
-    column_names[0] = header_buffer;
-    column_i[0] = 0;
+    column_names[0] = header.str;
+
+    column_i[0] = 0; // keeps track of where the column name starts in the header buffer
     size_t last = 1;
-    for (size_t i = 0; i < line_len; i++)
+    for (size_t i = 0; i < header.len; i++)
     {
-        if (header_buffer[i] == ',')
+        if (header.str[i] == ',')
         {
-            header_buffer[i] = '\0';
+            header.str[i] = '\0';
             //  set the location of each column index to 0
             column_i[last] = 0;
-            column_names[last] = header_buffer + i + 1;
+            column_names[last] = header.str + i + 1;
             last++;
         }
     }
 
+    // for each column, create a buffer of size page_size
     char colums[num_columns][PAGE_SIZE];
 
-    size_t cycle_reads = line_len + 1;
-    size_t loaded = 0;
+    // in each cyle read page_size bytes
+
+    size_t loaded = header.len + 1;
 
     // read the whole file
     while (loaded < size)
     {
 
-        // read a page_size block at a time
-        while (cycle_reads < PAGE_SIZE)
+        // read a line
+        String line = read_line(file + loaded);
+
+        // add ecah column data to the column array
+        size_t last = 0;
+        size_t str_i = 0;
+        size_t j = 0;
+        while (line.str[j] && last < num_columns - 1)
         {
-
-            if (loaded + cycle_reads >= size)
+            if (line.str[j] == ',')
             {
-                break;
-            }
-            // read a line
-            line_len = line_length(file + loaded + cycle_reads);
-            if (cycle_reads + line_len > PAGE_SIZE)
-            {
-                break;
-            }
-            char line_buffer[line_len + 1];
+                line.str[j] = '\0';
+                size_t col_len = j - str_i; // the length of the single entry
 
-            // you might optimize this by reading the at once instead of copying to a line before first
-            strncpy(line_buffer, file + loaded + cycle_reads, line_len);
-            line_buffer[line_len] = '\0';
-
-            // add ecah column to the column array
-
-            size_t last = 0;
-            size_t str_i = 0;
-            size_t j = 0;
-            for (; j < line_len; j++)
-            {
-                if (line_buffer[j] == ',')
+                // The flush function sends a single page at a time
+                // if an entry is longer than one page, some mechanism should be
+                // put in place to partition before sending
+                if (col_len + 1 > PAGE_SIZE)
                 {
-                    line_buffer[j] = '\0';
-                    size_t col_len = j - str_i;
-                    if (col_len + 1 > PAGE_SIZE)
-                    {
-                        log_err("Column data is too large");
-                        exit(1);
-                    }
-
-                    if (column_i[last] + col_len > PAGE_SIZE)
-                    {
-                        // flush the column to database if it is full
-                        flush_load(client_socket, column_names[last], colums[last], column_i[last]);
-                        column_i[last] = 0;
-                    }
-
-                    char *zero_padded = zeropadd(line_buffer + str_i, col_len);
-                    strcpy(colums[last] + column_i[last], zero_padded);
-                    free(zero_padded);
-
-                    // since each entry is padded with fixed number of zeros
-                    column_i[last] += MAX_INT_LENGTH;
-                    colums[last][column_i[last]] = ',';
-                    column_i[last] += 1;
-                    last += 1;
-                    str_i = j + 1;
+                    log_err("Column data is too large");
+                    free(line.str);
+                    return;
                 }
+
+                // if writing is going to make it bigger than the columns
+                // capacity flush first
+                if (column_i[last] + col_len > PAGE_SIZE)
+                {
+                    // flush the column to database if it is full
+                    flush_load(client_socket, column_names[last], colums[last], column_i[last]);
+                    column_i[last] = 0;
+                }
+
+                char *zero_padded = zeropadd(line.str + str_i, col_len);
+                strcpy(colums[last] + column_i[last], zero_padded);
+                free(zero_padded);
+
+                // since each entry is padded with fixed number of zeros
+                column_i[last] += MAX_INT_LENGTH;
+                colums[last][column_i[last]] = ',';
+                column_i[last] += 1;
+                last += 1;
+                str_i = j + 1;
             }
-            // you can save some time by not iterating through the last colum data in
-            // the loop above
+            j += 1;
+        }
+        // you can save some time by not iterating through the last colum data in
+        // the loop above
 
-            if (last != num_columns - 1)
-            {
-                // maybe hande errors cases instead of dying
-                log_err("wrong number of colums in line ...");
-                exit(1);
-            }
+        // if this isn't the case, it means the file had a line with
+        // a wrong format and in that case it should be handled
+        assert(last == num_columns - 1);
 
-            if (column_i[last] + (j - str_i) > PAGE_SIZE)
-            {
-                // flush the column to database if it is full
-                flush_load(client_socket, column_names[last], colums[last], column_i[last]);
-                column_i[last] = 0;
-            }
-
-            char *zero_padded = zeropadd(line_buffer + str_i, j - str_i);
-            strcpy(colums[last] + column_i[last], zero_padded);
-            free(zero_padded);
-
-            column_i[last] += MAX_INT_LENGTH;
-            colums[last][column_i[last]] = ',';
-            column_i[last] += 1;
-
-            cycle_reads += line_len + 1;
+        if (column_i[last] + (line.len - j) > PAGE_SIZE)
+        {
+            // flush the column to database if it is full
+            flush_load(client_socket, column_names[last], colums[last], column_i[last]);
+            column_i[last] = 0;
         }
 
-        loaded += cycle_reads;
-        cycle_reads = 0;
+        char *zero_padded = zeropadd(line.str + str_i, (line.len - j));
+        strcpy(colums[last] + column_i[last], zero_padded);
+        free(zero_padded);
+
+        column_i[last] += MAX_INT_LENGTH;
+        colums[last][column_i[last]] = ',';
+        column_i[last] += 1;
+
+        loaded += line.len + 1; // including the new line character
+        free(line.str);
     }
 
     // flush the remaining data to the database
     for (size_t i = 0; i < num_columns; i++)
     {
-
         flush_load(client_socket, column_names[i], colums[i], column_i[i]);
     }
+
     munmap(file, size);
+    close(fd);
+
+    char *complete_message = catnstr(3, "load(complete,", column_names[0], ")");
+    free(column_names[0]);
+
+    communicate_server(client_socket, (message){
+                                          .length = strlen(complete_message),
+                                          .payload = complete_message,
+                                      });
+    free(complete_message);
 }
 
 /**
@@ -380,6 +376,7 @@ int main(void)
                 }
             }
 
+            // A special case for the load command
             if (strncmp(read_buffer + i, "load", 4) == 0)
             {
 

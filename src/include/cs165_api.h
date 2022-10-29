@@ -98,13 +98,19 @@ typedef struct Column
 
     // These values should be initalized during column
     // creation
-    char *file;       // mapped file
+    char *file;       // mapped file, this map is used for writting and usually it maps the last map_size sized section of the file
     size_t file_size; // contains the file_size
 
-    // end should be serialized
-    size_t end; // offset of the last meaningfull character
+    // end is the offset of the last meaningfull character
+    // if you want to write more data you should write it starting
+    // at end
+    size_t end;
 
-    size_t map_size; // size of the mapp
+    size_t map_size; // size of the maped section for writting
+
+    size_t pending_load; // this is to keep track of number of rows written using the load function
+    // this is to be persisited once all the columns have the same pending_load
+    // and loading is complete
 
     // possible writing cache ontop of the mapped file for more control
     char *pending_i;
@@ -147,14 +153,15 @@ extern Column empty_column;
 typedef struct Table
 {
     char name[MAX_SIZE_NAME];
-    char *file_name;
+    char file_path[MAX_PATH_NAME];
+
     Column *columns;
     size_t col_count;
     size_t table_length;
+
     // this is an auto incrementing id
     size_t last_id;
-    // what is table_length, the ai thinks it is, the number of rows in the table
-    // for now I will take table_length to be the number of columns in the columns array
+    size_t rows; // number of tuples inserted
 } Table;
 
 /**
@@ -169,6 +176,8 @@ typedef struct Table
 typedef struct Db
 {
     char name[MAX_SIZE_NAME];
+    char file_path[MAX_PATH_NAME];
+
     Table *tables;
     size_t tables_size;
     size_t tables_capacity; // size of tables array
@@ -307,14 +316,25 @@ typedef struct InsertOperator
     Table *table;
     int *values;
 } InsertOperator;
+
+typedef struct EntityAddress
+{
+    Db *db;
+    Column *col;
+    Table *table;
+} EntityAddress;
 /*
  * necessary fields for insertion
  */
 typedef struct LoadOperator
 {
-    Column *column;
+    EntityAddress address;
     char *data;
     size_t size;
+
+    // these is used to indicate loading is complete
+    // and changes are to be persisted as correct
+    bool complete;
 } LoadOperator;
 
 typedef struct SelectOperator
@@ -324,12 +344,14 @@ typedef struct SelectOperator
     int *low;
     int *high;
     Column *column;
+    Table *table;
 
 } SelectOperator;
 
 typedef struct FetchOperator
 {
     char *handler;
+    Table *table;
     Variable *variable;
     Column *column;
 } FetchOperator;
@@ -358,6 +380,14 @@ typedef struct AvgOperator
 
 } AvgOperator;
 
+typedef struct MathOperator
+{
+    char *handler;
+    Variable *operand_1;
+    Variable *operand_2;
+    OperatorType operation;
+} MathOperator;
+
 /*
  * union type holding the fields of any operator
  */
@@ -370,6 +400,7 @@ typedef union OperatorFields
     FetchOperator fetch_operator;
     PrintOperator print_operator;
     AvgOperator avg_operator;
+    MathOperator math_operator;
 } OperatorFields;
 /*
  * DbOperator holds the following fields:
@@ -436,16 +467,18 @@ int load_table(Db *, char *);
 int load_column(char *, Table *, char *);
 
 // read_write.c
-void create_colf(Column *);
-void write_col(Column *, char *, size_t);
-void flush_col(Column *);
+void create_colf(Table *, Column *, Status *);
+void write_load(Table *, Column *, char *, size_t, Status *);
+void flush_col(Table *, Column *, Status *);
 
-void flush_table(Table *);
-void flush_db(Db *);
+void flush_table(Table *, Status *);
+void flush_db(Db *, Status *);
+
+void update_col_end(Table *);
 
 // select fetch
-void select_col(Column *, char *, int *, int *);
-void fetch_col(Column *, Variable *, char *);
+void select_col(Table *, Column *, char *, int *, int *, Status *);
+void fetch_col(Table *, Column *, Variable *, char *, Status *);
 
 // var_pool.c
 void add_var(char *, vector, variable_type);
@@ -454,5 +487,9 @@ Variable *find_var(char *);
 // server.c
 char *print_tuple(PrintOperator);
 void average(char *, Variable *);
+void sum(char *, Variable *);
+
+void add(char *, Variable *, Variable *);
+void sub(char *, Variable *, Variable *);
 
 #endif /* CS165_H */

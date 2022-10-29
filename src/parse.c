@@ -654,6 +654,27 @@ DbOperator *parse_create_db(char *create_arguments)
     }
 }
 
+DbOperator *parse_min_max(char *handler, char *arguments, OperatorType type)
+{
+
+    char *token = arguments;
+    token++;                         // remove the first '('
+    token[strlen(token) - 1] = '\0'; // remove the last ')'
+
+    Variable *var = find_var(token);
+    if (var == NULL)
+    {
+        return NULL;
+    }
+
+    DbOperator *dbo = malloc(sizeof(DbOperator));
+    dbo->type = type;
+    dbo->operator_fields.min_max_operator.variable = var;
+    dbo->operator_fields.min_max_operator.handler = handler;
+    dbo->operator_fields.min_max_operator.operation = type;
+
+    return dbo;
+}
 /**
  * parse_create parses a create statement and then passes the necessary arguments off to the next function
  **/
@@ -951,9 +972,13 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
     }
     else if (strncmp(query_command, "min", 3) == 0)
     {
+        query_command += 3;
+        dbo = parse_min_max(handle, query_command, MIN);
     }
     else if (strncmp(query_command, "max", 3) == 0)
     {
+        query_command += 3;
+        dbo = parse_min_max(handle, query_command, MAX);
     }
     else if (strncmp(query_command, "print", 5) == 0)
     {

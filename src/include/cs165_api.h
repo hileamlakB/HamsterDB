@@ -414,6 +414,13 @@ typedef struct MathOperator
     OperatorType operation;
 } MathOperator;
 
+typedef struct MinMaxOperator
+{
+    char *handler;
+    Variable *variable;
+    OperatorType operation;
+
+} MinMaxOperator;
 /*
  * union type holding the fields of any operator
  */
@@ -427,6 +434,7 @@ typedef union OperatorFields
     PrintOperator print_operator;
     AvgOperator avg_operator;
     MathOperator math_operator;
+    MinMaxOperator min_max_operator;
 } OperatorFields;
 /*
  * DbOperator holds the following fields:
@@ -516,5 +524,6 @@ void sum(AvgOperator, Status *);
 
 void add(char *, Variable *, Variable *);
 void sub(char *, Variable *, Variable *);
+void MinMax(MinMaxOperator, Status *);
 
 #endif /* CS165_H */

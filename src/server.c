@@ -235,6 +235,13 @@ char *execute_DbOperator(DbOperator *query)
         free(query);
         return "";
     }
+    else if (query->type == MIN || query->type == MAX)
+    {
+        Status min_max_status;
+        MinMax(query->operator_fields.min_max_operator, &min_max_status);
+        free(query);
+        return "";
+    }
     else if (query && query->type == SHUTDOWN)
     {
         free(query);
@@ -383,6 +390,43 @@ void sub(char *handler, Variable *variable1, Variable *variable2)
         result[i] = variable1->result.values[i] - variable2->result.values[i];
     }
     add_var(handler, (vector){.values = result, .size = variable1->result.size}, VALUE_VECTOR);
+}
+
+void MinMax(MinMaxOperator minmax_operator, Status *status)
+{
+    status->code = OK;
+    char *handler = minmax_operator.handler;
+    Variable *variable = minmax_operator.variable;
+
+    int result[2];
+    result[0] = variable->result.values[0];
+    int index = 1;
+
+    if (minmax_operator.operation == MIN)
+    {
+        for (int i = 1; i < variable->result.size; i++)
+        {
+            result[index] = variable->result.values[i];
+            index -= variable->result.values[i] < result[0];
+            result[index] = variable->result.values[i];
+            index = 1;
+        }
+    }
+
+    else if (minmax_operator.operation == MAX)
+    {
+        for (int i = 1; i < variable->result.size; i++)
+        {
+            result[index] = variable->result.values[i];
+            index -= variable->result.values[i] > result[0];
+            result[index] = variable->result.values[i];
+            index = 1;
+        }
+    }
+
+    add_var(handler,
+            (vector){.ivalue = result[0], .size = 1},
+            INT_VALUE);
 }
 
 void handle_client(int client_socket)

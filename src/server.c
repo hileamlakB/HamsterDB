@@ -95,7 +95,7 @@ char *execute_DbOperator(DbOperator *query)
             free(query);
             if (create_status.code != OK)
             {
-                cs165_log(stdout, "Adding column failed.");
+                cs165_log(stdout, "-- Adding column failed.");
                 return "Failed";
             }
             return "";
@@ -126,7 +126,8 @@ char *execute_DbOperator(DbOperator *query)
             if (can_load == false)
             {
                 update_col_end(table);
-                return "Load failed: Unbalanced columns\n";
+                cs165_log(stdout, "-- Adding column failed.");
+                return "Failed";
             }
             table->rows += loaded;
             update_col_end(table);
@@ -273,8 +274,8 @@ char *print_tuple(PrintOperator print_operator)
     int height = print_operator.data.tuple.height;
     Variable **results = print_operator.data.tuple.data;
 
-    // for commas and extra variables, we have + 1,  MAX_INT_LENGTH + 1
-    char *result = malloc(sizeof(char) * ((width * (MAX_INT_LENGTH + 1)) * height));
+    // for commas and extra variables, we have + 1,  MAX_INT_LENGTH + 1, +1 for newline
+    char *result = malloc(sizeof(char) * ((width * (MAX_INT_LENGTH + 1)) * height + 1));
     char *result_i = result;
     for (int row = 0; row < height; row++)
     {
@@ -284,24 +285,23 @@ char *print_tuple(PrintOperator print_operator)
             int printed;
             if (current_var->type == INT_VALUE)
             {
-                printed = sprintf(result_i, "%d", current_var->result.ivalue);
+                printed = sprintf(result_i, "%d,", current_var->result.ivalue);
             }
             else if (current_var->type == FLOAT_VALUE)
             {
-                printed = sprintf(result_i, "%.2f", current_var->result.fvalue);
+                printed = sprintf(result_i, "%.2f,", current_var->result.fvalue);
             }
             else
             {
                 printed = sprintf(result_i, "%d,", current_var->result.values[row]);
             }
             result_i += printed;
-            sprintf(result_i, ",");
-            result_i++;
         }
 
         sprintf(result_i - 1, "\n");
     }
-    *(result_i - 1) = '\0';
+    *(result_i - 1) = '\n';
+    *(result_i) = '\0';
 
     return result;
 }
@@ -612,6 +612,7 @@ Status shutdown_server()
     Status flush_status;
     // cache everything to file
     flush_db(current_db, &flush_status);
+
     exit(0);
     // Think about delaying the exit after sending the ack message
 
@@ -619,4 +620,6 @@ Status shutdown_server()
     // for good practice
 
     // make sure to only close one socket at a time one you implement multiple clients
+
+    return flush_status;
 }

@@ -66,6 +66,7 @@ clean:
 	rm -rf dbdir
 	rm -f client server *.o *~ *.bak core *.core $(SOCK_PATH)
 	rm -rf .deps
+	rm -f *.out
 
 distclean: clean
 	rm -rf $(DEPSDIR)

@@ -117,6 +117,12 @@ void communicate_server(int client_socket, message send_message)
         {
             log_info("-- Server closed connection\n");
         }
+
+        if (strncmp(send_message.payload, "shutdown", 8) == 0)
+        {
+            exit(0);
+        }
+
         exit(1);
     }
 }
@@ -315,6 +321,46 @@ void load_file(int client_socket, char *file_name)
     free(complete_message);
 }
 
+void load_file2(int client_socket, char *file_name)
+{
+    // read line by line and use realational_insert instead of flush_load
+
+    struct stat st;
+    int exists = stat(file_name, &st);
+    if (exists != 0)
+    {
+        log_err("File does not exist \n");
+        return;
+    }
+
+    // Map file into memory using mmap
+    size_t size = st.st_size;
+    int fd = open(file_name, O_RDONLY);
+    char *file = (char *)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+
+    String header = read_line(file);
+    size_t red = header.len + 1;
+
+    char *db = strsep(&header.str, ".");
+    char *table = strsep(&header.str, ".");
+
+    char *table_header = catnstr(3, db, ".", table);
+    free(db);
+
+    while (red < size)
+    {
+        String line = read_line(file + red);
+        red += line.len + 1;
+
+        char *relationl_insert = catnstr(5, "relational_insert(", table_header, ",", line.str, ")");
+        free(line.str);
+        communicate_server(client_socket, (message){
+                                              .length = strlen(relationl_insert),
+                                              .payload = relationl_insert,
+                                          });
+        free(relationl_insert);
+    }
+}
 /**
  * Getting Started Hint:
  *      What kind of protocol or structure will you use to deliver your results from the server to the client?
@@ -391,7 +437,7 @@ int main(void)
                 }
                 file_name[j] = '\0';
 
-                load_file(client_socket, file_name);
+                load_file2(client_socket, file_name);
             }
             else
             {

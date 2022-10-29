@@ -315,6 +315,7 @@ void cp2db(void *dest, char *metadata, Status *status)
     // get the name
     strcpy(db->name, strsep(&metadata, "."));
     db->tables_size = atoi(strsep(&metadata, "."));
+    db->tables_capacity = db->tables_size;
 
     db->tables = (Table *)calloc(sizeof(Table), db->tables_size);
     if (!db->tables)
@@ -328,7 +329,7 @@ void cp2db(void *dest, char *metadata, Status *status)
     {
         char *table_name = strsep(&metadata, ".");
         char *file_path = catnstr(4, "dbdir/", db->name, ".", table_name);
-        if (!file_path || prepend(&props.to_free, &file_path) != 0)
+        if (!file_path || prepend(&props.to_free, file_path) != 0)
         {
             *status = retrack(props, "Copying table meta datainto memory failed");
             // consider having state variable here to indicate error
@@ -343,15 +344,18 @@ void cp2db(void *dest, char *metadata, Status *status)
 
 // deserialize_db - reverse of serialize_db, copies string from
 // file into a db struct
-Db deserialize_db(int fd, Status *status)
+Db deserialize_db(char *db_path, Status *status)
 {
     Db db;
 
-    int sz = lseek(fd, 0, SEEK_END);
-    char metadata[sz];
-    lseek(fd, 0L, SEEK_SET);
+    strcpy(db.file_path, db_path);
+    int db_file = open(db_path, O_RDWR, 0666);
 
-    read(fd, metadata, sz);
+    int sz = lseek(db_file, 0, SEEK_END);
+    char metadata[sz];
+    lseek(db_file, 0L, SEEK_SET);
+
+    read(db_file, metadata, sz);
     cp2db((void *)&db, metadata, status);
 
     return db;

@@ -123,7 +123,7 @@ void write_load(Table *table, Column *column, char *data, size_t size, Status *s
         return;
     }
 
-    if (column->end >= column->file_size)
+    if (column->end + MAX_INT_LENGTH + 1 >= column->file_size)
     {
         // remap
         msync(column->file, column->file_size, MS_SYNC);
@@ -139,9 +139,60 @@ void write_load(Table *table, Column *column, char *data, size_t size, Status *s
     size_t write_size = size < column->file_size - column->end ? size : column->file_size - column->end;
     memcpy(column->file + column->end, data, write_size);
     column->end += write_size;
-    column->pending_load += (write_size / MAX_INT_LENGTH);
+    column->pending_load += (write_size / (MAX_INT_LENGTH + 1));
 
     write_load(table, column, data + write_size, size - write_size, status);
+}
+
+bool insert_col(Table *table, Column *col, char *value, Status *status)
+{
+    status->code = OK;
+    map_col(table, col, status);
+
+    if (status->code != OK)
+    {
+        return false;
+    }
+
+    if (col->end + MAX_INT_LENGTH + 1 >= col->file_size)
+    {
+        // remap
+        msync(col->file, col->file_size, MS_SYNC);
+        munmap(col->file, col->file_size);
+        col->file = NULL;
+        map_col(table, col, status);
+        if (status->code != OK)
+        {
+            return false;
+        }
+    }
+
+    char *zero_padded_str = zeropadd(value, strlen(value));
+    memcpy(col->file + col->end, zero_padded_str, MAX_INT_LENGTH);
+    memcpy(col->file + col->end + MAX_INT_LENGTH, ",", 1);
+    col->end += MAX_INT_LENGTH + 1;
+    free(zero_padded_str);
+    return true;
+}
+// insert to database
+void insert(Table *table, char **values, Status *status)
+{
+    bool success = true;
+    for (size_t i = 0; i < table->col_count; i++)
+    {
+
+        if (!insert_col(table, &table->columns[i], values[i], status))
+        {
+            success = false;
+            break;
+        }
+    }
+    if (success)
+    {
+        table->rows += 1;
+        status->code = OK;
+    }
+    update_col_end(table);
 }
 
 void update_col_end(Table *table)
@@ -150,8 +201,8 @@ void update_col_end(Table *table)
     const size_t page_size = sysconf(_SC_PAGESIZE);
     for (size_t i = 0; i < table->col_count; i++)
     {
-        Column col = table->columns[i];
-        col.end = col.meta_data_size * page_size + table->rows * MAX_INT_LENGTH + 1;
+
+        table->columns[i].end = table->columns[i].meta_data_size * page_size + table->rows * (MAX_INT_LENGTH + 1);
     }
 }
 

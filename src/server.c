@@ -17,9 +17,12 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/un.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <fcntl.h>
 
 #include "common.h"
 #include "parse.h"
@@ -149,6 +152,13 @@ char *execute_DbOperator(DbOperator *query)
 
         // return "File Loaded";
     }
+    else if (query->type == INSERT)
+    {
+        Status insert_status;
+        insert(query->operator_fields.insert_operator.table,
+               query->operator_fields.insert_operator.values,
+               &insert_status);
+    }
     else if (query->type == SELECT)
     {
         Status select_status;
@@ -204,8 +214,8 @@ char *execute_DbOperator(DbOperator *query)
     }
     else if (query->type == SUM)
     {
-        sum(query->operator_fields.avg_operator.handler,
-            query->operator_fields.avg_operator.variable);
+        Status sum_status;
+        sum(query->operator_fields.avg_operator, &sum_status);
         free(query);
         return "";
     }
@@ -237,20 +247,19 @@ char *execute_DbOperator(DbOperator *query)
     return "";
 }
 
-char *ftos(float value)
-{
-
-    char *str = malloc(sizeof(char) * MAX_INT_LENGTH);
-    sprintf(str, "%.2f", value);
-
-    return str;
-}
-
 char *print_tuple(PrintOperator print_operator)
 {
     if (print_operator.type == SINGLE_FLOAT)
     {
-        return ftos(print_operator.data.value);
+        char *str = malloc(sizeof(char) * MAX_INT_LENGTH);
+        sprintf(str, "%.2f", print_operator.data.fvalue);
+        return str;
+    }
+    else if (print_operator.type == SINGLE_INT)
+    {
+        char *str = malloc(sizeof(char) * MAX_INT_LENGTH);
+        sprintf(str, "%d", print_operator.data.ivalue);
+        return str;
     }
 
     int width = print_operator.data.tuple.width;
@@ -285,17 +294,72 @@ int generic_sum(Variable *variable)
     return sum;
 }
 
-void sum(char *handler, Variable *variable)
+void sum(AvgOperator avg_operator, Status *status)
 {
-    add_var(handler,
-            (vector){.value = generic_sum(variable), .size = 1},
-            FLOAT_VALUE);
+    char *handler = avg_operator.handler;
+
+    if (avg_operator.type == VARIABLE_O)
+    {
+        Variable *variable = avg_operator.variable;
+
+        add_var(handler,
+                (vector){.ivalue = generic_sum(variable), .size = 1},
+                INT_VALUE);
+    }
+    else if (avg_operator.type == COLUMN_O)
+    {
+
+        Table *table = avg_operator.address.table;
+        Column *column = avg_operator.address.col;
+
+        // check if sum is already calculated
+        if (column->sum[0] == 1)
+        {
+            // handle new inserts and and new loads
+            add_var(handler,
+                    (vector){.ivalue = column->sum[1], .size = 1},
+                    INT_VALUE);
+            return;
+        }
+
+        const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
+
+        create_colf(table, column, status);
+
+        if (status->code != OK)
+        {
+            log_err("Error opening file for column write");
+            return;
+        }
+
+        struct stat sb;
+        fstat(column->fd, &sb);
+
+        // create a map for the column file
+        char *buffer = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, column->fd, 0);
+        int index = column->meta_data_size * PAGE_SIZE;
+
+        int sum = 0;
+        while (buffer[index] != '\0')
+        {
+            int num = zerounpadd(buffer + index, ',');
+            sum += num;
+            index += MAX_INT_LENGTH + 1;
+        }
+
+        munmap(buffer, sb.st_size);
+        column->sum[0] = 1;
+        column->sum[1] = sum;
+        add_var(handler,
+                (vector){.ivalue = sum, .size = 1},
+                INT_VALUE);
+    }
 }
 
 void average(char *handler, Variable *variable)
 {
     add_var(handler,
-            (vector){.value = generic_sum(variable) / variable->result.size, .size = 1},
+            (vector){.fvalue = (float)generic_sum(variable) / variable->result.size, .size = 1},
             FLOAT_VALUE);
 }
 

@@ -158,6 +158,8 @@ Status create_db(const char *db_name)
 
 	if (access(file_path, F_OK) == 0)
 	{
+		// DON"T KNOW WHAT THE EXCPECTED BEHAVIOUR IS
+		load_db(db_name);
 		return retrack(props, "Database already exists");
 	}
 
@@ -196,18 +198,14 @@ Status load_db(const char *db_name)
 
 	if (access(file_name, F_OK) == -1)
 	{
+		free(file_name);
 		return (Status){.code = ERROR, .error_message = "Database doesn't exist"};
-	}
-
-	int fd = open(file_name, O_RDWR);
-
-	if (fd < 0)
-	{
-		return (Status){.code = ERROR, .error_message = "System Failure: error opening file"};
 	}
 
 	Status status;
 	current_db = malloc(sizeof(Db));
-	*current_db = deserialize_db(fd, &status);
+	*current_db = deserialize_db(file_name, &status);
+
+	free(file_name);
 	return status;
 }

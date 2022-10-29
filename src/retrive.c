@@ -20,23 +20,22 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
 {
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
 
-    //  chekc if the file is already mapped
-    // make sure the map is at the start of the file if not create a new map
-    // may be have a reading map and a writing map separately
-    // to start with just do a simple read
-
     create_colf(table, column, status);
 
-    if (column->fd == 0)
+    if (status->code != OK)
     {
-        // do something about file fialing to write
         log_err("Error opening file for column write");
         return;
     }
+
     struct stat sb;
     fstat(column->fd, &sb);
+
+    // what if the result can't fit in memory
+    // option 2 uses tmp file and mmap
     char buffer[sb.st_size];
-    int *result = malloc(sizeof(int) * sb.st_size);
+    int *result = calloc(sb.st_size, sizeof(int));
+
     int result_size = 0;
     lseek(column->fd, column->meta_data_size * PAGE_SIZE, SEEK_SET);
     read(column->fd, buffer, sb.st_size);
@@ -57,7 +56,7 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
         index += MAX_INT_LENGTH + 1;
     }
 
-    add_var(var_name, (pos_vec){.values = result, .size = result_size, .value = 0}, POSITION_VECTOR);
+    add_var(var_name, (pos_vec){.values = result, .size = result_size, .ivalue = 0, .fvalue = 0.0}, POSITION_VECTOR);
 }
 
 void select_pos(Variable *pos_vec, Variable *val_vac, char *hanle, int *low, int *high, Status *status)
@@ -93,7 +92,7 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
     // here instead use mmap to create an area and use that to write to file
     // which you can delete at the end
     char buffer[sb.st_size];
-    int *result = malloc(sizeof(int) * var->result.size);
+    int *result = calloc(var->result.size, sizeof(int));
     int result_size = 0;
     lseek(column->fd, column->meta_data_size * PAGE_SIZE, SEEK_SET);
     read(column->fd, buffer, sb.st_size);
@@ -116,6 +115,6 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
         index += MAX_INT_LENGTH + 1;
     }
 
-    add_var(var_name, (pos_vec){.size = result_size, .values = result, .value = 0},
+    add_var(var_name, (pos_vec){.size = result_size, .values = result, .ivalue = 0, .fvalue = 0.0},
             POSITION_VECTOR);
 }

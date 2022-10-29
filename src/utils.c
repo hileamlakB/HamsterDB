@@ -268,6 +268,7 @@ char *zeropadd(char *str, int length)
     if (num < 0)
     {
         i = 1;
+        zeros += 1;
         padd_str[0] = '-';
         num = -num;
     }
@@ -293,11 +294,12 @@ int zerounpadd(char *data, char sep)
     int i = 0;
     int num = 0;
     int sign = 1;
-    while (data[i] != sep)
+    while (data[i] != sep && data[i] != '\0')
     {
         if (data[i] == '-')
         {
             sign = -1;
+            i += 1;
             continue;
         }
 

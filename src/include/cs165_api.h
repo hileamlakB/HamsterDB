@@ -46,7 +46,8 @@ SOFTWARE.
 typedef struct vector
 {
     int *values;
-    float value;
+    float fvalue;
+    int ivalue;
     int size;
 } vector;
 
@@ -54,7 +55,8 @@ typedef enum variable_type
 {
     POSITION_VECTOR, // position vector
     VALUE_VECTOR,    // int vectors
-    FLOAT_VALUE      // single values
+    FLOAT_VALUE,     // single float value
+    INT_VALUE,       // single int value
 } variable_type;
 
 typedef struct Variable
@@ -80,7 +82,8 @@ struct Comparator;
 typedef enum PrintType
 {
     TUPLE,
-    SINGLE_FLOAT
+    SINGLE_FLOAT,
+    SINGLE_INT,
 } PrintType;
 
 typedef struct Column
@@ -314,7 +317,7 @@ typedef struct CreateOperator
 typedef struct InsertOperator
 {
     Table *table;
-    int *values;
+    char **values;
 } InsertOperator;
 
 typedef struct EntityAddress
@@ -382,14 +385,24 @@ typedef struct PrintOperator
     union
     {
         PrintTuple tuple;
-        float value;
+        float fvalue;
+        int ivalue;
     } data;
 } PrintOperator;
+
+typedef enum SourceType
+
+{
+    VARIABLE_O,
+    COLUMN_O
+} SourceType;
 
 typedef struct AvgOperator
 {
     char *handler;
     Variable *variable;
+    EntityAddress address;
+    SourceType type;
 
 } AvgOperator;
 
@@ -473,7 +486,7 @@ serialize_data serialize_table(Table *);
 Table deserialize_table(char *, Status *);
 
 serialize_data serialize_db(Db *);
-Db deserialize_db(int, Status *);
+Db deserialize_db(char *, Status *);
 
 // read_write.c
 void create_colf(Table *, Column *, Status *);
@@ -495,9 +508,11 @@ void add_var(char *, vector, variable_type);
 Variable *find_var(char *);
 
 // server.c
+
+void insert(Table *, char **, Status *);
 char *print_tuple(PrintOperator);
 void average(char *, Variable *);
-void sum(char *, Variable *);
+void sum(AvgOperator, Status *);
 
 void add(char *, Variable *, Variable *);
 void sub(char *, Variable *, Variable *);

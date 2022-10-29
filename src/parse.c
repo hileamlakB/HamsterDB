@@ -36,11 +36,62 @@ char *next_token(char **tokenizer, message_status *status)
 
 // <vec_pos>=select(<posn_vec>,<val_vec>,<low>,<high>)
 // uses preselected position
-DbOperator *parse_select_pos(char *select_argument)
+DbOperator *parse_select_pos(char *handle, char *select_argument)
 {
-    (void)select_argument;
-    return NULL;
+    char *tokenizer = select_argument;
+    message_status status = OK_DONE;
+    char *pos_vec_name = next_token(&tokenizer, &status);
+    char *val_vec_name = next_token(&tokenizer, &status);
+    char *low = next_token(&tokenizer, &status);
+    char *high = next_token(&tokenizer, &status);
+
+    if (status != OK_DONE)
+    {
+        return NULL;
+    }
+
+    Variable *pos_vec = find_var(pos_vec_name);
+    Variable *val_vec = find_var(val_vec_name);
+
+    if (pos_vec == NULL || val_vec == NULL)
+    {
+        cs165_log(stdout, "Variable not found");
+        return NULL;
+    }
+
+    // create the operator
+    DbOperator *select_op = malloc(sizeof(DbOperator));
+
+    select_op->type = SELECT;
+    select_op->operator_fields.select_operator.handler = handle;
+
+    if (strncmp("null", low, 4) == 0)
+    {
+        select_op->operator_fields.select_operator.low = NULL;
+    }
+    else
+    {
+        select_op->operator_fields.select_operator.low = malloc(sizeof(int));
+        *select_op->operator_fields.select_operator.low = atoi(low);
+    }
+
+    if (strncmp("null", high, 4) == 0)
+    {
+        select_op->operator_fields.select_operator.high = NULL;
+    }
+    else
+    {
+        select_op->operator_fields.select_operator.high = malloc(sizeof(int));
+        *select_op->operator_fields.select_operator.high = atoi(high);
+    }
+
+    select_op->operator_fields.select_operator.type = SELECT_POS;
+    select_op->operator_fields.select_operator.pos_vec = pos_vec;
+    select_op->operator_fields.select_operator.val_vec = val_vec;
+
+    return select_op;
 }
+
 /**
  * Takes a pointer to a string.
  * returns the equivalent select opertor
@@ -53,6 +104,8 @@ DbOperator *parse_select(char *handle, char *select_argument)
     message_status status = OK_DONE;
 
     char *tokenizer = select_argument;
+    // remove parenthesis
+    tokenizer++;
 
     // determine which version of select is being used
     int number_of_commas = 0;
@@ -70,11 +123,8 @@ DbOperator *parse_select(char *handle, char *select_argument)
 
     if (number_of_commas > 2)
     {
-        return parse_select_pos(select_argument);
+        return parse_select_pos(handle, select_argument);
     }
-
-    // remove parenthesis
-    tokenizer++;
 
     char *name = next_token(&tokenizer, &status);
     char *db_name = strsep(&name, ".");
@@ -143,6 +193,7 @@ DbOperator *parse_select(char *handle, char *select_argument)
         *select_op->operator_fields.select_operator.high = atoi(high);
     }
 
+    select_op->operator_fields.select_operator.type = SELECT_COL;
     select_op->operator_fields.select_operator.table = table;
     select_op->operator_fields.select_operator.column = column;
 
@@ -829,31 +880,26 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
     {
         query_command += 6;
         dbo = parse_select(handle, query_command);
-        dbo->type = SELECT;
     }
     else if (strncmp(query_command, "add", 3) == 0)
     {
         query_command += 3;
         dbo = parse_add(handle, query_command);
-        dbo->type = ADD;
     }
     else if (strncmp(query_command, "sub", 3) == 0)
     {
         query_command += 3;
         dbo = parse_sub(handle, query_command);
-        dbo->type = SUB;
     }
     else if (strncmp(query_command, "avg", 3) == 0)
     {
         query_command += 3;
         dbo = parse_avg(handle, query_command);
-        dbo->type = AVG;
     }
     else if (strncmp(query_command, "sum", 3) == 0)
     {
         query_command += 3;
         dbo = parse_sum(handle, query_command);
-        dbo->type = SUM;
     }
     else if (strncmp(query_command, "min", 3) == 0)
     {

@@ -174,7 +174,7 @@ serialize_data serialize_table(Table *table)
 }
 
 // cp2table - does the opposit of cptable
-void cp2table(char *db_name, void *dest, char *metadata, Status *status)
+void cp2table(char *path_name, void *dest, char *metadata, Status *status)
 {
 
     Table *table = (Table *)dest;
@@ -192,9 +192,9 @@ void cp2table(char *db_name, void *dest, char *metadata, Status *status)
     // it is a result of an outisde editing of the db file
     // this isn't handled here
 
-    // get the name
-    size_t rows = atoi(strsep(&metadata, "."));
-    table->rows = rows;
+    // get the rows
+    strcpy(table->file_path, path_name);
+    table->rows = atoi(strsep(&metadata, "."));
     strcpy(table->name, strsep(&metadata, "."));
     table->col_count = atoi(strsep(&metadata, "."));
 
@@ -212,16 +212,16 @@ void cp2table(char *db_name, void *dest, char *metadata, Status *status)
     for (size_t i = 0; i < table->col_count; i++)
     {
         char *col_name = strsep(&metadata, ".");
-        char *col_ful_name = catnstr(6, "dbdir/", db_name, ".", table->name, ".", col_name);
+        char *file_path = catnstr(3, path_name, ".", col_name);
 
-        if (!col_ful_name || prepend(&props.to_free, col_ful_name) != 0)
+        if (!file_path || prepend(&props.to_free, file_path) != 0)
         {
             *status = retrack(props, "Copying table meta datainto memory failed");
             // consider having state variable here to indicate error
             return;
         }
 
-        table->columns[i] = deserialize_column(col_ful_name, status);
+        table->columns[i] = deserialize_column(file_path, status);
         if (status->code != OK)
         {
             *status = retrack(props, "Copying table meta datainto memory failed");
@@ -232,16 +232,17 @@ void cp2table(char *db_name, void *dest, char *metadata, Status *status)
     clean_up(props.to_free);
 }
 
-Table deserialize_table(char *db_name, int table_file, Status *status)
+Table deserialize_table(char *table_path, Status *status)
 {
     Table table;
+    int table_file = open(table_path, O_RDWR, 0666);
 
     int sz = lseek(table_file, 0, SEEK_END);
     char metadata[sz];
     lseek(table_file, 0L, SEEK_SET);
 
     read(table_file, metadata, sz);
-    cp2table(db_name, (void *)&table, metadata, status);
+    cp2table(table_path, (void *)&table, metadata, status);
 
     return table;
 }
@@ -316,7 +317,7 @@ void cp2db(void *dest, char *metadata, Status *status)
     db->tables_size = atoi(strsep(&metadata, "."));
 
     db->tables = (Table *)calloc(sizeof(Table), db->tables_size);
-    if (!db->tables || prepend(&props.to_free, db->tables) != 0)
+    if (!db->tables)
     {
         *status = retrack(props, "Copying table meta datainto memory failed");
         // consider having state variable here to indicate error
@@ -326,16 +327,18 @@ void cp2db(void *dest, char *metadata, Status *status)
     for (size_t i = 0; i < db->tables_size; i++)
     {
         char *table_name = strsep(&metadata, ".");
-        int table_file = load_table(db, table_name);
-        if (table_file <= 0 || prepend(&props.to_close, &table_file) != 0)
+        char *file_path = catnstr(4, "dbdir/", db->name, ".", table_name);
+        if (!file_path || prepend(&props.to_free, &file_path) != 0)
         {
             *status = retrack(props, "Copying table meta datainto memory failed");
             // consider having state variable here to indicate error
             return;
         }
 
-        db->tables[i] = deserialize_table(db->name, table_file, status);
+        db->tables[i] = deserialize_table(file_path, status);
     };
+
+    clean_up(props.to_free);
 }
 
 // deserialize_db - reverse of serialize_db, copies string from

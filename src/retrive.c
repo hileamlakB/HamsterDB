@@ -60,6 +60,16 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
     add_var(var_name, (pos_vec){.values = result, .size = result_size, .value = 0}, POSITION_VECTOR);
 }
 
+void select_pos(Variable *pos_vec, Variable *val_vac, char *hanle, int *low, int *high, Status *status)
+{
+    (void)pos_vec;
+    (void)val_vac;
+    (void)hanle;
+    (void)low;
+    (void)high;
+    (void)status;
+}
+
 void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Status *status)
 {
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);

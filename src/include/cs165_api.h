@@ -337,12 +337,25 @@ typedef struct LoadOperator
     bool complete;
 } LoadOperator;
 
+typedef enum SelectType
+{
+    SELECT_POS,
+    SELECT_COL
+} SelectType;
+
 typedef struct SelectOperator
 {
+
     char *handler;
     int *result;
     int *low;
     int *high;
+
+    SelectType type;
+
+    Variable *val_vec;
+    Variable *pos_vec;
+
     Column *column;
     Table *table;
 
@@ -457,14 +470,10 @@ serialize_data serialize_column(Column *);
 Column deserialize_column(char *, Status *);
 
 serialize_data serialize_table(Table *);
-Table deserialize_table(char *, int, Status *);
+Table deserialize_table(char *, Status *);
 
 serialize_data serialize_db(Db *);
 Db deserialize_db(int, Status *);
-
-// load.c
-int load_table(Db *, char *);
-int load_column(char *, Table *, char *);
 
 // read_write.c
 void create_colf(Table *, Column *, Status *);
@@ -478,6 +487,7 @@ void update_col_end(Table *);
 
 // select fetch
 void select_col(Table *, Column *, char *, int *, int *, Status *);
+void select_pos(Variable *, Variable *, char *, int *, int *, Status *);
 void fetch_col(Table *, Column *, Variable *, char *, Status *);
 
 // var_pool.c

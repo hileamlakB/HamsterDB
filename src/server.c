@@ -152,12 +152,27 @@ char *execute_DbOperator(DbOperator *query)
     else if (query->type == SELECT)
     {
         Status select_status;
-        select_col(query->operator_fields.select_operator.table,
-                   query->operator_fields.select_operator.column,
-                   query->operator_fields.select_operator.handler,
-                   query->operator_fields.select_operator.low,
-                   query->operator_fields.select_operator.high,
-                   &select_status);
+
+        if (query->operator_fields.select_operator.type == SELECT_COL)
+        {
+            select_col(query->operator_fields.select_operator.table,
+                       query->operator_fields.select_operator.column,
+                       query->operator_fields.select_operator.handler,
+                       query->operator_fields.select_operator.low,
+                       query->operator_fields.select_operator.high,
+                       &select_status);
+        }
+        else if (query->operator_fields.select_operator.type == SELECT_POS)
+        {
+            select_pos(
+                query->operator_fields.select_operator.pos_vec,
+                query->operator_fields.select_operator.val_vec,
+                query->operator_fields.select_operator.handler,
+                query->operator_fields.select_operator.low,
+                query->operator_fields.select_operator.high,
+                &select_status);
+        }
+
         free(query);
         return "";
         // return "File Loaded";
@@ -448,20 +463,22 @@ int main(void)
         exit(1);
     }
 
-    log_info("Waiting for a connection %d ...\n", server_socket);
-
-    struct sockaddr_un remote;
-    socklen_t t = sizeof(remote);
-    int client_socket = 0;
-
-    if ((client_socket = accept(server_socket, (struct sockaddr *)&remote, &t)) == -1)
+    while (true)
     {
-        log_err("L%d: Failed to accept a new connection.\n", __LINE__);
-        exit(1);
+        log_info("Waiting for a connection %d ...\n", server_socket);
+
+        struct sockaddr_un remote;
+        socklen_t t = sizeof(remote);
+        int client_socket = 0;
+
+        if ((client_socket = accept(server_socket, (struct sockaddr *)&remote, &t)) == -1)
+        {
+            log_err("L%d: Failed to accept a new connection.\n", __LINE__);
+            exit(1);
+        }
+
+        handle_client(client_socket);
     }
-
-    handle_client(client_socket);
-
     return 0;
 }
 

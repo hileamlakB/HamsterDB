@@ -10,11 +10,14 @@
 #include "cs165_api.h"
 #include "unistd.h"
 
-// creats and opens a file cor a column
-void create_colf(Column *col)
+// creats and opens a file for a column
+void create_colf(Table *table, Column *col, Status *status)
 {
+    status->code = OK;
+
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
     struct stat sb;
+    // check if file is already open
     int stat = fstat(col->fd, &sb);
     if (col->fd != 0 && stat != -1)
     {
@@ -22,43 +25,37 @@ void create_colf(Column *col)
     }
 
     // file path should be set before this function is called
-    int fd = open(col->file_path, O_CREAT | O_RDWR, 0666);
+    int fd = open(col->file_path, O_CREAT | O_RDWR, 0666); // create file if it didn't exist
     if (fd == -1)
     {
         // do something about file fialing to write
-        log_err("Error opening file for column write");
+        status->error_message = "Error opening file for column write";
+        status->code = ERROR;
         return;
     }
 
-    // write metadata to file
-
+    // Update metadata on file
     col->fd = fd;
     serialize_data meta_data = serialize_column(col);
     write(fd, meta_data.data, meta_data.size);
-    col->end = ((meta_data.size / PAGE_SIZE) + 1) * PAGE_SIZE;
+    col->end = (table->rows + ((meta_data.size / PAGE_SIZE) + 1)) * PAGE_SIZE;
     col->file_size = ((meta_data.size / PAGE_SIZE) + 1) * PAGE_SIZE;
-    log_info("meta deta size %d", col->file_size);
-
     free(meta_data.data);
 }
 
-// creates a map to the equivalent column map
-void map_col(Column *column)
+// creates a map to the column file
+void map_col(Table *table, Column *column, Status *status)
 {
 
+    status->code = OK;
     const size_t page_size = sysconf(_SC_PAGESIZE);
     // experiment with this number, the overhead mx_size
     const size_t map_size = 2 * page_size;
 
-    if (column->fd == 0)
+    // check if the file is open if not open it
+    create_colf(table, column, status);
+    if (status->code != OK)
     {
-        create_colf(column);
-    }
-
-    if (column->fd == 0)
-    {
-        // do something about file fialing to write
-        log_err("Error opening file for column write");
         return;
     }
 
@@ -68,61 +65,49 @@ void map_col(Column *column)
         return;
     }
 
-    // page aligned offset
-    // size_t pa_offset = offset & ~(page_size - 1);
-    // Map file into memory using mmap
-
-    // expland the file to meet map size
+    // expand the file by map size for some writing room
     lseek(column->fd, column->end + map_size, SEEK_SET);
     write(column->fd, "", map_size);
-    column->file_size = column->end + map_size;
 
+    column->file_size = column->end + map_size;
     char *file = (char *)mmap(NULL, column->file_size, PROT_READ | PROT_WRITE, MAP_SHARED, column->fd, 0);
     if (file == MAP_FAILED)
     {
-        // do something about file fialing to write
-        log_err("Error mapping file for column write");
+        status->code = ERROR;
+        status->error_message = "Error mapping file for column write";
         return;
     }
     column->file = file;
     column->map_size = map_size;
-
-    // ftruncate(column->fd, offset + map_size);
 }
 
 // flushes data from column to mapped file
 // using the write2map function
-void flush_col(Column *column)
+void flush_col(Table *table, Column *column, Status *status)
 {
-    if (column->fd == 0)
+    status->code = OK;
+    create_colf(table, column, status);
+
+    if (status->code != OK)
     {
-        // This will automatically write the metadata
-        create_colf(column);
         return;
     }
 
-    if (column->fd == 0)
-    {
-        // do something about file fialing to write
-        log_err("Error opening file for column write");
-        return;
-    }
     lseek(column->fd, 0, SEEK_SET);
-
     if (column->file != NULL)
     {
+        // sync mapped file
         msync(column->file, column->map_size, MS_SYNC);
         munmap(column->file, column->map_size);
         column->file = NULL;
     }
 
     serialize_data column_data = serialize_column(column);
-
     write(column->fd, column_data.data, column_data.size);
 }
 
 // write size data to column from data
-void write_col(Column *column, char *data, size_t size)
+void write_load(Table *table, Column *column, char *data, size_t size, Status *status)
 {
 
     if (!data || size == 0)
@@ -130,9 +115,12 @@ void write_col(Column *column, char *data, size_t size)
         return;
     }
 
-    if (!column->file)
+    status->code = OK;
+    map_col(table, column, status);
+
+    if (status->code != OK)
     {
-        map_col(column);
+        return;
     }
 
     if (column->end >= column->file_size)
@@ -141,44 +129,61 @@ void write_col(Column *column, char *data, size_t size)
         msync(column->file, column->file_size, MS_SYNC);
         munmap(column->file, column->file_size);
         column->file = NULL;
-        map_col(column);
+        map_col(table, column, status);
+        if (status->code != OK)
+        {
+            return;
+        }
     }
 
     size_t write_size = size < column->file_size - column->end ? size : column->file_size - column->end;
-
-    // write to the mmaped file
-
     memcpy(column->file + column->end, data, write_size);
     column->end += write_size;
+    column->pending_load += (write_size / MAX_INT_LENGTH);
 
-    write_col(column, data + write_size, size - write_size);
+    write_load(table, column, data + write_size, size - write_size, status);
+}
+
+void update_col_end(Table *table)
+{
+
+    const size_t page_size = sysconf(_SC_PAGESIZE);
+    for (size_t i = 0; i < table->col_count; i++)
+    {
+        Column col = table->columns[i];
+        col.end = col.meta_data_size * page_size + table->rows * MAX_INT_LENGTH + 1;
+    }
 }
 
 // creats and opens a file cor a column
-void flush_table(Table *table)
+void flush_table(Table *table, Status *status)
 {
-    int file = open(table->file_name, O_CREAT | O_RDWR, 0666);
+    int file = open(table->file_path, O_CREAT | O_RDWR, 0666);
     lseek(file, 0, SEEK_SET);
 
     serialize_data table_data = serialize_table(table);
     write(file, table_data.data, table_data.size);
     for (size_t i = 0; i < table->col_count; i++)
     {
-        flush_col(table->columns + i);
+        flush_col(table, table->columns + i, status);
     }
 }
 
-void flush_db(Db *db)
+void flush_db(Db *db, Status *status)
 {
-    chdir("dbdir");
-    int file = open(db->name, O_CREAT | O_RDWR, 0666);
+
+    if (!db)
+    {
+        return;
+    }
+
+    int file = open(db->file_path, O_CREAT | O_RDWR, 0666);
     lseek(file, 0, SEEK_SET);
 
     serialize_data db_data = serialize_db(db);
     write(file, db_data.data, db_data.size);
     for (size_t i = 0; i < db->tables_size; i++)
     {
-        flush_table(db->tables + i);
+        flush_table(db->tables + i, status);
     }
-    chdir("..");
 }

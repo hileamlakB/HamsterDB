@@ -41,8 +41,6 @@
  **/
 char *execute_DbOperator(DbOperator *query)
 {
-    // there is a small memory leak here (when combined with other parts of your database.)
-    // as practice with something like valgrind and to develop intuition on memory leaks, find and fix the memory leak.
 
     // free query before you return here
     if (!query)
@@ -56,11 +54,12 @@ char *execute_DbOperator(DbOperator *query)
         if (query->operator_fields.create_operator.create_type == _DB)
         {
             struct Status ret_status = create_db(query->operator_fields.create_operator.name);
+
+            free(query);
             if (ret_status.code == OK)
             {
+
                 return "";
-                // return empty if successful
-                // return "Database Created Succesfully";
             }
             else
             {
@@ -74,24 +73,10 @@ char *execute_DbOperator(DbOperator *query)
                          query->operator_fields.create_operator.name,
                          query->operator_fields.create_operator.col_count,
                          &create_status);
+            free(query);
             if (create_status.code != OK)
             {
-                cs165_log(stdout, "adding a table failed.");
-                return "Failed";
-            }
-            return "";
-            // return "Table created successfully";
-        }
-        else if (query->operator_fields.create_operator.create_type == _TABLE)
-        {
-            Status create_status;
-            create_table(query->operator_fields.create_operator.db,
-                         query->operator_fields.create_operator.name,
-                         query->operator_fields.create_operator.col_count,
-                         &create_status);
-            if (create_status.code != OK)
-            {
-                cs165_log(stdout, "adding a table failed.");
+                cs165_log(stdout, "Adding table failed.\n");
                 return "Failed";
             }
             return "";
@@ -104,57 +89,136 @@ char *execute_DbOperator(DbOperator *query)
                           query->operator_fields.create_operator.name,
                           false,
                           &create_status);
+            free(query);
             if (create_status.code != OK)
             {
-                cs165_log(stdout, "adding a column failed.");
+                cs165_log(stdout, "Adding column failed.");
                 return "Failed";
             }
             return "";
-            // return "Column created successfully";
         }
     }
 
     else if (query->type == LOAD)
     {
-        write_col(query->operator_fields.load_operator.column,
-                  query->operator_fields.load_operator.data,
-                  query->operator_fields.load_operator.size);
-        return "";
+
+        Status write_load_status;
+
+        Table *table = query->operator_fields.load_operator.address.table;
+        if (query->operator_fields.load_operator.complete)
+        {
+
+            size_t loaded = table->columns[0].pending_load;
+            bool can_load = true;
+            // make sure all the columns have the same amount loaded
+            for (size_t i = 0; i < table->col_count; i++)
+            {
+                if (loaded != table->columns[i].pending_load)
+                {
+                    can_load = false;
+                }
+                table->columns[i].pending_load = 0;
+            }
+
+            if (can_load == false)
+            {
+                update_col_end(table);
+                return "Load failed: Unbalanced columns\n";
+            }
+            table->rows += loaded;
+            update_col_end(table);
+            return "";
+        }
+
+        // consider adding status
+        write_load(
+            table,
+            query->operator_fields.load_operator.address.col,
+            query->operator_fields.load_operator.data,
+            query->operator_fields.load_operator.size,
+            &write_load_status);
+        free(query);
+        if (write_load_status.code == OK)
+        {
+            return "";
+        }
+        else
+        {
+            return "Col write failed: retracting steps";
+        }
+
         // return "File Loaded";
     }
     else if (query->type == SELECT)
     {
-        select_col(query->operator_fields.select_operator.column,
+        Status select_status;
+        select_col(query->operator_fields.select_operator.table,
+                   query->operator_fields.select_operator.column,
                    query->operator_fields.select_operator.handler,
                    query->operator_fields.select_operator.low,
-                   query->operator_fields.select_operator.high);
+                   query->operator_fields.select_operator.high,
+                   &select_status);
+        free(query);
         return "";
         // return "File Loaded";
     }
     else if (query->type == FETCH)
     {
-        fetch_col(query->operator_fields.fetch_operator.column,
-                  query->operator_fields.fetch_operator.variable,
-                  query->operator_fields.fetch_operator.handler);
+        Status fetch_status;
+        fetch_col(
+            query->operator_fields.select_operator.table,
+            query->operator_fields.fetch_operator.column,
+            query->operator_fields.fetch_operator.variable,
+            query->operator_fields.fetch_operator.handler,
+            &fetch_status);
         return "";
     }
     else if (query->type == PRINT)
     {
-        return print_tuple(query->operator_fields.print_operator);
+
+        char *result = print_tuple(query->operator_fields.print_operator);
+        free(query);
+        return result;
     }
     else if (query->type == AVG)
     {
         average(query->operator_fields.avg_operator.handler,
                 query->operator_fields.avg_operator.variable);
+        free(query);
+        return "";
+    }
+    else if (query->type == SUM)
+    {
+        sum(query->operator_fields.avg_operator.handler,
+            query->operator_fields.avg_operator.variable);
+        free(query);
+        return "";
+    }
+    else if (query->type == ADD)
+    {
+        add(query->operator_fields.math_operator.handler,
+            query->operator_fields.math_operator.operand_1,
+            query->operator_fields.math_operator.operand_2);
+        free(query);
+        return "";
+    }
+    else if (query->type == SUB)
+    {
+        sub(query->operator_fields.math_operator.handler,
+            query->operator_fields.math_operator.operand_1,
+            query->operator_fields.math_operator.operand_2);
+        free(query);
         return "";
     }
     else if (query && query->type == SHUTDOWN)
     {
+        free(query);
         shutdown_server();
         return "";
         // return "Shutting down";
     }
 
+    free(query);
     return "";
 }
 
@@ -195,22 +259,51 @@ char *print_tuple(PrintOperator print_operator)
 
     return result;
 }
-/**
- * handle_client(client_socket)
- * This is the execution routine after a client has connected.
- * It will continually listen for messages from the client and execute queries.
- **/
-// TODO: You want to handle multiple clients at the same time instead of one right here
 
-void average(char *handler, Variable *variable)
+int generic_sum(Variable *variable)
 {
-    float sum = 0;
+    int sum = 0;
     for (int i = 0; i < variable->result.size; i++)
     {
         sum += variable->result.values[i];
     }
+    return sum;
+}
 
-    add_var(handler, (vector){.value = sum / variable->result.size, .size = 1}, FLOAT_VALUE);
+void sum(char *handler, Variable *variable)
+{
+    add_var(handler,
+            (vector){.value = generic_sum(variable), .size = 1},
+            FLOAT_VALUE);
+}
+
+void average(char *handler, Variable *variable)
+{
+    add_var(handler,
+            (vector){.value = generic_sum(variable) / variable->result.size, .size = 1},
+            FLOAT_VALUE);
+}
+
+void add(char *handler, Variable *variable1, Variable *variable2)
+{
+
+    int *result = malloc(sizeof(int) * variable1->result.size);
+    for (int i = 0; i < variable1->result.size; i++)
+    {
+        result[i] = variable1->result.values[i] + variable2->result.values[i];
+    }
+    add_var(handler, (vector){.values = result, .size = variable1->result.size}, VALUE_VECTOR);
+}
+
+void sub(char *handler, Variable *variable1, Variable *variable2)
+{
+
+    int *result = malloc(sizeof(int) * variable1->result.size);
+    for (int i = 0; i < variable1->result.size; i++)
+    {
+        result[i] = variable1->result.values[i] - variable2->result.values[i];
+    }
+    add_var(handler, (vector){.values = result, .size = variable1->result.size}, VALUE_VECTOR);
 }
 
 void handle_client(int client_socket)
@@ -374,8 +467,11 @@ int main(void)
 
 Status shutdown_server()
 {
+
+    // flush stuatus
+    Status flush_status;
     // cache everything to file
-    flush_db(current_db);
+    flush_db(current_db, &flush_status);
     exit(0);
     // Think about delaying the exit after sending the ack message
 

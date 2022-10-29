@@ -97,7 +97,7 @@ DbOperator *parse_select(char *handle, char *select_argument)
     {
         // should this check be done during parsing?
         // isn't that a bit unclean
-        cs165_log(stdout, "query unsupported. Bad db name");
+        cs165_log(stdout, "Query unsupported. Bad db name\n\n");
         return NULL; // QUERY_UNSUPPORTED
     }
 
@@ -105,7 +105,7 @@ DbOperator *parse_select(char *handle, char *select_argument)
     Table *table = lookup_table(current_db, tbl_name);
     if (!table)
     {
-        cs165_log(stdout, "query unsupported. Bad table name");
+        cs165_log(stdout, "Query unsupported. Bad table name\n");
         return NULL;
     }
 
@@ -113,7 +113,7 @@ DbOperator *parse_select(char *handle, char *select_argument)
     Column *column = lookup_column(table, col_name);
     if (!column)
     {
-        cs165_log(stdout, "query unsupported. Bad column name");
+        cs165_log(stdout, "Query unsupported. Bad column name\n");
         return NULL;
     }
 
@@ -143,6 +143,7 @@ DbOperator *parse_select(char *handle, char *select_argument)
         *select_op->operator_fields.select_operator.high = atoi(high);
     }
 
+    select_op->operator_fields.select_operator.table = table;
     select_op->operator_fields.select_operator.column = column;
 
     return select_op;
@@ -178,7 +179,7 @@ DbOperator *parse_print(char *print_argument)
         Variable *var_location = find_var(var);
         if (var_location == NULL)
         {
-            cs165_log(stdout, "query unsupported. Bad variable name");
+            cs165_log(stdout, "Query unsupported. Bad variable name");
             return NULL;
         }
         result_tupls[i] = var_location;
@@ -235,7 +236,7 @@ DbOperator *parse_fetch(char *handle, char *fetch_arguments)
     {
         // should this check be done during parsing?
         // isn't that a bit unclean
-        cs165_log(stdout, "query unsupported. Bad db name");
+        cs165_log(stdout, "Query unsupported. Bad db name\n");
         return NULL; // QUERY_UNSUPPORTED
     }
 
@@ -243,7 +244,7 @@ DbOperator *parse_fetch(char *handle, char *fetch_arguments)
     Table *table = lookup_table(current_db, tbl_name);
     if (!table)
     {
-        cs165_log(stdout, "query unsupported. Bad table name");
+        cs165_log(stdout, "Query unsupported. Bad table name\n");
         return NULL;
     }
 
@@ -251,7 +252,7 @@ DbOperator *parse_fetch(char *handle, char *fetch_arguments)
     Column *column = lookup_column(table, col_name);
     if (!column)
     {
-        cs165_log(stdout, "query unsupported. Bad column name");
+        cs165_log(stdout, "Query unsupported. Bad column name\n");
         return NULL;
     }
 
@@ -259,7 +260,7 @@ DbOperator *parse_fetch(char *handle, char *fetch_arguments)
     Variable *result = find_var(pos_name);
     if (!result)
     {
-        cs165_log(stdout, "query unsupported. Bad variable name");
+        cs165_log(stdout, "Query unsupported. Bad variable name");
         return NULL;
     }
 
@@ -267,6 +268,7 @@ DbOperator *parse_fetch(char *handle, char *fetch_arguments)
     DbOperator *fetch_op = malloc(sizeof(DbOperator));
     fetch_op->type = FETCH;
     fetch_op->operator_fields.fetch_operator.handler = handle;
+    fetch_op->operator_fields.fetch_operator.table = table;
     fetch_op->operator_fields.fetch_operator.column = column;
     fetch_op->operator_fields.fetch_operator.variable = result;
 
@@ -276,7 +278,7 @@ DbOperator *parse_fetch(char *handle, char *fetch_arguments)
 DbOperator *parse_avg(char *handle, char *avg_arg)
 {
     char *tokenizer = avg_arg;
-    message_status status = OK_DONE;
+    // message_status status = OK_DONE;
 
     // remove parenthesis
     tokenizer++;
@@ -286,7 +288,7 @@ DbOperator *parse_avg(char *handle, char *avg_arg)
     Variable *result = find_var(tokenizer);
     if (!result)
     {
-        cs165_log(stdout, "query unsupported. Bad variable name");
+        cs165_log(stdout, "Query unsupported. Bad variable name");
         return NULL;
     }
 
@@ -298,6 +300,97 @@ DbOperator *parse_avg(char *handle, char *avg_arg)
 
     return average_op;
 }
+
+DbOperator *parse_sum(char *handle, char *sum_arg)
+{
+    char *tokenizer = sum_arg;
+    // message_status status = OK_DONE;
+
+    // remove parenthesis
+    tokenizer++;
+    tokenizer[strlen(tokenizer) - 1] = '\0';
+
+    // check if variable exists
+    Variable *result = find_var(tokenizer);
+    if (!result)
+    {
+        cs165_log(stdout, "Query unsupported. Bad variable name");
+        return NULL;
+    }
+
+    // create the operator
+    DbOperator *average_op = malloc(sizeof(DbOperator));
+    average_op->type = SUM;
+    average_op->operator_fields.avg_operator.handler = handle;
+    average_op->operator_fields.avg_operator.variable = result;
+
+    return average_op;
+}
+
+DbOperator *parse_add(char *handle, char *add_arg)
+{
+    char *tokenizer = add_arg;
+    message_status status = OK_DONE;
+
+    // remove parenthesis
+    tokenizer++;
+
+    char *var1 = next_token(&tokenizer, &status);
+    char *var2 = next_token(&tokenizer, &status);
+
+    // may be check the case where you have more than one comma
+    Variable *var_1 = find_var(var1);
+    Variable *var_2 = find_var(var2);
+
+    if (var_1 == NULL || var_2 == NULL)
+    {
+        cs165_log(stdout, "Query unsupported. Bad variable name");
+        return NULL;
+    }
+
+    // create the operator
+    DbOperator *math_operator = malloc(sizeof(DbOperator));
+    math_operator->type = ADD;
+    math_operator->operator_fields.math_operator.handler = handle;
+    math_operator->operator_fields.math_operator.operand_1 = var_1;
+    math_operator->operator_fields.math_operator.operand_2 = var_2;
+    math_operator->operator_fields.math_operator.operation = ADD;
+
+    return math_operator;
+}
+
+DbOperator *parse_sub(char *handle, char *add_arg)
+{
+    char *tokenizer = add_arg;
+    message_status status = OK_DONE;
+
+    // remove parenthesis
+    tokenizer++;
+
+    char *var1 = next_token(&tokenizer, &status);
+    char *var2 = next_token(&tokenizer, &status);
+
+    // may be check the case where you have more than one comma
+    Variable *var_1 = find_var(var1);
+    Variable *var_2 = find_var(var2);
+
+    if (var_1 == NULL || var_2 == NULL)
+    {
+        cs165_log(stdout, "Query unsupported. Bad variable name");
+        return NULL;
+    }
+
+    // create the operator
+    DbOperator *math_operator = malloc(sizeof(DbOperator));
+    math_operator->type = SUB;
+    math_operator->operator_fields.math_operator.handler = handle;
+    math_operator->operator_fields.math_operator.operand_1 = var_1;
+    math_operator->operator_fields.math_operator.operand_2 = var_2;
+    math_operator->operator_fields.math_operator.operation = SUB;
+
+    return math_operator;
+}
+
 // /**
 //  * Takes a pointer to a string.
 //  * returns the equivalent insert opertor
@@ -349,7 +442,7 @@ DbOperator *parse_create_tbl(char *create_arguments)
     // check that the database argument is the current active database
     if (!current_db || strcmp(current_db->name, db_name) != 0)
     {
-        cs165_log(stdout, "query unsupported. Bad db name");
+        cs165_log(stdout, "Query unsupported. Bad db name\n");
         return NULL; // QUERY_UNSUPPORTED
     }
     // turn the string column count into an integer, and check that the input is valid.
@@ -400,7 +493,7 @@ DbOperator *parse_create_col(char *create_arguments)
     {
         // should this check be done during parsing?
         // isn't that a bit unclean
-        cs165_log(stdout, "query unsupported. Bad db name");
+        cs165_log(stdout, "Query unsupported. Bad db name\n");
         return NULL; // QUERY_UNSUPPORTED
     }
 
@@ -408,7 +501,7 @@ DbOperator *parse_create_col(char *create_arguments)
     Table *table = lookup_table(current_db, table_name);
     if (!table)
     {
-        cs165_log(stdout, "query unsupported. Bad table name");
+        cs165_log(stdout, "Query unsupported. Bad table name\n");
         return NULL;
     }
 
@@ -469,7 +562,7 @@ DbOperator *parse_create_db(char *create_arguments)
  **/
 DbOperator *parse_create(char *create_arguments)
 {
-    message_status mes_status;
+    message_status mes_status = INITIAL;
     DbOperator *dbo = NULL;
     char *tokenizer_copy, *to_free;
     // Since strsep destroys input, we create a copy of our input.
@@ -515,9 +608,10 @@ DbOperator *parse_create(char *create_arguments)
     return dbo;
 }
 
-Column *parse_column_name(char *token)
+EntityAddress parse_column_name(char *token, Status *status)
 {
-
+    EntityAddress address = {.db = NULL, .table = NULL, .col = NULL};
+    status->code = OK;
     char *db_name = strsep(&token, ".");
     char *table_name = strsep(&token, ".");
     char *column_name = strsep(&token, ".");
@@ -532,59 +626,70 @@ Column *parse_column_name(char *token)
     // check that the database argument is the current active database
     if (!current_db || strcmp(current_db->name, db_name) != 0)
     {
-        // should this check be done during parsing?
-        // isn't that a bit unclean
-        cs165_log(stdout, "query unsupported. Bad db name");
-        return NULL; // QUERY_UNSUPPORTED
+
+        status->code = ERROR;
+        status->error_message = "Query unsupported. Bad db name\n";
+        return address;
     }
+    address.db = current_db;
 
     // make sure table exists
     Table *table = lookup_table(current_db, table_name);
     if (!table)
     {
-        cs165_log(stdout, "query unsupported. Bad table name");
-        return NULL;
+        status->code = ERROR;
+        status->error_message = "Query unsupported. Bad table name\n";
+        return address;
     }
+    address.table = table;
 
     // make sure column exists
     Column *column = lookup_column(table, column_name);
     if (!column)
     {
-        cs165_log(stdout, "query unsupported. Bad column name");
-        return NULL;
+        status->code = ERROR;
+        status->error_message = "Query unsupported. Bad column name\n";
+        return address;
     }
 
-    return column;
+    address.col = column;
+
+    return address;
 }
 
 DbOperator *parse_load(char *query_command, message *send_message)
 {
     char *token = strsep(&query_command, ",");
+    Status parse_status;
     // remove the first bracket
     token += 1;
 
-    // not enough arguments if token is NULL
-    if (token == NULL)
-    {
-        return NULL;
-    }
-    else
-    {
-        Column *col = parse_column_name(token);
-        if (col == NULL)
-        {
-            send_message->status = INCORRECT_FORMAT;
-            return NULL;
-        }
+    DbOperator *dbo = malloc(sizeof(DbOperator));
+    dbo->type = LOAD;
 
-        DbOperator *dbo = malloc(sizeof(DbOperator));
-        dbo->type = LOAD;
-        dbo->operator_fields.load_operator.column = col;
-        dbo->operator_fields.load_operator.size = atoi(strsep(&query_command, ","));
-        dbo->operator_fields.load_operator.data = query_command;
+    if (strncmp("complete", token, 8) == 0)
+    {
+        dbo->operator_fields.load_operator.complete = true;
+        token += 9;
 
+        dbo->operator_fields.load_operator.address = parse_column_name(token, &parse_status);
         return dbo;
     }
+
+    EntityAddress address = parse_column_name(token, &parse_status);
+
+    if (parse_status.code != OK)
+    {
+        send_message->status = INCORRECT_FILE_FORMAT;
+        return NULL;
+    }
+
+    dbo->operator_fields.load_operator.complete = false;
+    dbo->operator_fields.load_operator.address = address;
+    dbo->operator_fields.load_operator.size = atoi(strsep(&query_command, ","));
+    dbo->operator_fields.load_operator.data = query_command;
+
+    return dbo;
 }
 /**
  * parse_insert reads in the arguments for a create statement and
@@ -728,9 +833,15 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
     }
     else if (strncmp(query_command, "add", 3) == 0)
     {
+        query_command += 3;
+        dbo = parse_add(handle, query_command);
+        dbo->type = ADD;
     }
     else if (strncmp(query_command, "sub", 3) == 0)
     {
+        query_command += 3;
+        dbo = parse_sub(handle, query_command);
+        dbo->type = SUB;
     }
     else if (strncmp(query_command, "avg", 3) == 0)
     {
@@ -740,6 +851,9 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
     }
     else if (strncmp(query_command, "sum", 3) == 0)
     {
+        query_command += 3;
+        dbo = parse_sum(handle, query_command);
+        dbo->type = SUM;
     }
     else if (strncmp(query_command, "min", 3) == 0)
     {

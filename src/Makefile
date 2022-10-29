@@ -59,7 +59,7 @@ $(DEPSDIR)/stamp $(BUILDSTAMP):
 client: client.o utils.o
 	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS) -g
 
-server: server.o parse.o utils.o db_manager.o client_context.o load.o serialize.o read_write.o retrive.o var_pool.o
+server: server.o parse.o utils.o db_manager.o client_context.o serialize.o read_write.o retrive.o var_pool.o
 	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS) -g
 
 clean:

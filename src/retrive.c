@@ -24,7 +24,7 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
 
     if (status->code != OK)
     {
-        log_err("Error opening file for column write");
+        log_err("--Error opening file for column write");
         return;
     }
 
@@ -40,18 +40,15 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
     lseek(column->fd, column->meta_data_size * PAGE_SIZE, SEEK_SET);
     read(column->fd, buffer, sb.st_size);
 
-    int position = 0;
+    // int position = 0;
     int index = 0;
     while (buffer[index] != '\0')
     {
         int num = zerounpadd(buffer + index, ',');
 
-        if ((!low || num >= *low) && (!high || num < *high))
-        {
-            result[result_size++] = position;
-        }
+        result[result_size] = index / (MAX_INT_LENGTH + 1);
+        result_size += ((!low || num >= *low) && (!high || num < *high));
 
-        position++;
         // including separating comma
         index += MAX_INT_LENGTH + 1;
     }
@@ -59,7 +56,7 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
     add_var(var_name, (pos_vec){.values = result, .size = result_size, .ivalue = 0, .fvalue = 0.0}, POSITION_VECTOR);
 }
 
-void select_pos(Variable *posVec, Variable *valVec, char *hanle, int *low, int *high, Status *status)
+void select_pos(Variable *posVec, Variable *valVec, char *handle, int *low, int *high, Status *status)
 {
 
     status->code = OK;
@@ -68,13 +65,11 @@ void select_pos(Variable *posVec, Variable *valVec, char *hanle, int *low, int *
     int result_size = 0;
     for (int i = 0; i < posVec->result.size; i++)
     {
-        if ((!low || valVec->result.values[i] >= *low) && (!high || valVec->result.values[i] < *high))
-        {
-            result[result_size++] = posVec->result.values[i];
-        }
+        result[result_size] = posVec->result.values[i];
+        result_size += ((!low || valVec->result.values[i] >= *low) && (!high || valVec->result.values[i] < *high));
     }
 
-    add_var(hanle, (pos_vec){.values = result, .size = result_size, .ivalue = 0, .fvalue = 0.0}, POSITION_VECTOR);
+    add_var(handle, (pos_vec){.values = result, .size = result_size, .ivalue = 0, .fvalue = 0.0}, POSITION_VECTOR);
 }
 
 void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Status *status)
@@ -109,7 +104,7 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
     int result_p = 0;
 
     int index = 0;
-    while (buffer[index] != '\0')
+    while (buffer[index] != '\0' && result_p < var->result.size)
     {
 
         if (position == var->result.values[result_p])

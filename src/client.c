@@ -131,6 +131,9 @@ void communicate_server(int client_socket, message send_message)
 // to backend
 void flush_load(int client_socet, char *col_name, char *col_data, size_t data_size)
 {
+    static int called;
+
+    called += 1;
 
     message send_message;
     send_message.status = OK_DONE;
@@ -148,6 +151,8 @@ void flush_load(int client_socet, char *col_name, char *col_data, size_t data_si
                                data_size);
 
     // +6 comes from load()
+    // this looks west fool you can avoid it by creating the buffer with col name
+    // and load command at the start instead of copying now
     memcpy(load_query + total_len, col_data, data_size);
     total_len += data_size;
 
@@ -222,6 +227,8 @@ void load_file(int client_socket, char *file_name)
     // for each column, create a buffer of size page_size
     char colums[num_columns][PAGE_SIZE];
 
+    int added_rows[num_columns];
+
     // in each cyle read page_size bytes
 
     size_t loaded = header.len + 1;
@@ -234,15 +241,16 @@ void load_file(int client_socket, char *file_name)
         String line = read_line(file + loaded);
 
         // add ecah column data to the column array
-        size_t last = 0;
-        size_t str_i = 0;
-        size_t j = 0;
-        while (line.str[j] && last < num_columns - 1)
+        size_t current_col = 0;
+        size_t last_read = 0;
+        size_t i = 0;
+        while (line.str[i] && current_col < num_columns - 1)
         {
-            if (line.str[j] == ',')
+
+            if (line.str[i] == ',')
             {
-                line.str[j] = '\0';
-                size_t col_len = j - str_i; // the length of the single entry
+                line.str[i] = '\0';
+                size_t col_len = i - last_read; // the length of the single entry
 
                 // The flush function sends a single page at a time
                 // if an entry is longer than one page, some mechanism should be
@@ -256,48 +264,46 @@ void load_file(int client_socket, char *file_name)
 
                 // if writing is going to make it bigger than the columns
                 // capacity flush first
-                if (column_i[last] + col_len > PAGE_SIZE)
+                if (column_i[current_col] + MAX_INT_LENGTH > PAGE_SIZE)
                 {
                     // flush the column to database if it is full
-                    flush_load(client_socket, column_names[last], colums[last], column_i[last]);
-                    column_i[last] = 0;
+                    flush_load(client_socket, column_names[current_col], colums[current_col], column_i[current_col]);
+                    column_i[current_col] = 0;
                 }
 
-                char *zero_padded = zeropadd(line.str + str_i, col_len);
-                strcpy(colums[last] + column_i[last], zero_padded);
-                free(zero_padded);
+                // copy a zeropadded string version of the number into the array
+                zeropadd(line.str + last_read, col_len, colums[current_col] + column_i[current_col]);
 
                 // since each entry is padded with fixed number of zeros
-                column_i[last] += MAX_INT_LENGTH;
-                colums[last][column_i[last]] = ',';
-                column_i[last] += 1;
-                last += 1;
-                str_i = j + 1;
+                column_i[current_col] += MAX_INT_LENGTH;
+                colums[current_col][column_i[current_col]] = ',';
+                column_i[current_col] += 1;
+                added_rows[current_col] += 1;
+                current_col += 1;
+                last_read = i + 1;
             }
-            j += 1;
+            i += 1;
         }
         // you can save some time by not iterating through the last colum data in
         // the loop above
 
         // if this isn't the case, it means the file had a line with
         // a wrong format and in that case it should be handled
-        assert(last == num_columns - 1);
+        assert(current_col == num_columns - 1);
 
-        if (column_i[last] + (line.len - j) > PAGE_SIZE)
+        if (column_i[current_col] + MAX_INT_LENGTH > PAGE_SIZE)
         {
             // flush the column to database if it is full
-            flush_load(client_socket, column_names[last], colums[last], column_i[last]);
-            column_i[last] = 0;
+            flush_load(client_socket, column_names[current_col], colums[current_col], column_i[current_col]);
+            column_i[current_col] = 0;
         }
 
-        char *zero_padded = zeropadd(line.str + str_i, (line.len - j));
-        strcpy(colums[last] + column_i[last], zero_padded);
-        free(zero_padded);
+        zeropadd(line.str + last_read, (line.len - last_read), colums[current_col] + column_i[current_col]);
 
-        column_i[last] += MAX_INT_LENGTH;
-        colums[last][column_i[last]] = ',';
-        column_i[last] += 1;
-
+        column_i[current_col] += MAX_INT_LENGTH;
+        colums[current_col][column_i[current_col]] = ',';
+        column_i[current_col] += 1;
+        added_rows[current_col] += 1;
         loaded += line.len + 1; // including the new line character
         free(line.str);
     }
@@ -437,7 +443,7 @@ int main(void)
                 }
                 file_name[j] = '\0';
 
-                load_file2(client_socket, file_name);
+                load_file(client_socket, file_name);
             }
             else
             {

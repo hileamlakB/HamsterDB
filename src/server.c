@@ -95,7 +95,7 @@ char *execute_DbOperator(DbOperator *query)
             free(query);
             if (create_status.code != OK)
             {
-                cs165_log(stdout, "-- Adding column failed.");
+                cs165_log(stdout, "-- Adding column failed.\n");
                 return "Failed";
             }
             return "";

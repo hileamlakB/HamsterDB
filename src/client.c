@@ -129,47 +129,17 @@ void communicate_server(int client_socket, message send_message)
 
 // flush_load - flushes at most one page size of column data from the load buffer
 // to backend
-void flush_load(int client_socet, char *col_name, char *col_data, size_t data_size)
+void flush_load(int client_socet, char *msg, size_t size)
 {
-    static int called;
-
-    called += 1;
 
     message send_message;
     send_message.status = OK_DONE;
 
-    size_t name_len = strlen(col_name);
-    char *load_query = malloc(sizeof(char) * (name_len + data_size + 20));
+    send_message.length = size;
 
-    if (!load_query)
-    {
-        log_err("Failed to allocate memory for load query.");
-        exit(1);
-    }
+    send_message.payload = msg;
 
-    size_t total_len = sprintf(load_query, "load(%s,%zu,", col_name,
-                               data_size);
-
-    // +6 comes from load()
-    // this looks west fool you can avoid it by creating the buffer with col name
-    // and load command at the start instead of copying now
-    memcpy(load_query + total_len, col_data, data_size);
-    total_len += data_size;
-
-    load_query[total_len] = ')';
-    load_query[total_len + 1] = '\0';
-    total_len += 1;
-
-    load_query = realloc(load_query, sizeof(char) * (total_len));
-
-    send_message.length = total_len;
-
-    send_message.payload = load_query;
-
-    // passing the send message like this might not be a good idea
-    // as the size might be big and may result in a longer copy time
     communicate_server(client_socet, send_message);
-    free(load_query);
 }
 
 void load_file(int client_socket, char *file_name)
@@ -207,10 +177,10 @@ void load_file(int client_socket, char *file_name)
 
     // extract column
     char *column_names[num_columns];
-    size_t column_i[num_columns];
+    size_t column_current[num_columns];
     column_names[0] = header.str;
 
-    column_i[0] = 0; // keeps track of where the column name starts in the header buffer
+    column_current[0] = 0; // keeps track of where the column name starts in the header buffer
     size_t last = 1;
     for (size_t i = 0; i < header.len; i++)
     {
@@ -218,19 +188,26 @@ void load_file(int client_socket, char *file_name)
         {
             header.str[i] = '\0';
             //  set the location of each column index to 0
-            column_i[last] = 0;
+            column_current[last] = 0;
             column_names[last] = header.str + i + 1;
             last++;
         }
     }
 
     // for each column, create a buffer of size page_size
+    // and at the beginning of each buffer have the load( command
     char colums[num_columns][PAGE_SIZE];
+    size_t starting_point[num_columns]; // keeps track of each columns starting point
 
-    int added_rows[num_columns];
+    for (size_t i = 0; i < num_columns; i++)
+    {
+
+        size_t len = sprintf(colums[i], "load(%s,%012d,", column_names[i], 0);
+        starting_point[i] = len; // for the size and the comma
+        column_current[i] = starting_point[i];
+    }
 
     // in each cyle read page_size bytes
-
     size_t loaded = header.len + 1;
 
     // read the whole file
@@ -264,21 +241,28 @@ void load_file(int client_socket, char *file_name)
 
                 // if writing is going to make it bigger than the columns
                 // capacity flush first
-                if (column_i[current_col] + MAX_INT_LENGTH > PAGE_SIZE)
+                if (column_current[current_col] + MAX_INT_LENGTH > PAGE_SIZE)
                 {
                     // flush the column to database if it is full
-                    flush_load(client_socket, column_names[current_col], colums[current_col], column_i[current_col]);
-                    column_i[current_col] = 0;
+
+                    char sz[MAX_INT_LENGTH + 1];
+                    sprintf(sz, "%012lu", column_current[current_col] - starting_point[current_col]);
+
+                    strncpy(colums[current_col] + (starting_point[current_col] - 1 - MAX_INT_LENGTH), sz, MAX_INT_LENGTH);
+                    colums[current_col][column_current[current_col]] = ')';
+                    colums[current_col][column_current[current_col] + 1] = '\0';
+
+                    flush_load(client_socket, colums[current_col], column_current[current_col] + 1);
+                    column_current[current_col] = starting_point[current_col];
                 }
 
                 // copy a zeropadded string version of the number into the array
-                zeropadd(line.str + last_read, col_len, colums[current_col] + column_i[current_col]);
+                zeropadd(line.str + last_read, colums[current_col] + column_current[current_col]);
 
                 // since each entry is padded with fixed number of zeros
-                column_i[current_col] += MAX_INT_LENGTH;
-                colums[current_col][column_i[current_col]] = ',';
-                column_i[current_col] += 1;
-                added_rows[current_col] += 1;
+                column_current[current_col] += MAX_INT_LENGTH;
+                colums[current_col][column_current[current_col]] = ',';
+                column_current[current_col] += 1;
                 current_col += 1;
                 last_read = i + 1;
             }
@@ -291,19 +275,26 @@ void load_file(int client_socket, char *file_name)
         // a wrong format and in that case it should be handled
         assert(current_col == num_columns - 1);
 
-        if (column_i[current_col] + MAX_INT_LENGTH > PAGE_SIZE)
+        if (column_current[current_col] + MAX_INT_LENGTH > PAGE_SIZE)
         {
             // flush the column to database if it is full
-            flush_load(client_socket, column_names[current_col], colums[current_col], column_i[current_col]);
-            column_i[current_col] = 0;
+            char sz[MAX_INT_LENGTH + 1];
+            sprintf(sz, "%012lu", column_current[current_col] - starting_point[current_col]);
+
+            strncpy(colums[current_col] + (starting_point[current_col] - 1 - MAX_INT_LENGTH), sz, MAX_INT_LENGTH);
+            colums[current_col][column_current[current_col]] = ')';
+            colums[current_col][column_current[current_col] + 1] = '\0';
+
+            flush_load(client_socket, colums[current_col], column_current[current_col] + 1);
+            column_current[current_col] = starting_point[current_col];
         }
 
-        zeropadd(line.str + last_read, (line.len - last_read), colums[current_col] + column_i[current_col]);
+        zeropadd(line.str + last_read, colums[current_col] + column_current[current_col]);
 
-        column_i[current_col] += MAX_INT_LENGTH;
-        colums[current_col][column_i[current_col]] = ',';
-        column_i[current_col] += 1;
-        added_rows[current_col] += 1;
+        column_current[current_col] += MAX_INT_LENGTH;
+        colums[current_col][column_current[current_col]] = ',';
+        column_current[current_col] += 1;
+
         loaded += line.len + 1; // including the new line character
         free(line.str);
     }
@@ -311,7 +302,16 @@ void load_file(int client_socket, char *file_name)
     // flush the remaining data to the database
     for (size_t i = 0; i < num_columns; i++)
     {
-        flush_load(client_socket, column_names[i], colums[i], column_i[i]);
+
+        char sz[MAX_INT_LENGTH + 1];
+        sprintf(sz, "%012lu", column_current[i] - starting_point[i]);
+
+        strncpy(colums[i] + (starting_point[i] - 1 - MAX_INT_LENGTH), sz, MAX_INT_LENGTH);
+        colums[i][column_current[i]] = ')';
+        colums[i][column_current[i] + 1] = '\0';
+
+        flush_load(client_socket, colums[i], column_current[i] + 1);
+        column_current[i] = starting_point[i];
     }
 
     munmap(file, size);

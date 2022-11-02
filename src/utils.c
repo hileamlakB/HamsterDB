@@ -252,7 +252,7 @@ String read_line(char *file)
     return (String){.str = line, .len = i};
 }
 
-char *zeropadd(char *str, int length, char *dst)
+char *zeropadd(char *str, char *dst)
 {
 
     char *padd_str = dst;
@@ -267,28 +267,9 @@ char *zeropadd(char *str, int length, char *dst)
         return NULL;
     }
 
-    int zeros = MAX_INT_LENGTH - length;
     int num = atoi(str);
 
-    int i;
-    if (num < 0)
-    {
-        i = 1;
-        zeros += 1;
-        padd_str[0] = '-';
-        num = -num;
-    }
-    else
-    {
-        i = 0;
-    }
-
-    for (; i < zeros; i++)
-    {
-        padd_str[i] = '0';
-    }
-
-    sprintf(padd_str + i, "%d", num);
+    sprintf(padd_str, "%012d", num);
     return padd_str;
 }
 

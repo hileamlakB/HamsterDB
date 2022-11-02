@@ -539,7 +539,7 @@ DbOperator *parse_create_tbl(char *create_arguments)
     // check that the database argument is the current active database
     if (!current_db || strcmp(current_db->name, db_name) != 0)
     {
-        cs165_log(stdout, "Query unsupported. Bad db name\n");
+        cs165_log(stdout, "-- Query unsupported. Bad db name\n");
         return NULL; // QUERY_UNSUPPORTED
     }
     // turn the string column count into an integer, and check that the input is valid.
@@ -781,6 +781,12 @@ DbOperator *parse_load(char *query_command, message *send_message)
     Status parse_status;
     // remove the first bracket
     token += 1;
+
+    if (!current_db)
+    {
+        send_message->status = DATABASE_NOT_SELECTED;
+        return NULL;
+    }
 
     DbOperator *dbo = malloc(sizeof(DbOperator));
     dbo->type = LOAD;

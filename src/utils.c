@@ -252,10 +252,16 @@ String read_line(char *file)
     return (String){.str = line, .len = i};
 }
 
-char *zeropadd(char *str, int length)
+char *zeropadd(char *str, int length, char *dst)
 {
 
-    char *padd_str = malloc(MAX_INT_LENGTH + 1);
+    char *padd_str = dst;
+
+    if (!dst)
+    {
+        padd_str = malloc(MAX_INT_LENGTH + 1);
+    }
+
     if (!padd_str)
     {
         return NULL;

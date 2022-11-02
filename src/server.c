@@ -126,7 +126,7 @@ char *execute_DbOperator(DbOperator *query)
             if (can_load == false)
             {
                 update_col_end(table);
-                cs165_log(stdout, "-- Adding column failed.");
+                cs165_log(stdout, "-- Unbalanced column, adding column failed.");
                 return "Failed";
             }
             table->rows += loaded;
@@ -135,6 +135,7 @@ char *execute_DbOperator(DbOperator *query)
         }
 
         // consider adding status
+        // log_info("Loading column %s %d\n", query->operator_fields.load_operator.address.col->name, query->operator_fields.load_operator.size);
         write_load(
             table,
             query->operator_fields.load_operator.address.col,

@@ -146,7 +146,7 @@ String read_line(char *);
 // takes an integer of length len and returns a padded string
 // of length MAX_INT_LENGTH, that can easly be converted to integer
 // using atoi
-char *zeropadd(char *, int);
+char *zeropadd(char *, int, char *);
 
 // does the opposit of zeropadd by extracting a number from a string
 // until reaching a separator character

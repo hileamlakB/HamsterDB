@@ -167,7 +167,7 @@ bool insert_col(Table *table, Column *col, char *value, Status *status)
         }
     }
 
-    char *zero_padded_str = zeropadd(value, strlen(value));
+    char *zero_padded_str = zeropadd(value, strlen(value), NULL);
     memcpy(col->file + col->end, zero_padded_str, MAX_INT_LENGTH);
     memcpy(col->file + col->end + MAX_INT_LENGTH, ",", 1);
     col->end += MAX_INT_LENGTH + 1;

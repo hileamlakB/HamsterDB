@@ -139,7 +139,9 @@ void write_load(Table *table, Column *column, char *data, size_t size, Status *s
     size_t write_size = size < column->file_size - column->end ? size : column->file_size - column->end;
     memcpy(column->file + column->end, data, write_size);
     column->end += write_size;
-    column->pending_load += (write_size / (MAX_INT_LENGTH + 1));
+    // pending load might not write full cols sometimes as max write_size might cut off
+    // some porition
+    // column->pending_load += (write_size / (MAX_INT_LENGTH + 1));
 
     write_load(table, column, data + write_size, size - write_size, status);
 }

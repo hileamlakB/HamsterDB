@@ -142,13 +142,16 @@ char *execute_DbOperator(DbOperator *query)
             query->operator_fields.load_operator.data,
             query->operator_fields.load_operator.size,
             &write_load_status);
+        query->operator_fields.load_operator.address.col->pending_load += (query->operator_fields.load_operator.size / (MAX_INT_LENGTH + 1));
         free(query);
         if (write_load_status.code == OK)
         {
+
             return "";
         }
         else
         {
+            // interrupt the loading so that the client will stop
             return "Col write failed: retracting steps";
         }
 

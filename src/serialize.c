@@ -96,7 +96,7 @@ Column deserialize_column(char *file_path, Status *status)
     }
 
     // column to be returned
-    Column column;
+    Column column = empty_column;
     strcpy(column.file_path, file_path);
     column.fd = fd;
     // get the number of pages in the metadata
@@ -234,7 +234,7 @@ void cp2table(char *path_name, void *dest, char *metadata, Status *status)
 
 Table deserialize_table(char *table_path, Status *status)
 {
-    Table table;
+    Table table = empty_table;
     int table_file = open(table_path, O_RDWR, 0666);
 
     int sz = lseek(table_file, 0, SEEK_END);

@@ -58,7 +58,6 @@ char *execute_DbOperator(DbOperator *query)
         {
             struct Status ret_status = create_db(query->operator_fields.create_operator.name);
 
-            free(query);
             if (ret_status.code == OK)
             {
 
@@ -76,7 +75,7 @@ char *execute_DbOperator(DbOperator *query)
                          query->operator_fields.create_operator.name,
                          query->operator_fields.create_operator.col_count,
                          &create_status);
-            free(query);
+
             if (create_status.code != OK)
             {
                 cs165_log(stdout, "Adding table failed.\n");
@@ -92,7 +91,7 @@ char *execute_DbOperator(DbOperator *query)
                           query->operator_fields.create_operator.name,
                           false,
                           &create_status);
-            free(query);
+
             if (create_status.code != OK)
             {
                 cs165_log(stdout, "-- Adding column failed.\n");
@@ -143,7 +142,7 @@ char *execute_DbOperator(DbOperator *query)
             query->operator_fields.load_operator.size,
             &write_load_status);
         query->operator_fields.load_operator.address.col->pending_load += (query->operator_fields.load_operator.size / (MAX_INT_LENGTH + 1));
-        free(query);
+
         if (write_load_status.code == OK)
         {
 
@@ -188,7 +187,6 @@ char *execute_DbOperator(DbOperator *query)
                 &select_status);
         }
 
-        free(query);
         return "";
         // return "File Loaded";
     }
@@ -207,21 +205,21 @@ char *execute_DbOperator(DbOperator *query)
     {
 
         char *result = print_tuple(query->operator_fields.print_operator);
-        free(query);
+
         return result;
     }
     else if (query->type == AVG)
     {
         average(query->operator_fields.avg_operator.handler,
                 query->operator_fields.avg_operator.variable);
-        free(query);
+
         return "";
     }
     else if (query->type == SUM)
     {
         Status sum_status;
         sum(query->operator_fields.avg_operator, &sum_status);
-        free(query);
+
         return "";
     }
     else if (query->type == ADD)
@@ -229,7 +227,7 @@ char *execute_DbOperator(DbOperator *query)
         add(query->operator_fields.math_operator.handler,
             query->operator_fields.math_operator.operand_1,
             query->operator_fields.math_operator.operand_2);
-        free(query);
+
         return "";
     }
     else if (query->type == SUB)
@@ -237,25 +235,24 @@ char *execute_DbOperator(DbOperator *query)
         sub(query->operator_fields.math_operator.handler,
             query->operator_fields.math_operator.operand_1,
             query->operator_fields.math_operator.operand_2);
-        free(query);
+
         return "";
     }
     else if (query->type == MIN || query->type == MAX)
     {
         Status min_max_status;
         MinMax(query->operator_fields.min_max_operator, &min_max_status);
-        free(query);
+
         return "";
     }
     else if (query && query->type == SHUTDOWN)
     {
-        free(query);
-        shutdown_server();
+
+        shutdown_server(query);
         return "";
         // return "Shutting down";
     }
 
-    free(query);
     return "";
 }
 
@@ -306,6 +303,7 @@ char *print_tuple(PrintOperator print_operator)
     }
     *(result_i - 1) = '\n';
     *(result_i) = '\0';
+    free(results);
 
     return result;
 }
@@ -517,6 +515,13 @@ void handle_client(int client_socket)
                 log_err("Failed to send message.");
                 exit(1);
             }
+
+            // free query
+            if (query && query->type == PRINT)
+            {
+                free(result);
+            }
+            free(query);
         }
     } while (!done);
 
@@ -609,13 +614,18 @@ int main(void)
     return 0;
 }
 
-Status shutdown_server()
+Status shutdown_server(DbOperator *dbo)
 {
 
     // flush stuatus
     Status flush_status;
     // cache everything to file
     flush_db(current_db, &flush_status);
+
+    // free var pool
+    free_var_pool();
+    free_db();
+    free(dbo);
 
     exit(0);
     // Think about delaying the exit after sending the ack message

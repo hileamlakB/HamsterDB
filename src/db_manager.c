@@ -43,6 +43,7 @@ Column *create_column(Table *table, char *name, bool sorted, Status *ret_status)
 
 	if (table->col_count <= table->table_length)
 	{
+		free(file_path);
 		ret_status->error_message = "Table is full";
 		return NULL;
 	}
@@ -54,6 +55,7 @@ Column *create_column(Table *table, char *name, bool sorted, Status *ret_status)
 	// success
 	ret_status->code = OK;
 
+	free(file_path);
 	return &table->columns[table->table_length - 1];
 }
 
@@ -99,7 +101,7 @@ Table *create_table(Db *db, const char *name, size_t num_columns, Status *ret_st
 	// you can support flexible number of columns later
 	// the same way you did for tables
 	table.columns = calloc(num_columns, sizeof(Column));
-	if (table.columns == NULL || prepend(&props.outside, table.columns) != 0)
+	if (!table.columns)
 	{
 		*ret_status = retrack(props, "System Failure: error allocating memory for columns");
 		return NULL;
@@ -164,7 +166,7 @@ Status create_db(const char *db_name)
 	}
 
 	Db *active_db = (Db *)malloc(sizeof(Db));
-	if (!active_db || prepend(&props.outside, active_db) != 0)
+	if (!active_db)
 	{
 		return retrack(props, "System Failure: error allocating memory for active_db");
 	}
@@ -208,4 +210,17 @@ Status load_db(const char *db_name)
 
 	free(file_name);
 	return status;
+}
+
+void free_db()
+{
+
+	for (size_t i = 0; i < current_db->tables_size; i++)
+	{
+		// free each table
+
+		free(current_db->tables[i].columns);
+	}
+	free(current_db->tables);
+	free(current_db);
 }

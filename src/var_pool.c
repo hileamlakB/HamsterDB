@@ -46,3 +46,21 @@ Variable *find_var(char *name)
     }
     return NULL;
 }
+
+void free_var_pool()
+{
+    linkedList *node = var_pool;
+    while (node != NULL)
+    {
+        linkedList *next = node->next;
+        Variable *var = (Variable *)node->data;
+        free(var->name);
+        if (var->result.values)
+        {
+            free(var->result.values);
+        }
+        free(var);
+        free(node);
+        node = next;
+    }
+}

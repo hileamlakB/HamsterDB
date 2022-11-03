@@ -9,6 +9,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 // 12 including negative sign
 #define MAX_INT_LENGTH 12
@@ -140,6 +141,7 @@ typedef struct String
 {
     char *str;
     size_t len;
+    bool to_free;
 } String;
 String read_line(char *);
 

@@ -466,12 +466,13 @@ Status create_db(const char *db_name);
 
 // loads a database from disk
 Status load_db(const char *db_name);
+void free_db();
 
 Table *create_table(Db *db, const char *name, size_t num_columns, Status *status);
 
 Column *create_column(Table *table, char *name, bool sorted, Status *ret_status);
 
-Status shutdown_server();
+Status shutdown_server(DbOperator *);
 
 char **execute_db_operator(DbOperator *query);
 void db_operator_free(DbOperator *query);
@@ -514,6 +515,7 @@ void fetch_col(Table *, Column *, Variable *, char *, Status *);
 // var_pool.c
 void add_var(char *, vector, variable_type);
 Variable *find_var(char *);
+void free_var_pool();
 
 // server.c
 

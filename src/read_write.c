@@ -104,6 +104,7 @@ void flush_col(Table *table, Column *column, Status *status)
 
     serialize_data column_data = serialize_column(column);
     write(column->fd, column_data.data, column_data.size);
+    free(column_data.data);
 }
 
 // write size data to column from data
@@ -195,6 +196,7 @@ void insert(Table *table, char **values, Status *status)
         status->code = OK;
     }
     update_col_end(table);
+    free(values);
 }
 
 void update_col_end(Table *table)
@@ -220,6 +222,7 @@ void flush_table(Table *table, Status *status)
     {
         flush_col(table, table->columns + i, status);
     }
+    free(table_data.data);
 }
 
 void flush_db(Db *db, Status *status)
@@ -239,4 +242,5 @@ void flush_db(Db *db, Status *status)
     {
         flush_table(db->tables + i, status);
     }
+    free(db_data.data);
 }

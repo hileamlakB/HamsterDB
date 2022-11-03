@@ -231,6 +231,7 @@ DbOperator *parse_print(char *print_argument)
         Variable *var_location = find_var(var);
         if (var_location == NULL)
         {
+            // free(result_tupls);
             cs165_log(stdout, "Query unsupported. Bad variable name\n");
             return NULL;
         }

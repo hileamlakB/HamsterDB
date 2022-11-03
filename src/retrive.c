@@ -53,6 +53,15 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
         index += MAX_INT_LENGTH + 1;
     }
 
+    // free select operators
+    if (low)
+    {
+        free(low);
+    }
+    if (high)
+    {
+        free(high);
+    }
     add_var(var_name, (pos_vec){.values = result, .size = result_size, .ivalue = 0, .fvalue = 0.0}, POSITION_VECTOR);
 }
 
@@ -67,6 +76,15 @@ void select_pos(Variable *posVec, Variable *valVec, char *handle, int *low, int 
     {
         result[result_size] = posVec->result.values[i];
         result_size += ((!low || valVec->result.values[i] >= *low) && (!high || valVec->result.values[i] < *high));
+    }
+
+    if (low)
+    {
+        free(low);
+    }
+    if (high)
+    {
+        free(high);
     }
 
     add_var(handle, (pos_vec){.values = result, .size = result_size, .ivalue = 0, .fvalue = 0.0}, POSITION_VECTOR);

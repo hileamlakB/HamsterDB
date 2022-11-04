@@ -215,18 +215,20 @@ void load_file(int client_socket, char *file_name)
     {
 
         // read a line
-        String line = read_line(file + loaded);
+        char *line = file + loaded;
 
         // add ecah column data to the column array
         size_t current_col = 0;
         size_t last_read = 0;
         size_t i = 0;
-        while (line.str[i] && current_col < num_columns - 1)
+
+        // read until the end of the line
+        while (line[i] != '\n' && current_col < num_columns - 1)
         {
 
-            if (line.str[i] == ',')
+            if (line[i] == ',')
             {
-                line.str[i] = '\0';
+
                 size_t col_len = i - last_read; // the length of the single entry
 
                 // The flush function sends a single page at a time
@@ -235,7 +237,7 @@ void load_file(int client_socket, char *file_name)
                 if (col_len + 1 > PAGE_SIZE)
                 {
                     log_err("Column data is too large");
-                    free(line.str);
+                    // free(line.str);
                     return;
                 }
 
@@ -257,7 +259,7 @@ void load_file(int client_socket, char *file_name)
                 }
 
                 // copy a zeropadded string version of the number into the array
-                zeropadd(line.str + last_read, colums[current_col] + column_current[current_col]);
+                zeropadd(line + last_read, colums[current_col] + column_current[current_col]);
 
                 // since each entry is padded with fixed number of zeros
                 column_current[current_col] += MAX_INT_LENGTH;
@@ -268,8 +270,6 @@ void load_file(int client_socket, char *file_name)
             }
             i += 1;
         }
-        // you can save some time by not iterating through the last colum data in
-        // the loop above
 
         // if this isn't the case, it means the file had a line with
         // a wrong format and in that case it should be handled
@@ -289,14 +289,21 @@ void load_file(int client_socket, char *file_name)
             column_current[current_col] = starting_point[current_col];
         }
 
-        zeropadd(line.str + last_read, colums[current_col] + column_current[current_col]);
+        zeropadd(line + last_read, colums[current_col] + column_current[current_col]);
 
         column_current[current_col] += MAX_INT_LENGTH;
         colums[current_col][column_current[current_col]] = ',';
         column_current[current_col] += 1;
 
-        loaded += line.len + 1; // including the new line character
-        free(line.str);
+        // find the length of the last column
+        size_t last_col_len = 0;
+        while (line[i] != '\n')
+        {
+            last_col_len++;
+            i++;
+        }
+
+        loaded += last_read + last_col_len + 1; // including the new line character
     }
 
     // flush the remaining data to the database

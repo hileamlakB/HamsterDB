@@ -21,7 +21,6 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
 
     create_colf(table, column, status);
-
     if (status->code != OK)
     {
         log_err("--Error opening file for column write");
@@ -31,16 +30,18 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
     struct stat sb;
     fstat(column->fd, &sb);
 
-    // what if the result can't fit in memory
-    // option 2 uses tmp file and mmap
-    char buffer[sb.st_size];
-    int *result = calloc(sb.st_size, sizeof(int));
-
+    int result_capacity = (PAGE_SIZE / sizeof(int));
+    int *result = malloc(result_capacity * sizeof(int));
     int result_size = 0;
-    lseek(column->fd, column->meta_data_size * PAGE_SIZE, SEEK_SET);
-    read(column->fd, buffer, sb.st_size);
 
-    // int position = 0;
+    // mmap file for read
+    char *buffer = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, column->fd, column->meta_data_size * PAGE_SIZE);
+    if (buffer == MAP_FAILED)
+    {
+        log_err("--Error mapping file for column read");
+        return;
+    }
+
     int index = 0;
     while (buffer[index] != '\0')
     {
@@ -48,6 +49,21 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
 
         result[result_size] = index / (MAX_INT_LENGTH + 1);
         result_size += ((!low || num >= *low) && (!high || num < *high));
+
+        // expand result if needed
+        if (result_size + 1 == result_capacity)
+        {
+            result_capacity *= 2;
+            int *new_result = realloc(result, result_capacity * sizeof(int));
+            if (!new_result)
+            {
+                free(result);
+                log_err("Error allocating memory for result");
+                status->code = ERROR;
+                return;
+            }
+            result = new_result;
+        }
 
         // including separating comma
         index += MAX_INT_LENGTH + 1;
@@ -62,7 +78,15 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
     {
         free(high);
     }
+
+    // resize result vector to minimize memory usage
+    int *new_result = realloc(result, result_size * sizeof(int));
+    if (new_result)
+    {
+        result = new_result;
+    }
     add_var(var_name, (pos_vec){.values = result, .size = result_size, .ivalue = 0, .fvalue = 0.0}, POSITION_VECTOR);
+    munmap(buffer, sb.st_size);
 }
 
 void select_pos(Variable *posVec, Variable *valVec, char *handle, int *low, int *high, Status *status)
@@ -112,11 +136,11 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
 
     // here instead use mmap to create an area and use that to write to file
     // which you can delete at the end
-    char buffer[sb.st_size];
+    // mmap file for read
+    char *buffer = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, column->fd, column->meta_data_size * PAGE_SIZE);
+
     int *result = calloc(var->result.size, sizeof(int));
     int result_size = 0;
-    lseek(column->fd, column->meta_data_size * PAGE_SIZE, SEEK_SET);
-    read(column->fd, buffer, sb.st_size);
 
     int position = 0;
     int result_p = 0;
@@ -136,6 +160,11 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
         index += MAX_INT_LENGTH + 1;
     }
 
+    int *new_result = realloc(result, result_size * sizeof(int));
+    if (new_result)
+    {
+        result = new_result;
+    }
     add_var(var_name, (pos_vec){.size = result_size, .values = result, .ivalue = 0, .fvalue = 0.0},
             POSITION_VECTOR);
 }

@@ -26,6 +26,7 @@ void add_var(char *name, vector result, variable_type var_type)
     var->name = strdup(name);
     var->result = result;
     var->type = var_type;
+    var->exists = true;
 
     node->data = (void *)var;
     node->next = var_pool;

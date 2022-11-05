@@ -30,6 +30,7 @@
 #include "message.h"
 #include "utils.h"
 #include "client_context.h"
+#include <assert.h>
 
 #define DEFAULT_QUERY_BUFFER_SIZE 1024
 
@@ -194,7 +195,7 @@ char *execute_DbOperator(DbOperator *query)
     {
         Status fetch_status;
         fetch_col(
-            query->operator_fields.select_operator.table,
+            query->operator_fields.fetch_operator.table,
             query->operator_fields.fetch_operator.column,
             query->operator_fields.fetch_operator.variable,
             query->operator_fields.fetch_operator.handler,
@@ -245,6 +246,12 @@ char *execute_DbOperator(DbOperator *query)
 
         return "";
     }
+    else if (query->type == BATCH_EXECUTE)
+    {
+        Status batch_status;
+        batch_execute(&batch_status);
+        return "";
+    }
     else if (query && query->type == SHUTDOWN)
     {
 
@@ -254,6 +261,15 @@ char *execute_DbOperator(DbOperator *query)
     }
 
     return "";
+}
+
+void query_planner()
+{
+}
+
+void batch_execute()
+{
+    query_planner();
 }
 
 char *print_tuple(PrintOperator print_operator)
@@ -494,7 +510,25 @@ void handle_client(int client_socket)
 
             // 2. Handle request
             //    Corresponding database operator is executed over the query
-            char *result = execute_DbOperator(query);
+            char *result = "";
+            if (batch.mode)
+            {
+                assert(query);
+                if (query->type == BATCH_EXECUTE)
+                {
+                    result = execute_DbOperator(query);
+                }
+                else
+                {
+                    assert(query->type == INSERT || query->type == FETCH);
+                    batch.queries[batch.num_queries] = query;
+                    batch.num_queries++;
+                }
+            }
+            else
+            {
+                result = execute_DbOperator(query);
+            }
 
             send_message.length = strlen(result);
             char send_buffer[send_message.length + 1];

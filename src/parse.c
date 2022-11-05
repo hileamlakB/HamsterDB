@@ -53,11 +53,26 @@ DbOperator *parse_select_pos(char *handle, char *select_argument)
     Variable *pos_vec = find_var(pos_vec_name);
     Variable *val_vec = find_var(val_vec_name);
 
-    if (pos_vec == NULL || val_vec == NULL)
+    if (!pos_vec)
     {
-        cs165_log(stdout, "Variable not found");
-        return NULL;
+        pos_vec = malloc(sizeof(Variable));
+        pos_vec->name = strdup(pos_vec_name);
+        pos_vec->exists = false;
     }
+
+    if (!val_vec)
+    {
+        val_vec = malloc(sizeof(Variable));
+        // make sure val_vec doesn't fail
+        val_vec->name = strdup(val_vec_name);
+        val_vec->exists = false;
+    }
+
+    // if ((pos_vec == NULL || val_vec == NULL) && !batch.mode)
+    // {
+    //     cs165_log(stdout, "Variable not found");
+    //     return NULL;
+    // }
 
     // create the operator
     DbOperator *select_op = malloc(sizeof(DbOperator));
@@ -872,6 +887,24 @@ DbOperator *parse_insert(char *query_command, message *send_message)
     return dbo;
 }
 
+DbOperator *parse_batch_query(char *query_command, message *send_message)
+{
+    (void)send_message;
+    (void)query_command;
+    batch.mode = true;
+    batch.num_queries = 0;
+    return NULL;
+}
+
+DbOperator *parse_batch_execute(char *query_command, message *send_message)
+{
+    (void)query_command;
+    (void)send_message;
+
+    DbOperator *dbo = malloc(sizeof(DbOperator));
+    dbo->type = BATCH_EXECUTE;
+    return dbo;
+}
 /**
  * parse_command takes as input the send_message from the client and then
  * parses it into the appropriate query. Stores into send_message the
@@ -992,8 +1025,16 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
         query_command += 5;
         dbo = parse_print(query_command);
     }
-
-    // I suppose this is a place to support more commands.
+    else if (strncmp(query_command, "batch_query", 11) == 0)
+    {
+        query_command += 11;
+        dbo = parse_batch_query(query_command, send_message);
+    }
+    else if (strncmp(query_command, "batch_execute", 13) == 0)
+    {
+        query_command += 13;
+        dbo = parse_batch_execute(query_command, send_message);
+    }
 
     if (dbo == NULL)
     {

@@ -92,6 +92,13 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
 void select_pos(Variable *posVec, Variable *valVec, char *handle, int *low, int *high, Status *status)
 {
 
+    if (!posVec->exists || !valVec->exists)
+    {
+        log_err("Error: Invalid variable");
+        status->code = ERROR;
+        return;
+    }
+
     status->code = OK;
 
     int *result = calloc(posVec->result.size, sizeof(int));

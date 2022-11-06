@@ -291,20 +291,23 @@ void execute_query(node *query_group, Status *status)
 
     pos_vec pos_list[query_group->depth];
     pthread_t threads[query_group->depth];
+    thread_select_args args[query_group->depth];
 
     // thread_group *allocated_threads = allocate_threads(query_group->depth);
     size_t depth = query_group->depth;
+    node *query_group_ = query_group;
     for (size_t i = 0; i < depth; i++)
     {
-
-        thread_select_args args = {
-            .low = db_op->operator_fields.select_operator.low,
-            .high = db_op->operator_fields.select_operator.high,
+        DbOperator *dbs = (DbOperator *)query_group_->val;
+        args[i] = (thread_select_args){
+            .low = dbs->operator_fields.select_operator.low,
+            .high = dbs->operator_fields.select_operator.high,
             .file = buffer,
             .result = &pos_list[i],
             .read_size = sb.st_size,
         };
-        pthread_create(&threads[i], NULL, thread_select_col, &args);
+        pthread_create(&threads[i], NULL, thread_select_col, &args[i]);
+        query_group_ = query_group_->next;
     }
 
     // wait or all the threads to finish
@@ -313,7 +316,7 @@ void execute_query(node *query_group, Status *status)
 
         DbOperator *db_op = (DbOperator *)query_group->val;
         pthread_join(threads[i], NULL);
-        log_info("Thread %zu finished", i);
+        // log_info("Thread %zu finished", i);
         // add results to respctive vectors
         add_var(db_op->operator_fields.select_operator.handler,
                 pos_list[i],

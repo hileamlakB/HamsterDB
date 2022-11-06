@@ -187,7 +187,7 @@ DbOperator *parse_select(char *handle, char *select_argument)
     DbOperator *select_op = malloc(sizeof(DbOperator));
 
     select_op->type = SELECT;
-    select_op->operator_fields.select_operator.handler = handle;
+    select_op->operator_fields.select_operator.handler = strdup(handle);
 
     if (strncmp("null", low, 4) == 0)
     {
@@ -335,14 +335,16 @@ DbOperator *parse_fetch(char *handle, char *fetch_arguments)
     Variable *result = find_var(pos_name);
     if (!result)
     {
-        cs165_log(stdout, "Query unsupported. Bad variable name\n");
-        return NULL;
+        result = malloc(sizeof(Variable));
+        // handle the case this fails
+        result->name = strdup(pos_name);
+        result->exists = false;
     }
 
     // create the operator
     DbOperator *fetch_op = malloc(sizeof(DbOperator));
     fetch_op->type = FETCH;
-    fetch_op->operator_fields.fetch_operator.handler = handle;
+    fetch_op->operator_fields.fetch_operator.handler = strdup(handle);
     fetch_op->operator_fields.fetch_operator.table = table;
     fetch_op->operator_fields.fetch_operator.column = column;
     fetch_op->operator_fields.fetch_operator.variable = result;
@@ -891,9 +893,11 @@ DbOperator *parse_batch_query(char *query_command, message *send_message)
 {
     (void)send_message;
     (void)query_command;
+    DbOperator *dbo = malloc(sizeof(DbOperator));
+    dbo->type = BATCH_QUERY;
     batch.mode = true;
     batch.num_queries = 0;
-    return NULL;
+    return dbo;
 }
 
 DbOperator *parse_batch_execute(char *query_command, message *send_message)
@@ -1025,9 +1029,9 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
         query_command += 5;
         dbo = parse_print(query_command);
     }
-    else if (strncmp(query_command, "batch_query", 11) == 0)
+    else if (strncmp(query_command, "batch_queries", 13) == 0)
     {
-        query_command += 11;
+        query_command += 13;
         dbo = parse_batch_query(query_command, send_message);
     }
     else if (strncmp(query_command, "batch_execute", 13) == 0)

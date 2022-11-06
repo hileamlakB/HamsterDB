@@ -16,6 +16,72 @@
 // satisfy the condition
 // right now it returns all at onces, but it should
 // return in a batche dmanner
+
+pos_vec generic_select(int *low, int *high, char *file, int **result, size_t result_capacity, Status *status, size_t read_size)
+{
+    size_t index = 0;
+    size_t result_size = 0;
+    size_t rcapacity = result_capacity;
+
+    int *result_p = *result;
+
+    while (file[index] != '\0' && index < read_size)
+    {
+        int num = zerounpadd(file + index, ',');
+
+        result_p[result_size] = index / (MAX_INT_LENGTH + 1);
+        result_size += ((!low || num >= *low) && (!high || num < *high));
+
+        // expand result if needed
+        if (result_size + 1 >= rcapacity)
+        {
+            rcapacity *= 2;
+            int *new_result = realloc(result_p, rcapacity * sizeof(int));
+            if (!new_result)
+            {
+                free(result_p);
+                log_err("Error allocating memory for result");
+                status->code = ERROR;
+                return (pos_vec){0};
+            }
+            result_p = new_result;
+        }
+
+        // including separating comma
+        index += MAX_INT_LENGTH + 1;
+    }
+
+    int *new_result = realloc(result_p, result_size * sizeof(int));
+    if (new_result)
+    {
+        result_p = new_result;
+    }
+
+    *result = result_p;
+
+    return (pos_vec){.values = *result, .size = result_size, .ivalue = 0, .fvalue = 0.0};
+}
+
+void *thread_select_col(void *args)
+
+{
+    thread_select_args *targs = (thread_select_args *)args;
+    Status status = {.code = OK};
+
+    targs->result->values = malloc(100 * sizeof(int));
+    pos_vec pos = generic_select(targs->low,
+                                 targs->high, targs->file,
+                                 &targs->result->values, 100,
+                                 &status, targs->read_size);
+    if (status.code == ERROR)
+    {
+        log_err("Error in select");
+        return NULL;
+    }
+    *targs->result = pos;
+    return args;
+}
+
 void select_col(Table *table, Column *column, char *var_name, int *low, int *high, Status *status)
 {
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
@@ -32,7 +98,6 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
 
     int result_capacity = (PAGE_SIZE / sizeof(int));
     int *result = malloc(result_capacity * sizeof(int));
-    int result_size = 0;
 
     // mmap file for read
     char *buffer = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, column->fd, column->meta_data_size * PAGE_SIZE);
@@ -42,32 +107,9 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
         return;
     }
 
-    int index = 0;
-    while (buffer[index] != '\0')
-    {
-        int num = zerounpadd(buffer + index, ',');
-
-        result[result_size] = index / (MAX_INT_LENGTH + 1);
-        result_size += ((!low || num >= *low) && (!high || num < *high));
-
-        // expand result if needed
-        if (result_size + 1 == result_capacity)
-        {
-            result_capacity *= 2;
-            int *new_result = realloc(result, result_capacity * sizeof(int));
-            if (!new_result)
-            {
-                free(result);
-                log_err("Error allocating memory for result");
-                status->code = ERROR;
-                return;
-            }
-            result = new_result;
-        }
-
-        // including separating comma
-        index += MAX_INT_LENGTH + 1;
-    }
+    pos_vec fin_result = generic_select(low, high,
+                                        buffer, &result,
+                                        result_capacity, status, sb.st_size);
 
     // free select operators
     if (low)
@@ -79,13 +121,12 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
         free(high);
     }
 
-    // resize result vector to minimize memory usage
-    int *new_result = realloc(result, result_size * sizeof(int));
-    if (new_result)
+    // resize result vector to minimize memory usages
+    if (status->code == OK)
     {
-        result = new_result;
+        add_var(var_name, fin_result, POSITION_VECTOR);
     }
-    add_var(var_name, (pos_vec){.values = result, .size = result_size, .ivalue = 0, .fvalue = 0.0}, POSITION_VECTOR);
+
     munmap(buffer, sb.st_size);
 }
 
@@ -124,6 +165,13 @@ void select_pos(Variable *posVec, Variable *valVec, char *handle, int *low, int 
 void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Status *status)
 {
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
+
+    if (!var->exists)
+    {
+        log_err("Error: Invalid variable");
+        status->code = ERROR;
+        return;
+    }
 
     //  chekc if the file is already mapped
     // make sure the map is at the start of the file if not create a new map

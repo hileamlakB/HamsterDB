@@ -12,7 +12,7 @@ CC = gcc -std=c99 -g -ggdb3
 O ?= 0
 
 # Flags and other libraries
-override CFLAGS += -Wall -Wextra -pedantic -pthread -O$(O) -I$(INCLUDES)
+override CFLAGS += -Wall -Wextra -pedantic -pthread -O$(O) -I$(INCLUDES) -lpthread
 LDFLAGS =
 LIBS =
 INCLUDES = include
@@ -59,7 +59,7 @@ $(DEPSDIR)/stamp $(BUILDSTAMP):
 client: client.o utils.o
 	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS) -g
 
-server: server.o parse.o utils.o db_manager.o client_context.o serialize.o read_write.o retrive.o var_pool.o
+server: server.o parse.o utils.o db_manager.o client_context.o serialize.o read_write.o retrive.o var_pool.o tasks.o hash_table.o queue.o 
 	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS) -g
 
 clean:

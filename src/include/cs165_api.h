@@ -33,6 +33,7 @@ SOFTWARE.
 #define MAX_SIZE_NAME 64
 #define MAX_PATH_NAME 256 // path name at max = dir/db.table.column
 #define HANDLE_MAX_SIZE 64
+#define MAX_BATCH_OPERATIONS 200
 
 /**
  * EXTRA
@@ -64,6 +65,7 @@ typedef struct Variable
     char *name;
     vector result;
     variable_type type;
+    bool exists;
 } Variable;
 
 typedef vector pos_vec;
@@ -285,6 +287,8 @@ typedef enum OperatorType
     MAX,
     ADD,
     SUB,
+    BATCH_EXECUTE,
+    BATCH_QUERY
 
 } OperatorType;
 
@@ -451,10 +455,18 @@ typedef struct DbOperator
     ClientContext *context;
 } DbOperator;
 
+typedef struct batch_query
+{
+    bool mode;
+    DbOperator *queries[MAX_BATCH_OPERATIONS];
+    size_t num_queries;
+} batch_query;
+
 extern Db *current_db;
 extern Column empty_column;
 extern Table empty_table;
 extern linkedList *var_pool;
+extern batch_query batch;
 
 /*
  * Use this command to see if databases that were persisted start up properly. If files
@@ -508,6 +520,16 @@ void flush_db(Db *, Status *);
 void update_col_end(Table *);
 
 // select fetch
+
+typedef struct thread_select_args
+{
+    int *low;
+    int *high;
+    char *file;
+    pos_vec *result;
+    size_t read_size;
+} thread_select_args;
+void *thread_select_col(void *args);
 void select_col(Table *, Column *, char *, int *, int *, Status *);
 void select_pos(Variable *, Variable *, char *, int *, int *, Status *);
 void fetch_col(Table *, Column *, Variable *, char *, Status *);
@@ -527,5 +549,7 @@ void sum(AvgOperator, Status *);
 void add(char *, Variable *, Variable *);
 void sub(char *, Variable *, Variable *);
 void MinMax(MinMaxOperator, Status *);
+
+char *batch_execute(DbOperator **queries, size_t n, Status *status);
 
 #endif /* CS165_H */

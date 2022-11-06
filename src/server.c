@@ -31,6 +31,7 @@
 #include "utils.h"
 #include "client_context.h"
 #include <assert.h>
+#include "tasks.h"
 
 #define DEFAULT_QUERY_BUFFER_SIZE 1024
 
@@ -249,8 +250,9 @@ char *execute_DbOperator(DbOperator *query)
     else if (query->type == BATCH_EXECUTE)
     {
         Status batch_status;
-        batch_execute(&batch_status);
-        return "";
+        char *result = batch_execute(batch.queries, batch.num_queries, &batch_status);
+        batch.mode = false;
+        return result;
     }
     else if (query && query->type == SHUTDOWN)
     {
@@ -262,14 +264,92 @@ char *execute_DbOperator(DbOperator *query)
 
     return "";
 }
-
-void query_planner()
+void execute_query(node *query_group, Status *status)
 {
+    DbOperator *db_op = (DbOperator *)query_group->val;
+    Table *table = db_op->operator_fields.select_operator.table;
+    Column *column = db_op->operator_fields.select_operator.column;
+
+    const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
+
+    create_colf(table, column, status);
+    if (status->code != OK)
+    {
+        log_err("--Error opening file for column write");
+        return;
+    }
+
+    struct stat sb;
+    fstat(column->fd, &sb);
+
+    char *buffer = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, column->fd, column->meta_data_size * PAGE_SIZE);
+    if (buffer == MAP_FAILED)
+    {
+        log_err("--Error mapping file for column read");
+        return;
+    }
+
+    pos_vec pos_list[query_group->depth];
+    pthread_t threads[query_group->depth];
+
+    // thread_group *allocated_threads = allocate_threads(query_group->depth);
+    size_t depth = query_group->depth;
+    for (size_t i = 0; i < depth; i++)
+    {
+
+        thread_select_args args = {
+            .low = db_op->operator_fields.select_operator.low,
+            .high = db_op->operator_fields.select_operator.high,
+            .file = buffer,
+            .result = &pos_list[i],
+            .read_size = sb.st_size,
+        };
+        pthread_create(&threads[i], NULL, thread_select_col, &args);
+    }
+
+    // wait or all the threads to finish
+    for (size_t i = 0; i < depth; i++)
+    {
+
+        DbOperator *db_op = (DbOperator *)query_group->val;
+        pthread_join(threads[i], NULL);
+        log_info("Thread %zu finished", i);
+        // add results to respctive vectors
+        add_var(db_op->operator_fields.select_operator.handler,
+                pos_list[i],
+                POSITION_VECTOR);
+        query_group = query_group->next;
+    }
 }
 
-void batch_execute()
+char *batch_execute(DbOperator **queries, size_t n, Status *status)
 {
-    query_planner();
+
+    if (n == 0)
+    {
+        status->code = OK;
+        return "";
+    }
+
+    grouped_tasks gtasks = query_planner(queries, n, status);
+
+    hashtable *independent = gtasks.independent;
+    if (independent->count == 0)
+    {
+        status->code = ERROR;
+        return "Error undefined referenece";
+    }
+
+    for (size_t i = 0; i < independent->size; i++)
+    {
+        if (independent->array[i])
+        {
+            node *query_group = independent->array[i];
+            execute_query(query_group, status);
+        }
+    }
+
+    return "";
 }
 
 char *print_tuple(PrintOperator print_operator)
@@ -292,7 +372,8 @@ char *print_tuple(PrintOperator print_operator)
     Variable **results = print_operator.data.tuple.data;
 
     // for commas and extra variables, we have + 1,  MAX_INT_LENGTH + 1, +1 for newline
-    char *result = malloc(sizeof(char) * ((width * (MAX_INT_LENGTH + 1)) * height + 1));
+    size_t size = (width * height * (MAX_INT_LENGTH + 1));
+    char *result = malloc(sizeof(char) * ((width * (MAX_INT_LENGTH + 1)) * height + 1) + 1);
     char *result_i = result;
     for (int row = 0; row < height; row++)
     {
@@ -317,8 +398,12 @@ char *print_tuple(PrintOperator print_operator)
 
         sprintf(result_i - 1, "\n");
     }
-    *(result_i - 1) = '\n';
-    *(result_i) = '\0';
+    if (size)
+    {
+        *(result_i - 1) = '\n';
+        *(result_i) = '\0';
+    }
+
     free(results);
 
     return result;
@@ -511,18 +596,24 @@ void handle_client(int client_socket)
             // 2. Handle request
             //    Corresponding database operator is executed over the query
             char *result = "";
+
             if (batch.mode)
             {
                 assert(query);
                 if (query->type == BATCH_EXECUTE)
                 {
+
                     result = execute_DbOperator(query);
+                    batch.mode = false;
                 }
                 else
                 {
-                    assert(query->type == INSERT || query->type == FETCH);
-                    batch.queries[batch.num_queries] = query;
-                    batch.num_queries++;
+                    if (query->type != BATCH_QUERY)
+                    {
+                        assert(query->type == SELECT || query->type == FETCH);
+                        batch.queries[batch.num_queries] = query;
+                        batch.num_queries++;
+                    }
                 }
             }
             else
@@ -555,7 +646,11 @@ void handle_client(int client_socket)
             {
                 free(result);
             }
-            free(query);
+
+            if (!batch.mode)
+            {
+                free(query);
+            }
         }
     } while (!done);
 

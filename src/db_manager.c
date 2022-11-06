@@ -18,7 +18,11 @@ Db *current_db;
 linkedList *var_pool;
 Column empty_column;
 Table empty_table;
-batch_query batch;
+batch_query batch = {
+	.mode = false,
+	.num_queries = 0
+
+};
 
 Column *create_column(Table *table, char *name, bool sorted, Status *ret_status)
 {

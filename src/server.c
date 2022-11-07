@@ -264,19 +264,27 @@ char *execute_DbOperator(DbOperator *query)
 
     return "";
 }
-void execute_query(node *query_group, Status *status)
+
+typedef struct created_threads
 {
+    pthread_t *threads;
+    size_t num_threads;
+} created_threads;
+
+void *execute_query(void *q_group)
+{
+    node *query_group = (node *)q_group;
     DbOperator *db_op = (DbOperator *)query_group->val;
     Table *table = db_op->operator_fields.select_operator.table;
     Column *column = db_op->operator_fields.select_operator.column;
 
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
-
-    create_colf(table, column, status);
-    if (status->code != OK)
+    Status status;
+    create_colf(table, column, &status);
+    if (status.code != OK)
     {
         log_err("--Error opening file for column write");
-        return;
+        return NULL;
     }
 
     struct stat sb;
@@ -286,43 +294,40 @@ void execute_query(node *query_group, Status *status)
     if (buffer == MAP_FAILED)
     {
         log_err("--Error mapping file for column read");
-        return;
+        return NULL;
     }
 
-    pos_vec pos_list[query_group->depth];
     pthread_t threads[query_group->depth];
-    thread_select_args args[query_group->depth];
 
     // thread_group *allocated_threads = allocate_threads(query_group->depth);
     size_t depth = query_group->depth;
-    node *query_group_ = query_group;
+
+    thread_select_args args[depth];
+
     for (size_t i = 0; i < depth; i++)
     {
-        DbOperator *dbs = (DbOperator *)query_group_->val;
+        DbOperator *dbs = (DbOperator *)query_group->val;
+
         args[i] = (thread_select_args){
             .low = dbs->operator_fields.select_operator.low,
             .high = dbs->operator_fields.select_operator.high,
             .file = buffer,
-            .result = &pos_list[i],
             .read_size = sb.st_size,
-        };
+            .handle = dbs->operator_fields.select_operator.handler};
+
         pthread_create(&threads[i], NULL, thread_select_col, &args[i]);
-        query_group_ = query_group_->next;
+        query_group = query_group->next;
     }
 
     // wait or all the threads to finish
     for (size_t i = 0; i < depth; i++)
     {
-
-        DbOperator *db_op = (DbOperator *)query_group->val;
         pthread_join(threads[i], NULL);
         // log_info("Thread %zu finished", i);
         // add results to respctive vectors
-        add_var(db_op->operator_fields.select_operator.handler,
-                pos_list[i],
-                POSITION_VECTOR);
-        query_group = query_group->next;
     }
+
+    return NULL;
 }
 
 char *batch_execute(DbOperator **queries, size_t n, Status *status)
@@ -343,13 +348,23 @@ char *batch_execute(DbOperator **queries, size_t n, Status *status)
         return "Error undefined referenece";
     }
 
+    pthread_t threads[independent->size];
+    size_t threads_created = 0;
+
     for (size_t i = 0; i < independent->size; i++)
     {
         if (independent->array[i])
         {
             node *query_group = independent->array[i];
-            execute_query(query_group, status);
+            pthread_create(&threads[threads_created], NULL, execute_query, (void *)query_group);
+            threads_created += 1;
         }
+    }
+
+    // wait for all the created threads
+    for (size_t i = 0; i < threads_created; i++)
+    {
+        pthread_join(threads[i], NULL);
     }
 
     return "";

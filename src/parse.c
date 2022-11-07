@@ -299,13 +299,7 @@ DbOperator *parse_fetch(char *handle, char *fetch_arguments)
     char *pos_name = next_token(&tokenizer, &status);
 
     // remove parenthesis
-    for (int i = 0; pos_name[i]; i++)
-    {
-        if (pos_name[i] == ')')
-        {
-            pos_name[i] = '\0';
-        }
-    }
+    pos_name[strlen(pos_name) - 1] = '\0';
 
     if (!current_db || strcmp(current_db->name, db_name) != 0)
     {

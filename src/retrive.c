@@ -68,17 +68,18 @@ void *thread_select_col(void *args)
     thread_select_args *targs = (thread_select_args *)args;
     Status status = {.code = OK};
 
-    targs->result->values = malloc(100 * sizeof(int));
+    int *results = malloc(100 * sizeof(int));
     pos_vec pos = generic_select(targs->low,
                                  targs->high, targs->file,
-                                 &targs->result->values, 100,
+                                 &results, 100,
                                  &status, targs->read_size);
     if (status.code == ERROR)
     {
         log_err("Error in select");
         return NULL;
     }
-    *targs->result = pos;
+
+    add_var(targs->handle, pos, POSITION_VECTOR);
     return args;
 }
 

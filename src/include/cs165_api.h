@@ -28,6 +28,7 @@ SOFTWARE.
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <pthread.h>
 #include "utils.h"
 // Limits the size of a name in our database to 64 characters
 #define MAX_SIZE_NAME 64
@@ -466,6 +467,7 @@ extern Db *current_db;
 extern Column empty_column;
 extern Table empty_table;
 extern linkedList *var_pool;
+extern pthread_mutex_t var_pool_lock;
 extern batch_query batch;
 
 /*
@@ -526,8 +528,8 @@ typedef struct thread_select_args
     int *low;
     int *high;
     char *file;
-    pos_vec *result;
     size_t read_size;
+    char *handle;
 } thread_select_args;
 void *thread_select_col(void *args);
 void select_col(Table *, Column *, char *, int *, int *, Status *);

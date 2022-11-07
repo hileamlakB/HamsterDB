@@ -12,24 +12,27 @@
 #include "cs165_api.h"
 #include "unistd.h"
 
-// returns position vector for all the elements that
-// satisfy the condition
-// right now it returns all at onces, but it should
-// return in a batche dmanner
-
-pos_vec generic_select(int *low, int *high, char *file, int **result, size_t result_capacity, Status *status, size_t read_size)
+void *select_section(void *arg)
 {
+    thread_select_args *args = (thread_select_args *)arg;
+    int **result = args->result;
+    int *low = args->low;
+    int *high = args->high;
+    size_t read_size = args->read_size;
+    size_t rcapacity = args->result_capacity;
+    char *file = args->file;
+
+    size_t offset = args->offset;
+
     size_t index = 0;
     size_t result_size = 0;
-    size_t rcapacity = result_capacity;
 
     int *result_p = *result;
-
     while (file[index] != '\0' && index < read_size)
     {
         int num = zerounpadd(file + index, ',');
 
-        result_p[result_size] = index / (MAX_INT_LENGTH + 1);
+        result_p[result_size] = offset + index / (MAX_INT_LENGTH + 1);
         result_size += ((!low || num >= *low) && (!high || num < *high));
 
         // expand result if needed
@@ -41,8 +44,8 @@ pos_vec generic_select(int *low, int *high, char *file, int **result, size_t res
             {
                 free(result_p);
                 log_err("Error allocating memory for result");
-                status->code = ERROR;
-                return (pos_vec){0};
+
+                return NULL;
             }
             result_p = new_result;
         }
@@ -58,8 +61,98 @@ pos_vec generic_select(int *low, int *high, char *file, int **result, size_t res
     }
 
     *result = result_p;
+    args->result_size = result_size;
 
-    return (pos_vec){.values = *result, .size = result_size, .ivalue = 0, .fvalue = 0.0};
+    return NULL;
+}
+
+// returns position vector for all the elements that
+// satisfy the condition
+// right now it returns all at onces, but it should
+// return in a batche dmanner
+
+pos_vec generic_select(int *low, int *high, char *file, int **result, size_t result_capacity, Status *status, size_t read_size)
+{
+    (void)status;
+
+    // make sure you cut a file into sections
+    // at meaningfull locaitons
+    const size_t PAGE_SIZE = ((size_t)sysconf(_SC_PAGESIZE) / (MAX_INT_LENGTH + 1)) * (MAX_INT_LENGTH + 1);
+
+    // if file size is bigger than page size,
+    // create multiple threads and later merge the result instead of
+    // running it here
+    if (read_size <= PAGE_SIZE || (low && high && ((size_t)*high - *low < PAGE_SIZE)))
+    {
+
+        thread_select_args args = (thread_select_args){
+            .low = low,
+            .high = high,
+            .file = file,
+            .result = result,
+            .read_size = read_size,
+            .result_capacity = result_capacity};
+        select_section(&args);
+        return (pos_vec){.values = *result, .size = args.result_size, .ivalue = 0, .fvalue = 0.0};
+    }
+    else // (read_size > PAGE_SIZE )
+    {
+        size_t num_threads = read_size / PAGE_SIZE;
+        if (read_size % PAGE_SIZE)
+        {
+            num_threads++;
+        }
+        pthread_t threads[num_threads];
+        thread_select_args args[num_threads];
+        int *results[num_threads];
+
+        for (size_t i = 1; i < num_threads; i++)
+        {
+            results[i] = malloc(100 * sizeof(int));
+            args[i] = (thread_select_args){
+                .low = low,
+                .high = high,
+                .file = file + i * PAGE_SIZE,
+                .result = &results[i],
+                .read_size = PAGE_SIZE,
+                .result_capacity = 100,
+                .offset = (i * PAGE_SIZE) / (MAX_INT_LENGTH + 1)};
+
+            pthread_create(&threads[i], NULL, select_section, &args[i]);
+        }
+        // how should I join answers here
+
+        // read the first section
+        results[0] = malloc(100 * sizeof(int));
+        args[0] = (thread_select_args){
+            .low = low,
+            .high = high,
+            .file = file,
+            .result = &results[0],
+            .read_size = PAGE_SIZE,
+            .result_capacity = 100,
+            .offset = 0};
+        select_section(&args[0]);
+
+        // wait for all threads to finish
+        // and join answers
+        for (size_t i = 1; i < num_threads; i++)
+        {
+            pthread_join(threads[i], NULL);
+        }
+
+        // merge results
+        size_t result_size = args[0].result_size;
+        *result = realloc(*result, result_size * sizeof(int));
+        memcpy(*result, results[0], result_size * sizeof(int));
+        for (size_t i = 1; i < num_threads; i++)
+        {
+            result_size += args[i].result_size;
+            *result = realloc(*result, (result_size) * sizeof(int));
+            memcpy(*result + result_size - args[i].result_size, results[i], args[i].result_size * sizeof(int));
+        }
+        return (pos_vec){.values = *result, .size = result_size, .ivalue = 0, .fvalue = 0.0};
+    }
 }
 
 void *thread_select_col(void *args)
@@ -110,7 +203,7 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
 
     pos_vec fin_result = generic_select(low, high,
                                         buffer, &result,
-                                        result_capacity, status, sb.st_size);
+                                        result_capacity, status, table->rows * (MAX_INT_LENGTH + 1));
 
     // free select operators
     if (low)

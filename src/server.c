@@ -304,6 +304,8 @@ void *execute_query(void *q_group)
 
     thread_select_args args[depth];
 
+    //  here if the number of quries is less than one you won't need to create threads
+    // you can use this thread itself for one query
     for (size_t i = 0; i < depth; i++)
     {
         DbOperator *dbs = (DbOperator *)query_group->val;
@@ -312,7 +314,7 @@ void *execute_query(void *q_group)
             .low = dbs->operator_fields.select_operator.low,
             .high = dbs->operator_fields.select_operator.high,
             .file = buffer,
-            .read_size = sb.st_size,
+            .read_size = dbs->operator_fields.select_operator.table->rows * (MAX_INT_LENGTH + 1),
             .handle = dbs->operator_fields.select_operator.handler};
 
         pthread_create(&threads[i], NULL, thread_select_col, &args[i]);

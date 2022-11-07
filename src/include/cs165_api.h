@@ -530,6 +530,10 @@ typedef struct thread_select_args
     char *file;
     size_t read_size;
     char *handle;
+    int **result;
+    size_t result_capacity;
+    size_t result_size;
+    size_t offset; // which part of the file is this thread reading
 } thread_select_args;
 void *thread_select_col(void *args);
 void select_col(Table *, Column *, char *, int *, int *, Status *);

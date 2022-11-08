@@ -77,7 +77,7 @@ pos_vec generic_select(int *low, int *high, char *file, int **result, size_t res
 
     // make sure you cut a file into sections
     // at meaningfull locaitons
-    const size_t PAGE_SIZE = 10 * ((size_t)sysconf(_SC_PAGESIZE) / (MAX_INT_LENGTH + 1)) * (MAX_INT_LENGTH + 1);
+    const size_t PAGE_SIZE = 1 * ((size_t)sysconf(_SC_PAGESIZE) / (MAX_INT_LENGTH + 1)) * (MAX_INT_LENGTH + 1);
 
     // if file size is bigger than page size,
     // create multiple threads and later merge the result instead of

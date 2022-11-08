@@ -558,4 +558,11 @@ void MinMax(MinMaxOperator, Status *);
 
 char *batch_execute(DbOperator **queries, size_t n, Status *status);
 
+// available threads
+typedef struct num_threads
+{
+    size_t threads;
+    pthread_mutex_t lock;
+} num_threads;
+
 #endif /* CS165_H */

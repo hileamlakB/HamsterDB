@@ -35,15 +35,6 @@
 
 #define DEFAULT_QUERY_BUFFER_SIZE 1024
 
-/** execute_DbOperator takes as input the DbOperator and executes the query.
- * This should be replaced in your implementation (and its implementation possibly moved to a different file).
- * It is currently here so that you can verify that your server and client can send messages.
- *
- * Getting started hints:
- *      What are the structural attributes of a `query`?
- *      How will you interpret different queries?
- *      How will you ensure different queries invoke different execution paths in your code?
- **/
 char *execute_DbOperator(DbOperator *query)
 {
 
@@ -97,6 +88,22 @@ char *execute_DbOperator(DbOperator *query)
             if (create_status.code != OK)
             {
                 cs165_log(stdout, "-- Adding column failed.\n");
+                return "Failed";
+            }
+            return "";
+        }
+        else if (query->operator_fields.create_operator.create_type == _INDEX)
+        {
+            Status create_status;
+            create_index(query->operator_fields.create_operator.table,
+                         query->operator_fields.create_operator.column,
+                         query->operator_fields.create_operator.index_type,
+                         query->operator_fields.create_operator.cluster_type,
+                         &create_status);
+
+            if (create_status.code != OK)
+            {
+                cs165_log(stdout, "-- Adding index failed.\n");
                 return "Failed";
             }
             return "";

@@ -64,6 +64,39 @@ Column *create_column(Table *table, char *name, bool sorted, Status *ret_status)
 	return &table->columns[table->table_length - 1];
 }
 
+ColumnIndex *create_sorted_index(Table *tbl, Column *col, ClusterType ClusterType, Status *ret_status)
+{
+	(void)ClusterType;
+	(void)tbl;
+	(void)col;
+	(void)ret_status;
+	return NULL;
+}
+
+ColumnIndex *create_btree_index(Table *tbl, Column *col, ClusterType ClusterType, Status *ret_status)
+{
+	(void)ClusterType;
+	(void)tbl;
+	(void)col;
+	(void)ret_status;
+	return NULL;
+}
+
+ColumnIndex *create_index(
+	Table *tbl, Column *col, IndexType index_type, ClusterType cluster_type, Status *ret_status)
+{
+	if (index_type == SORTED)
+	{
+		return create_sorted_index(tbl, col, cluster_type, ret_status);
+	}
+	else if (index_type == BTREE)
+	{
+		return create_btree_index(tbl, col, cluster_type, ret_status);
+	}
+
+	return NULL;
+}
+
 /*
  * Here you will create a table object. The Status object can be used to return
  * to the caller that there was an error in table creation

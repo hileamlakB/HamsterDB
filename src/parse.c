@@ -666,6 +666,66 @@ DbOperator *parse_create_db(char *create_arguments)
     }
 }
 
+DbOperator *parse_create_idx(char *create_arguments)
+{
+    // extract db, table, and column names
+    char *db_name = strsep(&create_arguments, ".");
+    char *table_name = strsep(&create_arguments, ".");
+    char *col_name = strsep(&create_arguments, ".");
+
+    if (!current_db && strcmp(current_db->name, db_name) != 0)
+    {
+        return NULL;
+    }
+    // look up the table and column
+    Table *table = lookup_table(current_db, table_name);
+    Column *col = lookup_column(table, col_name);
+
+    if (!table || !col)
+    {
+        return NULL;
+    }
+
+    char *idx_type = strsep(&create_arguments, ".");
+    char *cluster_type = strsep(&create_arguments, ".");
+
+    // make create operator.
+    DbOperator *dbo = malloc(sizeof(DbOperator));
+    dbo->type = CREATE;
+    dbo->operator_fields.create_operator.create_type = _INDEX;
+    dbo->operator_fields.create_operator.db = current_db;
+    dbo->operator_fields.create_operator.table = table;
+    dbo->operator_fields.create_operator.column = col;
+
+    if (strcmp(idx_type, "sorted") == 0)
+    {
+        dbo->operator_fields.create_operator.index_type = SORTED;
+    }
+    else if (strcmp(idx_type, "btree") == 0)
+    {
+        dbo->operator_fields.create_operator.index_type = BTREE;
+    }
+    else
+    {
+        dbo->operator_fields.create_operator.index_type = NO_INDEX;
+    }
+
+    if (strcmp(cluster_type, "clustered") == 0)
+    {
+        dbo->operator_fields.create_operator.cluster_type = CLUSTERED;
+    }
+    else if (strcmp(cluster_type, "unclustered") == 0)
+    {
+        dbo->operator_fields.create_operator.cluster_type = UNCLUSTERED;
+    }
+    else
+    {
+        dbo->operator_fields.create_operator.cluster_type = NO_CLUSTER;
+    }
+
+    return dbo;
+}
+
 DbOperator *parse_min_max(char *handler, char *arguments, OperatorType type)
 {
 
@@ -694,47 +754,35 @@ DbOperator *parse_create(char *create_arguments)
 {
     message_status mes_status = INITIAL;
     DbOperator *dbo = NULL;
-    char *tokenizer_copy, *to_free;
-    // Since strsep destroys input, we create a copy of our input.
-    tokenizer_copy = to_free = malloc((strlen(create_arguments) + 1) * sizeof(char));
-    char *token;
-    strcpy(tokenizer_copy, create_arguments);
-    // check for leading parenthesis after create.
-    if (strncmp(tokenizer_copy, "(", 1) == 0)
+    char *token = create_arguments;
+
+    // remove the first '('
+    token++;
+
+    char *type = next_token(&token, &mes_status);
+
+    // pass off to next parse function.
+    if (strcmp(type, "db") == 0)
     {
-        tokenizer_copy++;
-        // token stores first argument. Tokenizer copy now points to just past first ","
-        token = next_token(&tokenizer_copy, &mes_status);
-        if (mes_status == INCORRECT_FORMAT)
-        {
-            return NULL;
-        }
-        else
-        {
-            // pass off to next parse function.
-            if (strcmp(token, "db") == 0)
-            {
-                dbo = parse_create_db(tokenizer_copy);
-            }
-            else if (strcmp(token, "tbl") == 0)
-            {
-                dbo = parse_create_tbl(tokenizer_copy);
-            }
-            else if (strcmp(token, "col") == 0)
-            {
-                dbo = parse_create_col(tokenizer_copy);
-            }
-            else
-            {
-                mes_status = UNKNOWN_COMMAND;
-            }
-        }
+        dbo = parse_create_db(token);
+    }
+    else if (strcmp(type, "tbl") == 0)
+    {
+        dbo = parse_create_tbl(token);
+    }
+    else if (strcmp(type, "col") == 0)
+    {
+        dbo = parse_create_col(token);
+    }
+    else if (strcmp(type, "idx") == 0)
+    {
+        dbo = parse_create_idx(token);
     }
     else
     {
         mes_status = UNKNOWN_COMMAND;
     }
-    free(to_free);
+
     return dbo;
 }
 

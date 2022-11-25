@@ -80,7 +80,6 @@ typedef enum DataType
 } DataType;
 
 struct Comparator;
-// struct ColumnIndex;
 
 typedef enum PrintType
 {
@@ -142,6 +141,32 @@ typedef struct Column
     size_t sum[2];
 
 } Column;
+
+typedef enum IndexType
+{
+    SORTED,
+    ZONEMAP,
+    BTREE,
+    HASH,
+    NO_INDEX
+} IndexType;
+
+typedef enum ClusterType
+{
+    CLUSTERED,
+    UNCLUSTERED,
+    NO_CLUSTER
+} ClusterType;
+typedef struct ColumnIndex
+{
+    char name[MAX_SIZE_NAME];
+    IndexType type;
+    ClusterType clustered;
+
+    // mmaped file
+    char *read_map;
+
+} ColumnIndex;
 
 extern Column empty_column;
 
@@ -292,7 +317,8 @@ typedef enum OperatorType
     ADD,
     SUB,
     BATCH_EXECUTE,
-    BATCH_QUERY
+    BATCH_QUERY,
+    INDEX
 
 } OperatorType;
 
@@ -301,6 +327,7 @@ typedef enum CreateType
     _DB,
     _TABLE,
     _COLUMN,
+    _INDEX
 } CreateType;
 
 /*
@@ -317,6 +344,12 @@ typedef struct CreateOperator
     Db *db;
     Table *table;
     int col_count;
+
+    // this is to be used by the create(idx) command
+    Column *column;
+    IndexType index_type;
+    ClusterType cluster_type;
+
 } CreateOperator;
 
 /*
@@ -488,6 +521,7 @@ void free_db();
 Table *create_table(Db *db, const char *name, size_t num_columns, Status *status);
 
 Column *create_column(Table *table, char *name, bool sorted, Status *ret_status);
+ColumnIndex *create_index(Table *table, Column *col, IndexType, ClusterType, Status *ret_status);
 
 Status shutdown_server(DbOperator *);
 

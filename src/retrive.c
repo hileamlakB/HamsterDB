@@ -183,7 +183,7 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
     create_colf(table, column, status);
     if (status->code != OK)
     {
-        log_err("--Error opening file for column write");
+        log_err("-- Error opening file for column write");
         return;
     }
 
@@ -194,16 +194,23 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
     int *result = malloc(result_capacity * sizeof(int));
 
     // mmap file for read
-    char *buffer = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, column->fd, column->meta_data_size * PAGE_SIZE);
-    if (buffer == MAP_FAILED)
+    if (!column->read_map)
     {
-        log_err("--Error mapping file for column read");
-        return;
+        char *buffer = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, column->fd, column->meta_data_size * PAGE_SIZE);
+        if (buffer == MAP_FAILED)
+        {
+            log_err("-- Error mapping file for column read");
+            return;
+        }
+        column->read_map = buffer;
     }
 
     pos_vec fin_result = generic_select(low, high,
-                                        buffer, &result,
-                                        result_capacity, status, table->rows * (MAX_INT_LENGTH + 1));
+                                        column->read_map,
+                                        &result,
+                                        result_capacity,
+                                        status,
+                                        table->rows * (MAX_INT_LENGTH + 1));
 
     // free select operators
     if (low)
@@ -221,7 +228,7 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
         add_var(var_name, fin_result, POSITION_VECTOR);
     }
 
-    munmap(buffer, sb.st_size);
+    // munmap(buffer, sb.st_size);
 }
 
 void select_pos(Variable *posVec, Variable *valVec, char *handle, int *low, int *high, Status *status)
@@ -286,7 +293,16 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
     // here instead use mmap to create an area and use that to write to file
     // which you can delete at the end
     // mmap file for read
-    char *buffer = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, column->fd, column->meta_data_size * PAGE_SIZE);
+    if (!column->read_map)
+    {
+        char *buffer = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, column->fd, column->meta_data_size * PAGE_SIZE);
+        if (buffer == MAP_FAILED)
+        {
+            log_err("Error mapping file for column read");
+            return;
+        }
+        column->read_map = buffer;
+    }
 
     int *result = calloc(var->result.size, sizeof(int));
     int result_size = 0;
@@ -295,12 +311,12 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
     int result_p = 0;
 
     int index = 0;
-    while (buffer[index] != '\0' && result_p < var->result.size)
+    while (column->read_map[index] != '\0' && result_p < var->result.size)
     {
 
         if (position == var->result.values[result_p])
         {
-            result[result_size++] = zerounpadd(buffer + index, ',');
+            result[result_size++] = zerounpadd(column->read_map + index, ',');
             result_p++;
         }
 

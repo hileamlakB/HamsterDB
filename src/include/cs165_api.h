@@ -124,6 +124,9 @@ typedef struct Column
     char *pending_delete;
     size_t pending_delete_t;
 
+    //  read_map
+    char *read_map;
+
     // You will implement column indexes later.
     // void *index;
     // struct ColumnIndex *index;

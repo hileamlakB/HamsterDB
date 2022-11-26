@@ -87,7 +87,31 @@ typedef enum PrintType
     SINGLE_FLOAT,
     SINGLE_INT,
 } PrintType;
+typedef enum IndexType
+{
+    SORTED,
+    ZONEMAP,
+    BTREE,
+    HASH,
+    NO_INDEX
+} IndexType;
 
+typedef enum ClusterType
+{
+    CLUSTERED,
+    UNCLUSTERED,
+    NO_CLUSTER
+} ClusterType;
+typedef struct ColumnIndex
+{
+    char name[MAX_SIZE_NAME];
+    IndexType type;
+    ClusterType clustered;
+
+    // mmaped file
+    char *read_map;
+
+} ColumnIndex;
 typedef struct Column
 {
     char name[MAX_SIZE_NAME];
@@ -125,11 +149,11 @@ typedef struct Column
 
     //  read_map
     char *read_map;
+    size_t read_map_size;
 
     // You will implement column indexes later.
-    // void *index;
-    // struct ColumnIndex *index;
-    // bool clustered;
+    bool indexed;
+    ColumnIndex index;
 
     // metadata
     // the first index of these metadetas indicate
@@ -141,32 +165,6 @@ typedef struct Column
     size_t sum[2];
 
 } Column;
-
-typedef enum IndexType
-{
-    SORTED,
-    ZONEMAP,
-    BTREE,
-    HASH,
-    NO_INDEX
-} IndexType;
-
-typedef enum ClusterType
-{
-    CLUSTERED,
-    UNCLUSTERED,
-    NO_CLUSTER
-} ClusterType;
-typedef struct ColumnIndex
-{
-    char name[MAX_SIZE_NAME];
-    IndexType type;
-    ClusterType clustered;
-
-    // mmaped file
-    char *read_map;
-
-} ColumnIndex;
 
 extern Column empty_column;
 
@@ -499,12 +497,19 @@ typedef struct batch_query
     size_t num_queries;
 } batch_query;
 
+typedef struct batch_load
+{
+    bool mode;
+
+} batch_load;
+
 extern Db *current_db;
 extern Column empty_column;
 extern Table empty_table;
 extern linkedList *var_pool;
 extern pthread_mutex_t var_pool_lock;
 extern batch_query batch;
+extern batch_load bload;
 
 /*
  * Use this command to see if databases that were persisted start up properly. If files
@@ -521,7 +526,8 @@ void free_db();
 Table *create_table(Db *db, const char *name, size_t num_columns, Status *status);
 
 Column *create_column(Table *table, char *name, bool sorted, Status *ret_status);
-ColumnIndex *create_index(Table *table, Column *col, IndexType, ClusterType, Status *ret_status);
+ColumnIndex create_index(Table *table, Column *col, IndexType, ClusterType, Status *ret_status);
+void populate_index(Table *tbl, Column *col);
 
 Status shutdown_server(DbOperator *);
 

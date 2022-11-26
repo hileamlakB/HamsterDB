@@ -13,6 +13,7 @@
 
 // 12 including negative sign
 #define MAX_INT_LENGTH 12
+#define min(a, b) (((a) < (b)) ? (a) : (b))
 
 /**
  * Error codes used to indicate the outcome of an API call
@@ -153,5 +154,15 @@ char *zeropadd(char *, char *);
 // does the opposit of zeropadd by extracting a number from a string
 // until reaching a separator character
 int zerounpadd(char *, char);
+
+typedef struct tmp_file
+{
+    char *file_name;
+    int fd;
+    size_t size;
+    char *map;
+} tmp_file;
+
+tmp_file create_tmp_file(char *file_name, size_t size, bool mapped, bool unlinked);
 
 #endif /* __UTILS_H__ */

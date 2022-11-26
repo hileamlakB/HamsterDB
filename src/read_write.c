@@ -50,7 +50,7 @@ void map_col(Table *table, Column *column, Status *status)
     status->code = OK;
     const size_t page_size = sysconf(_SC_PAGESIZE);
     // experiment with this number, the overhead mx_size
-    const size_t map_size = 2 * page_size;
+    const size_t map_size = 4 * page_size;
 
     // check if the file is open if not open it
     create_colf(table, column, status);

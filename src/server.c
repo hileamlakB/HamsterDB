@@ -139,6 +139,13 @@ char *execute_DbOperator(DbOperator *query)
             }
             table->rows += loaded;
             update_col_end(table);
+
+            // populte indexes
+            for (size_t i = 0; i < table->col_count; i++)
+            {
+                populate_index(table, &table->columns[i]);
+            }
+
             return "";
         }
 
@@ -676,6 +683,17 @@ void handle_client(int client_socket)
 
             if (!batch.mode)
             {
+                if (query)
+                {
+                    if (query->type == SELECT)
+                    {
+                        free(query->operator_fields.select_operator.handler);
+                    }
+                    if (query->type == FETCH)
+                    {
+                        free(query->operator_fields.fetch_operator.handler);
+                    }
+                }
                 free(query);
             }
         }

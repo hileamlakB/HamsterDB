@@ -78,7 +78,7 @@ DbOperator *parse_select_pos(char *handle, char *select_argument)
     DbOperator *select_op = malloc(sizeof(DbOperator));
 
     select_op->type = SELECT;
-    select_op->operator_fields.select_operator.handler = handle;
+    select_op->operator_fields.select_operator.handler = strdup(handle);
 
     if (strncmp("null", low, 4) == 0)
     {
@@ -533,6 +533,11 @@ DbOperator *parse_create_tbl(char *create_arguments)
     char *db_name = next_token(create_arguments_index, &status);
     char *col_cnt = next_token(create_arguments_index, &status);
 
+    if (!current_db)
+    {
+        load_db(db_name);
+    }
+
     // not enough arguments
     if (status == INCORRECT_FORMAT)
     {
@@ -671,7 +676,10 @@ DbOperator *parse_create_idx(char *create_arguments)
     // extract db, table, and column names
     char *db_name = strsep(&create_arguments, ".");
     char *table_name = strsep(&create_arguments, ".");
-    char *col_name = strsep(&create_arguments, ".");
+    char *col_name = strsep(&create_arguments, ",");
+
+    char *idx_type = strsep(&create_arguments, ",");
+    char *cluster_type = strsep(&create_arguments, ",");
 
     if (!current_db && strcmp(current_db->name, db_name) != 0)
     {
@@ -685,9 +693,6 @@ DbOperator *parse_create_idx(char *create_arguments)
     {
         return NULL;
     }
-
-    char *idx_type = strsep(&create_arguments, ".");
-    char *cluster_type = strsep(&create_arguments, ".");
 
     // make create operator.
     DbOperator *dbo = malloc(sizeof(DbOperator));
@@ -710,11 +715,11 @@ DbOperator *parse_create_idx(char *create_arguments)
         dbo->operator_fields.create_operator.index_type = NO_INDEX;
     }
 
-    if (strcmp(cluster_type, "clustered") == 0)
+    if (strncmp(cluster_type, "clustered", 9) == 0)
     {
         dbo->operator_fields.create_operator.cluster_type = CLUSTERED;
     }
-    else if (strcmp(cluster_type, "unclustered") == 0)
+    else if (strncmp(cluster_type, "unclustered", 11) == 0)
     {
         dbo->operator_fields.create_operator.cluster_type = UNCLUSTERED;
     }
@@ -834,6 +839,39 @@ EntityAddress parse_column_name(char *token, Status *status)
 
     return address;
 }
+DbOperator *parse_load_start(char *token, message *send_message)
+{
+    (void)token;
+    (void)send_message;
+    return NULL;
+}
+
+DbOperator *parse_load_parallel(char *query_command, message *send_message)
+{
+    (void)query_command;
+    (void)send_message;
+    // char *columns = strsep(&query_command, "|");
+
+    // size_t num_columns = 0;
+    // for (size_t i = 0; columns[i]; i++)
+    // {
+    //     if (columns[i] == ',')
+    //     {
+    //         num_columns++;
+    //     }
+    // }
+    // num_columns += 1;
+
+    // // extract column
+    // char *column_names[num_columns];
+    // for (size_t i = 0; i < num_columns; i++)
+    // {
+    //     column_names[i] = strsep(&columns, ",");
+    // }
+    // (void *)column_names;
+
+    return NULL;
+}
 
 DbOperator *parse_load(char *query_command, message *send_message)
 {
@@ -875,6 +913,13 @@ DbOperator *parse_load(char *query_command, message *send_message)
     dbo->operator_fields.load_operator.data = query_command;
 
     return dbo;
+}
+
+DbOperator *parse_load_end(char *token, message *send_message)
+{
+    (void)token;
+    (void)send_message;
+    return NULL;
 }
 /**
  * parse_insert reads in the arguments for a create statement and
@@ -1080,6 +1125,21 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
     {
         query_command += 13;
         dbo = parse_batch_execute(query_command, send_message);
+    }
+    else if (strncmp(query_command, "load_start", 11) == 0)
+    {
+        query_command += 11;
+        dbo = parse_load_start(query_command, send_message);
+    }
+    else if (strncmp(query_command, "load_parallel", 14) == 0)
+    {
+        query_command += 13;
+        dbo = parse_load_parallel(query_command, send_message);
+    }
+    else if (strncmp(query_command, "load_end", 9) == 0)
+    {
+        query_command += 9;
+        dbo = parse_load_end(query_command, send_message);
     }
 
     if (dbo == NULL)

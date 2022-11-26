@@ -12,6 +12,7 @@
 #include "utils.h"
 #include "client_context.h"
 #include <assert.h>
+#include "sort.h"
 
 // In this class, there will always be only one active database at a time
 Db *current_db;
@@ -21,6 +22,11 @@ Table empty_table;
 batch_query batch = {
 	.mode = false,
 	.num_queries = 0
+
+};
+
+batch_load bload = {
+	.mode = false,
 
 };
 
@@ -64,37 +70,84 @@ Column *create_column(Table *table, char *name, bool sorted, Status *ret_status)
 	return &table->columns[table->table_length - 1];
 }
 
-ColumnIndex *create_sorted_index(Table *tbl, Column *col, ClusterType ClusterType, Status *ret_status)
+ColumnIndex create_sorted_index(Table *tbl, Column *col, ClusterType cluster_type, Status *ret_status)
 {
-	(void)ClusterType;
+	if (col->indexed)
+	{
+		return col->index;
+	}
+
+	create_colf(tbl, col, ret_status);
+
+	ColumnIndex idx = (ColumnIndex){
+		.type = SORTED,
+		.clustered = cluster_type,
+	};
+
+	char *idx_name = catnstr(2, col->name, "_sorted");
+	memcpy(idx.name, idx_name, strlen(idx_name));
+	free(idx_name);
+	col->index = idx;
+	return idx;
+}
+
+// unimplemented
+ColumnIndex create_btree_index(Table *tbl, Column *col, ClusterType cluster_type, Status *ret_status)
+{
+	(void)cluster_type;
 	(void)tbl;
 	(void)col;
 	(void)ret_status;
-	return NULL;
+	return create_sorted_index(tbl, col, cluster_type, ret_status);
 }
 
-ColumnIndex *create_btree_index(Table *tbl, Column *col, ClusterType ClusterType, Status *ret_status)
+void create_btree()
 {
-	(void)ClusterType;
-	(void)tbl;
-	(void)col;
-	(void)ret_status;
-	return NULL;
 }
 
-ColumnIndex *create_index(
+void populate_index(Table *tbl, Column *col)
+{
+
+	if (!col->indexed)
+	{
+		return;
+	}
+
+	sort_col(tbl, col);
+
+	ColumnIndex idx = col->index;
+
+	if (idx.clustered == CLUSTERED)
+	{
+		// use the map to organize the the rest of the columns
+		propagate_sort(tbl, col);
+	}
+
+	if (idx.type == BTREE)
+	{
+		// create btree index
+		create_btree();
+	}
+}
+
+ColumnIndex create_index(
 	Table *tbl, Column *col, IndexType index_type, ClusterType cluster_type, Status *ret_status)
 {
+	ColumnIndex idx;
 	if (index_type == SORTED)
 	{
-		return create_sorted_index(tbl, col, cluster_type, ret_status);
+		idx = create_sorted_index(tbl, col, cluster_type, ret_status);
 	}
 	else if (index_type == BTREE)
 	{
-		return create_btree_index(tbl, col, cluster_type, ret_status);
+		idx = create_btree_index(tbl, col, cluster_type, ret_status);
 	}
 
-	return NULL;
+	col->indexed = true;
+	col->index = idx;
+	serialize_column(col);
+
+	return idx;
 }
 
 /*
@@ -255,8 +308,20 @@ void free_db()
 
 	for (size_t i = 0; i < current_db->tables_size; i++)
 	{
+		// unmap colums if any
+		for (size_t j = 0; j < current_db->tables[i].col_count; j++)
+		{
+			Column *col = &current_db->tables[i].columns[j];
+			if (col->file)
+			{
+				munmap(col->file, col->map_size);
+			}
+			if (col->read_map)
+			{
+				munmap(col->read_map, col->read_map_size);
+			}
+		}
 		// free each table
-
 		free(current_db->tables[i].columns);
 	}
 	free(current_db->tables);

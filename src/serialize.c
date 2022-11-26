@@ -26,7 +26,7 @@
 
 // cpcol - copies  a column data into a string and returns the number of bytes copied
 // the copy format is
-// "pages_used.name.count.min_set.min.max_set.max.sum_set.sum."
+// "pages_used.name.count.min_set.min.max_set.max.sum_set.sum.has_index.index_type.cluster_type"
 // this function is a helper function fo the serialize column function
 serialize_data serialize_column(Column *column)
 {
@@ -39,7 +39,7 @@ serialize_data serialize_column(Column *column)
 
     char *meta_data = malloc(page_size);
     column->meta_data_size = n_pages;
-    size_t printed = snprintf(meta_data, page_size, "%zu.%s.%zu.%zu.%zu.%zu.%zu.%zu.%zu.",
+    size_t printed = snprintf(meta_data, page_size, "%zu.%s.%zu.%zu.%zu.%zu.%zu.%zu.%zu.%u.%u.%u.",
                               n_pages,
                               column->name,
                               column->count,
@@ -48,7 +48,10 @@ serialize_data serialize_column(Column *column)
                               column->max[0],
                               column->max[1],
                               column->sum[0],
-                              column->sum[1]);
+                              column->sum[1],
+                              column->indexed,
+                              column->index.type,
+                              column->index.clustered);
     return (serialize_data){
         .data = meta_data,
         .size = printed,
@@ -77,6 +80,10 @@ void cp2col(void *dest, char *metadata, Status *status)
     column->max[1] = atoi(strsep(&metadata, "."));
     column->sum[0] = atoi(strsep(&metadata, "."));
     column->sum[1] = atoi(strsep(&metadata, "."));
+    column->indexed = atoi(strsep(&metadata, "."));
+    column->index.type = atoi(strsep(&metadata, "."));
+    column->index.clustered = atoi(strsep(&metadata, "."));
+
     status->code = OK;
 }
 

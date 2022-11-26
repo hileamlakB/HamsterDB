@@ -12,6 +12,8 @@
 #include "cs165_api.h"
 #include "unistd.h"
 
+#define initial_size 1024
+
 void *select_section(void *arg)
 {
     thread_select_args *args = (thread_select_args *)arg;
@@ -54,11 +56,11 @@ void *select_section(void *arg)
         index += MAX_INT_LENGTH + 1;
     }
 
-    int *new_result = realloc(result_p, result_size * sizeof(int));
-    if (new_result)
-    {
-        result_p = new_result;
-    }
+    // int *new_result = realloc(result_p, result_size * sizeof(int));
+    // if (new_result)
+    // {
+    //     result_p = new_result;
+    // }
 
     *result = result_p;
     args->result_size = result_size;
@@ -108,14 +110,14 @@ pos_vec generic_select(int *low, int *high, char *file, int **result, size_t res
 
         for (size_t i = 1; i < num_threads; i++)
         {
-            results[i] = malloc(100 * sizeof(int));
+            results[i] = malloc(initial_size * sizeof(int));
             args[i] = (thread_select_args){
                 .low = low,
                 .high = high,
                 .file = file + i * PAGE_SIZE,
                 .result = &results[i],
                 .read_size = PAGE_SIZE,
-                .result_capacity = 100,
+                .result_capacity = initial_size,
                 .offset = (i * PAGE_SIZE) / (MAX_INT_LENGTH + 1)};
 
             pthread_create(&threads[i], NULL, select_section, &args[i]);
@@ -123,14 +125,14 @@ pos_vec generic_select(int *low, int *high, char *file, int **result, size_t res
         // how should I join answers here
 
         // read the first section
-        results[0] = malloc(100 * sizeof(int));
+        results[0] = malloc(initial_size * sizeof(int));
         args[0] = (thread_select_args){
             .low = low,
             .high = high,
             .file = file,
             .result = &results[0],
             .read_size = PAGE_SIZE,
-            .result_capacity = 100,
+            .result_capacity = initial_size,
             .offset = 0};
         select_section(&args[0]);
 
@@ -145,12 +147,16 @@ pos_vec generic_select(int *low, int *high, char *file, int **result, size_t res
         size_t result_size = args[0].result_size;
         *result = realloc(*result, result_size * sizeof(int));
         memcpy(*result, results[0], result_size * sizeof(int));
+        free(results[0]);
         for (size_t i = 1; i < num_threads; i++)
         {
             result_size += args[i].result_size;
             *result = realloc(*result, (result_size) * sizeof(int));
             memcpy(*result + result_size - args[i].result_size, results[i], args[i].result_size * sizeof(int));
+            // free the runs
+            free(results[i]);
         }
+
         return (pos_vec){.values = *result, .size = result_size, .ivalue = 0, .fvalue = 0.0};
     }
 }
@@ -161,10 +167,10 @@ void *thread_select_col(void *args)
     thread_select_args *targs = (thread_select_args *)args;
     Status status = {.code = OK};
 
-    int *results = malloc(100 * sizeof(int));
+    int *results = malloc(initial_size * sizeof(int));
     pos_vec pos = generic_select(targs->low,
                                  targs->high, targs->file,
-                                 &results, 100,
+                                 &results, initial_size,
                                  &status, targs->read_size);
     if (status.code == ERROR)
     {
@@ -202,7 +208,9 @@ void select_col(Table *table, Column *column, char *var_name, int *low, int *hig
             log_err("-- Error mapping file for column read");
             return;
         }
+
         column->read_map = buffer;
+        column->read_map_size = sb.st_size;
     }
 
     pos_vec fin_result = generic_select(low, high,
@@ -302,6 +310,7 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
             return;
         }
         column->read_map = buffer;
+        column->read_map_size = sb.st_size;
     }
 
     int *result = calloc(var->result.size, sizeof(int));

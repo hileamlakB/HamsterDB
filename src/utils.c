@@ -1,11 +1,17 @@
-#include <stdio.h>
+
+#define _XOPEN_SOURCE
+#define _DEFAULT_SOURCE
 #include <string.h>
+#include <stdio.h>
+
 #include <stddef.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdarg.h>
 #include <unistd.h>
 #include "utils.h"
+#include <sys/mman.h>
+#include <stdlib.h>
 
 #define ANSI_COLOR_RED "\x1b[31m"
 #define ANSI_COLOR_GREEN "\x1b[32m"
@@ -300,6 +306,39 @@ int zerounpadd(char *data, char sep)
         i++;
     }
     return num * sign;
+}
+
+// create_tmp_file - creates a temporary file whose name has the prefix file_name
+// and returns the file descriptor of the file along with the map if mapped is set
+// to true
+tmp_file create_tmp_file(char *file_name, size_t size, bool mapped, bool unlinked)
+{
+
+    char tmp_file_name[256];
+    sprintf(tmp_file_name, "%sXXXXXX", file_name);
+
+    int fd = mkstemp(tmp_file_name);
+
+    tmp_file file = (tmp_file){
+        .file_name = strdup(tmp_file_name),
+        .fd = fd,
+        .size = size,
+        .map = NULL};
+
+    // expand the file
+    lseek(file.fd, size, SEEK_SET);
+    write(file.fd, " ", 1);
+
+    if (unlinked)
+    {
+        unlink(tmp_file_name);
+    }
+
+    if (mapped)
+    {
+        file.map = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, file.fd, 0);
+    }
+    return file;
 }
 
 /* The following three functions will show output on the terminal

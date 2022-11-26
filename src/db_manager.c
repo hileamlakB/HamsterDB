@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <fcntl.h>
 
 #include <unistd.h>
@@ -308,19 +309,19 @@ void free_db()
 
 	for (size_t i = 0; i < current_db->tables_size; i++)
 	{
-		// unmap colums if any
-		for (size_t j = 0; j < current_db->tables[i].col_count; j++)
-		{
-			Column *col = &current_db->tables[i].columns[j];
-			if (col->file)
-			{
-				munmap(col->file, col->map_size);
-			}
-			if (col->read_map)
-			{
-				munmap(col->read_map, col->read_map_size);
-			}
-		}
+		// // unmap colums if any
+		// for (size_t j = 0; j < current_db->tables[i].col_count; j++)
+		// {
+		// 	Column *col = &current_db->tables[i].columns[j];
+		// 	if (col->file)
+		// 	{
+		// 		munmap(col->file, col->map_size);
+		// 	}
+		// 	if (col->read_map)
+		// 	{
+		// 		munmap(col->read_map, col->read_map_size);
+		// 	}
+		// }
 		// free each table
 		free(current_db->tables[i].columns);
 	}

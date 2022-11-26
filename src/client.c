@@ -73,7 +73,7 @@ int connect_client()
     return client_socket;
 }
 
-void communicate_server(int client_socket, message send_message)
+void communicate_server(int client_socket, message send_message, bool wait)
 {
 
     message recv_message;
@@ -90,42 +90,57 @@ void communicate_server(int client_socket, message send_message)
         log_err("Failed to send query payload.");
         exit(1);
     }
+
+    bool is_done = false;
     // Always wait for server response (even if it is just an OK message)
-    if ((len = recv(client_socket, &recv_message, sizeof(message), 0)) > 0)
+    while (!is_done)
     {
-
-        if ((recv_message.status == OK_WAIT_FOR_RESPONSE || recv_message.status == OK_DONE) &&
-            (int)recv_message.length > 0)
+        if ((len = recv(client_socket, &recv_message, sizeof(message), 0)) > 0)
         {
-            // Calculate number of bytes in response package
-            int num_bytes = (int)recv_message.length;
-            char payload[num_bytes + 1];
 
-            // Receive the payload and print it out
-            if ((len = recv(client_socket, payload, num_bytes, 0)) > 0)
+            if ((recv_message.status == OK_WAIT_FOR_RESPONSE || recv_message.status == OK_DONE) &&
+                (int)recv_message.length > 0)
             {
-                payload[num_bytes] = '\0';
-                printf("%s\n", payload);
+                // Calculate number of bytes in response package
+                int num_bytes = (int)recv_message.length;
+                char payload[num_bytes + 1];
+
+                // Receive the payload and print it out
+                if ((len = recv(client_socket, payload, num_bytes, 0)) > 0)
+                {
+                    payload[num_bytes] = '\0';
+                    printf("%s\n", payload);
+                }
             }
-        }
-    }
-    else
-    {
-        if (len < 0)
-        {
-            log_err("Failed to receive message.");
+
+            if (!wait)
+            {
+                is_done = true;
+            }
+
+            if (recv_message.status == PRINT_COMPLETE)
+            {
+                is_done = true;
+            }
         }
         else
         {
-            log_info("-- Server closed connection\n");
-        }
+            if (len < 0)
+            {
+                log_err("Failed to receive message.");
+            }
+            else
+            {
+                log_info("-- Server closed connection\n");
+            }
 
-        if (strncmp(send_message.payload, "shutdown", 8) == 0)
-        {
-            exit(0);
-        }
+            if (strncmp(send_message.payload, "shutdown", 8) == 0)
+            {
+                exit(0);
+            }
 
-        exit(1);
+            exit(1);
+        }
     }
 }
 
@@ -141,7 +156,7 @@ void flush_load(int client_socet, char *msg, size_t size)
 
     send_message.payload = msg;
 
-    communicate_server(client_socet, send_message);
+    communicate_server(client_socet, send_message, false);
 }
 
 typedef struct reader
@@ -491,7 +506,8 @@ void load_file(int client_socket, char *file_name)
     communicate_server(client_socket, (message){
                                           .length = strlen(complete_message),
                                           .payload = complete_message,
-                                      });
+                                      },
+                       false);
     free(complete_message);
 }
 
@@ -531,7 +547,8 @@ void load_file2(int client_socket, char *file_name)
         communicate_server(client_socket, (message){
                                               .length = strlen(relationl_insert),
                                               .payload = relationl_insert,
-                                          });
+                                          },
+                           false);
         free(relationl_insert);
     }
 }
@@ -613,11 +630,17 @@ int main(void)
 
                 load_file(client_socket, file_name);
             }
+
             else
             {
+                bool wait_til_complete = false;
+                if (strncmp(read_buffer + i, "print", 5) == 0)
+                {
+                    wait_til_complete = true;
+                }
 
                 // send the message to the server
-                communicate_server(client_socket, send_message);
+                communicate_server(client_socket, send_message, wait_til_complete);
             }
         }
     }

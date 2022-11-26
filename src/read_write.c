@@ -50,7 +50,7 @@ void map_col(Table *table, Column *column, Status *status)
     status->code = OK;
     const size_t page_size = sysconf(_SC_PAGESIZE);
     // experiment with this number, the overhead mx_size
-    const size_t map_size = 4 * page_size;
+    const size_t map_size = 2 * page_size;
 
     // check if the file is open if not open it
     create_colf(table, column, status);
@@ -67,7 +67,7 @@ void map_col(Table *table, Column *column, Status *status)
 
     // expand the file by map size for some writing room
     lseek(column->fd, column->end + map_size, SEEK_SET);
-    write(column->fd, "", map_size);
+    write(column->fd, " ", 1);
 
     column->file_size = column->end + map_size;
     char *file = (char *)mmap(NULL, column->file_size, PROT_READ | PROT_WRITE, MAP_SHARED, column->fd, 0);

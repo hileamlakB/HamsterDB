@@ -35,13 +35,20 @@
 
 #define DEFAULT_QUERY_BUFFER_SIZE 1024
 
-char *execute_DbOperator(DbOperator *query)
+String empty_string = {
+    .str = "",
+    .len = 0};
+String failed_string = {
+    .str = "Failed",
+    .len = 6};
+
+String execute_DbOperator(DbOperator *query)
 {
 
     // free query before you return here
     if (!query)
     {
-        return "";
+        return empty_string;
         // return "Unkown query";
     }
 
@@ -54,11 +61,13 @@ char *execute_DbOperator(DbOperator *query)
             if (ret_status.code == OK)
             {
 
-                return "";
+                return empty_string;
             }
             else
             {
-                return ret_status.error_message;
+                return (String){
+                    .str = ret_status.error_message,
+                    .len = strlen(ret_status.error_message)};
             }
         }
         else if (query->operator_fields.create_operator.create_type == _TABLE)
@@ -71,11 +80,9 @@ char *execute_DbOperator(DbOperator *query)
 
             if (create_status.code != OK)
             {
-                cs165_log(stdout, "Adding table failed.\n");
-                return "Failed";
+                cs165_log(stdout, "--Adding table failed.\n");
             }
-            return "";
-            // return "Table created successfully";
+            return empty_string;
         }
         else if (query->operator_fields.create_operator.create_type == _COLUMN)
         {
@@ -88,9 +95,8 @@ char *execute_DbOperator(DbOperator *query)
             if (create_status.code != OK)
             {
                 cs165_log(stdout, "-- Adding column failed.\n");
-                return "Failed";
             }
-            return "";
+            return empty_string;
         }
         else if (query->operator_fields.create_operator.create_type == _INDEX)
         {
@@ -104,9 +110,8 @@ char *execute_DbOperator(DbOperator *query)
             if (create_status.code != OK)
             {
                 cs165_log(stdout, "-- Adding index failed.\n");
-                return "Failed";
             }
-            return "";
+            return empty_string;
         }
     }
 
@@ -135,7 +140,7 @@ char *execute_DbOperator(DbOperator *query)
             {
                 update_col_end(table);
                 cs165_log(stdout, "-- Unbalanced column, adding column failed.");
-                return "Failed";
+                return failed_string;
             }
             table->rows += loaded;
             update_col_end(table);
@@ -146,7 +151,7 @@ char *execute_DbOperator(DbOperator *query)
                 populate_index(table, &table->columns[i]);
             }
 
-            return "";
+            return empty_string;
         }
 
         // consider adding status
@@ -162,15 +167,11 @@ char *execute_DbOperator(DbOperator *query)
         if (write_load_status.code == OK)
         {
 
-            return "";
-        }
-        else
-        {
-            // interrupt the loading so that the client will stop
-            return "Col write failed: retracting steps";
+            return empty_string;
         }
 
-        // return "File Loaded";
+        // interrupt the loading so that the client will stop
+        return failed_string;
     }
     else if (query->type == INSERT)
     {
@@ -203,7 +204,7 @@ char *execute_DbOperator(DbOperator *query)
                 &select_status);
         }
 
-        return "";
+        return empty_string;
         // return "File Loaded";
     }
     else if (query->type == FETCH)
@@ -215,28 +216,26 @@ char *execute_DbOperator(DbOperator *query)
             query->operator_fields.fetch_operator.variable,
             query->operator_fields.fetch_operator.handler,
             &fetch_status);
-        return "";
+        return empty_string;
     }
     else if (query->type == PRINT)
     {
 
-        char *result = print_tuple(query->operator_fields.print_operator);
-
-        return result;
+        return print_tuple(query->operator_fields.print_operator);
     }
     else if (query->type == AVG)
     {
         average(query->operator_fields.avg_operator.handler,
                 query->operator_fields.avg_operator.variable);
 
-        return "";
+        return empty_string;
     }
     else if (query->type == SUM)
     {
         Status sum_status;
         sum(query->operator_fields.avg_operator, &sum_status);
 
-        return "";
+        return empty_string;
     }
     else if (query->type == ADD)
     {
@@ -244,7 +243,7 @@ char *execute_DbOperator(DbOperator *query)
             query->operator_fields.math_operator.operand_1,
             query->operator_fields.math_operator.operand_2);
 
-        return "";
+        return empty_string;
     }
     else if (query->type == SUB)
     {
@@ -252,19 +251,19 @@ char *execute_DbOperator(DbOperator *query)
             query->operator_fields.math_operator.operand_1,
             query->operator_fields.math_operator.operand_2);
 
-        return "";
+        return empty_string;
     }
     else if (query->type == MIN || query->type == MAX)
     {
         Status min_max_status;
         MinMax(query->operator_fields.min_max_operator, &min_max_status);
 
-        return "";
+        return empty_string;
     }
     else if (query->type == BATCH_EXECUTE)
     {
         Status batch_status;
-        char *result = batch_execute(batch.queries, batch.num_queries, &batch_status);
+        String result = batch_execute(batch.queries, batch.num_queries, &batch_status);
         batch.mode = false;
         return result;
     }
@@ -272,11 +271,11 @@ char *execute_DbOperator(DbOperator *query)
     {
 
         shutdown_server(query);
-        return "";
+        return empty_string;
         // return "Shutting down";
     }
 
-    return "";
+    return empty_string;
 }
 
 typedef struct created_threads
@@ -346,13 +345,13 @@ void *execute_query(void *q_group)
     return NULL;
 }
 
-char *batch_execute(DbOperator **queries, size_t n, Status *status)
+String batch_execute(DbOperator **queries, size_t n, Status *status)
 {
 
     if (n == 0)
     {
         status->code = OK;
-        return "";
+        return empty_string;
     }
 
     grouped_tasks gtasks = query_planner(queries, n, status);
@@ -361,7 +360,7 @@ char *batch_execute(DbOperator **queries, size_t n, Status *status)
     if (independent->count == 0)
     {
         status->code = ERROR;
-        return "Error undefined referenece";
+        return failed_string;
     }
 
     pthread_t threads[independent->size];
@@ -383,22 +382,22 @@ char *batch_execute(DbOperator **queries, size_t n, Status *status)
         pthread_join(threads[i], NULL);
     }
 
-    return "";
+    return empty_string;
 }
 
-char *print_tuple(PrintOperator print_operator)
+String print_tuple(PrintOperator print_operator)
 {
     if (print_operator.type == SINGLE_FLOAT)
     {
         char *str = malloc(sizeof(char) * MAX_INT_LENGTH);
-        sprintf(str, "%.2f", print_operator.data.fvalue);
-        return str;
+        int len = sprintf(str, "%.2f", print_operator.data.fvalue);
+        return (String){.str = str, len = len};
     }
     else if (print_operator.type == SINGLE_INT)
     {
         char *str = malloc(sizeof(char) * MAX_INT_LENGTH);
-        sprintf(str, "%d", print_operator.data.ivalue);
-        return str;
+        int len = sprintf(str, "%d", print_operator.data.ivalue);
+        return (String){.str = str, len = len};
     }
 
     int width = print_operator.data.tuple.width;
@@ -439,8 +438,7 @@ char *print_tuple(PrintOperator print_operator)
     }
 
     free(results);
-
-    return result;
+    return (String){.str = result, .len = result_i - result};
 }
 
 int generic_sum(Variable *variable)
@@ -581,6 +579,27 @@ void MinMax(MinMaxOperator minmax_operator, Status *status)
             INT_VALUE);
 }
 
+int send_message(int client_socket, message_status status, String result)
+{
+    message m;
+    m.length = result.len;
+    // char send_buffer[m.length + 1];
+
+    // strcpy(send_buffer, result.str);
+    m.payload = result.str;
+    m.status = status;
+
+    // 3. Send status of the received message (OK, UNKNOWN_QUERY, etc)
+    if (send(client_socket, &(m), sizeof(message), 0) == -1)
+    {
+        log_err("Failed to send message.");
+        exit(1);
+    }
+
+    // 4. Send the actual response to the request
+    return send(client_socket, result.str, m.length, 0);
+}
+
 void handle_client(int client_socket)
 {
     int done = 0;
@@ -589,8 +608,9 @@ void handle_client(int client_socket)
     log_info("Connected to socket: %d.\n", client_socket);
 
     // Create two messages, one from which to read and one from which to receive
-    message send_message;
     message recv_message;
+    message s_message;
+    s_message.status = OK_WAIT_FOR_RESPONSE; // default status
 
     // create the client context here
     ClientContext *client_context = NULL;
@@ -625,11 +645,11 @@ void handle_client(int client_socket)
 
             // 1. Parse command
             //    Query string is converted into a request for an database operator
-            DbOperator *query = parse_command(recv_message.payload, &send_message, client_socket, client_context);
+            DbOperator *query = parse_command(recv_message.payload, &s_message, client_socket, client_context);
 
             // 2. Handle request
             //    Corresponding database operator is executed over the query
-            char *result = "";
+            String result;
 
             if (batch.mode)
             {
@@ -655,31 +675,38 @@ void handle_client(int client_socket)
                 result = execute_DbOperator(query);
             }
 
-            send_message.length = strlen(result);
-            char send_buffer[send_message.length + 1];
-            strcpy(send_buffer, result);
-            send_message.payload = send_buffer;
-            send_message.status = OK_WAIT_FOR_RESPONSE;
-
-            // 3. Send status of the received message (OK, UNKNOWN_QUERY, etc)
-            if (send(client_socket, &(send_message), sizeof(message), 0) == -1)
+            if (query && query->type == PRINT)
             {
-                log_err("Failed to send message.");
-                exit(1);
+                int sent = 0;
+                int send_chunk_size = 1024;
+                while (sent < (int)result.len)
+                {
+
+                    int to_send = min(send_chunk_size, (int)result.len - sent);
+
+                    String new_result = (String){.str = result.str + sent, .len = to_send};
+                    int sent_now = send_message(client_socket, s_message.status, new_result);
+                    if (sent_now == -1)
+                    {
+                        log_err("Failed to send message.");
+                        exit(1);
+                    }
+
+                    sent += sent_now;
+                }
+                send_message(client_socket, PRINT_COMPLETE, (String){.str = "", .len = 0});
+                free(result.str);
             }
-
-            // 4. Send response to the request
-            if (send(client_socket, result, send_message.length, 0) == -1)
+            else
             {
-                log_err("Failed to send message.");
-                exit(1);
+                send_message(client_socket, s_message.status, result);
             }
 
             // free query
-            if (query && query->type == PRINT)
-            {
-                free(result);
-            }
+            // if (query && query->type == PRINT)
+            // {
+            //     free(result.str);
+            // }
 
             if (!batch.mode)
             {

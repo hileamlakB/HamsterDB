@@ -167,6 +167,8 @@ typedef struct Column
 } Column;
 
 extern Column empty_column;
+extern String empty_string;
+extern String failed_string;
 
 /**
  * table
@@ -531,7 +533,6 @@ void populate_index(Table *tbl, Column *col);
 
 Status shutdown_server(DbOperator *);
 
-char **execute_db_operator(DbOperator *query);
 void db_operator_free(DbOperator *query);
 
 // serilize.c
@@ -591,7 +592,7 @@ void free_var_pool();
 // server.c
 
 void insert(Table *, char **, Status *);
-char *print_tuple(PrintOperator);
+String print_tuple(PrintOperator);
 void average(char *, Variable *);
 void sum(AvgOperator, Status *);
 
@@ -599,7 +600,7 @@ void add(char *, Variable *, Variable *);
 void sub(char *, Variable *, Variable *);
 void MinMax(MinMaxOperator, Status *);
 
-char *batch_execute(DbOperator **queries, size_t n, Status *status);
+String batch_execute(DbOperator **queries, size_t n, Status *status);
 
 // available threads
 typedef struct num_threads

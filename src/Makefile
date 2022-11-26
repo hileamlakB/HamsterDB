@@ -56,10 +56,10 @@ $(DEPSDIR)/stamp $(BUILDSTAMP):
 # dependency on the right side of whichever one requires the file.
 ##
 
-client: client.o utils.o
+client: client.o utils.o thread_pool.o 
 	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS) -g
 
-server: server.o parse.o utils.o db_manager.o client_context.o serialize.o read_write.o retrive.o var_pool.o tasks.o hash_table.o queue.o 
+server: server.o parse.o utils.o db_manager.o client_context.o serialize.o read_write.o retrive.o var_pool.o tasks.o hash_table.o queue.o thread_pool.o sort.o
 	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS) -g
 
 clean:

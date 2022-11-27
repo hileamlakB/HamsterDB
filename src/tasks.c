@@ -51,7 +51,7 @@ grouped_tasks query_planner(DbOperator **db_ops, int num_ops, Status *status)
     if (dependent.task == NULL)
     {
         printf("Error: malloc failed in query_planner");
-        // beofre you crush exit do crash dumps and
+        // before you crush exit do crash dumps and
         // backups
         exit(EXIT_FAILURE);
     }
@@ -74,7 +74,6 @@ grouped_tasks query_planner(DbOperator **db_ops, int num_ops, Status *status)
                     Variable *pos_vec = find_var(current_op->operator_fields.select_operator.val_vec->name);
                     if (pos_vec)
                     {
-
                         // don't forge to free everything not just the main vector
                         free(current_op->operator_fields.select_operator.val_vec->name);
                         free(current_op->operator_fields.select_operator.val_vec);
@@ -137,4 +136,10 @@ grouped_tasks query_planner(DbOperator **db_ops, int num_ops, Status *status)
     grouped.dependent = dependent;
 
     return grouped;
+}
+
+void free_grouped_tasks(grouped_tasks grouped_tasks)
+{
+    deallocate_ht(grouped_tasks.independent, true);
+    free(grouped_tasks.dependent.task);
 }

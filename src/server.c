@@ -382,6 +382,9 @@ String batch_execute(DbOperator **queries, size_t n, Status *status)
         pthread_join(threads[i], NULL);
     }
 
+    // free the hashtable
+    free_grouped_tasks(gtasks);
+
     return empty_string;
 }
 
@@ -600,6 +603,32 @@ int send_message(int client_socket, message_status status, String result)
     return send(client_socket, result.str, m.length, 0);
 }
 
+void free_db_operator(DbOperator *query)
+{
+
+    if (query)
+    {
+        if (query->type == SELECT)
+        {
+            free(query->operator_fields.select_operator.handler);
+            if (query->operator_fields.select_operator.low)
+            {
+                free(query->operator_fields.select_operator.low);
+            }
+            if (query->operator_fields.select_operator.high)
+            {
+                free(query->operator_fields.select_operator.high);
+            }
+        }
+        if (query->type == FETCH)
+        {
+            free(query->operator_fields.fetch_operator.handler);
+        }
+
+        free(query);
+    }
+}
+
 void handle_client(int client_socket)
 {
     int done = 0;
@@ -656,7 +685,6 @@ void handle_client(int client_socket)
                 assert(query);
                 if (query->type == BATCH_EXECUTE)
                 {
-
                     result = execute_DbOperator(query);
                     batch.mode = false;
                 }
@@ -664,6 +692,7 @@ void handle_client(int client_socket)
                 {
                     if (query->type != BATCH_QUERY)
                     {
+                        // currenlty only select and fetch are supported in batch queries
                         assert(query->type == SELECT || query->type == FETCH);
                         batch.queries[batch.num_queries] = query;
                         batch.num_queries++;
@@ -702,26 +731,20 @@ void handle_client(int client_socket)
                 send_message(client_socket, s_message.status, result);
             }
 
-            // free query
-            // if (query && query->type == PRINT)
-            // {
-            //     free(result.str);
-            // }
-
             if (!batch.mode)
             {
-                if (query)
+                if (batch.num_queries > 0)
                 {
-                    if (query->type == SELECT)
+                    for (size_t i = 0; i < batch.num_queries; i++)
                     {
-                        free(query->operator_fields.select_operator.handler);
+                        free_db_operator(batch.queries[i]);
                     }
-                    if (query->type == FETCH)
-                    {
-                        free(query->operator_fields.fetch_operator.handler);
-                    }
+                    batch.num_queries = 0;
                 }
-                free(query);
+                else
+                {
+                    free_db_operator(query);
+                }
             }
         }
     } while (!done);
@@ -827,7 +850,7 @@ Status shutdown_server(DbOperator *dbo)
     free_var_pool();
     free_db();
     free(dbo);
-
+    //  destroy_thread_pool();
     exit(0);
     // Think about delaying the exit after sending the ack message
 

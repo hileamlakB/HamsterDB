@@ -34,8 +34,6 @@ typedef struct thread_pool
 
 } thread_pool;
 
-extern thread_pool *main_pool;
-
 void create_threads();
 thread_group *allocate_threads(size_t num_threads);
 void create_job_board();

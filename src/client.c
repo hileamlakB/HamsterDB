@@ -321,7 +321,7 @@ void load_file4(int client_socket, char *file_name)
 void load_file(int client_socket, char *file_name)
 {
 
-    const size_t PAGE_SIZE = 4 * (size_t)sysconf(_SC_PAGESIZE);
+    const size_t PAGE_SIZE = 2 * (size_t)sysconf(_SC_PAGESIZE);
 
     // Make sure the file exists
     struct stat st;

@@ -62,6 +62,6 @@ int put_ht(hashtable *ht, hash_element key, hash_element value);
 int get_ht(hashtable *ht, hash_element key, hash_element *values, int num_values, int *num_results);
 int erase_ht(hashtable *ht, hash_element key);
 node_array get_keys(hashtable *ht);
-int deallocate_ht(hashtable *ht);
+int deallocate_ht(hashtable *ht, bool free_key); // the boolean is to determine if the key should be freed or not
 
 #endif

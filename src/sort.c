@@ -73,7 +73,7 @@ void *merge(void *sarg)
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
     size += PAGE_SIZE - (size - ((size / PAGE_SIZE) * PAGE_SIZE));
 
-    tmp_file tmp = create_tmp_file("merge_XXXXXX", size, true, true);
+    tmp_file tmp = create_tmp_file("merge", size, true, true);
 
     // map the file to memory
     char *result = tmp.map;
@@ -129,6 +129,7 @@ void *merge(void *sarg)
     }
 
     // copy the result back to the first array
+    free(tmp.file_name);
     memcpy(array_1, tmp.map, size);
     munmap(tmp.map, size);
     close(tmp.fd);
@@ -437,7 +438,7 @@ tmp_file reorder(tmp_file tuple_file, char *map_name)
 
     // create a new file to write the reordered file
     tmp_file reordered = create_tmp_file(
-        "reordered_tuple_XXXXXX",
+        "reordered_tuple",
         file_size,
         true,
         true);
@@ -450,6 +451,7 @@ tmp_file reorder(tmp_file tuple_file, char *map_name)
     }
 
     // unmap and close all files
+    free(reordered.file_name);
     munmap(map, file_size);
     close(fd_map);
 
@@ -462,13 +464,13 @@ tmp_file create_tuple(size_t n, size_t tuple_size, char **index_maps)
 {
 
     // get the size of the tuple
-    char *columns[n];
-    for (size_t i = 0; i < n; i++)
+    char *columns[tuple_size];
+    for (size_t i = 0; i < tuple_size; i++)
     {
         columns[i] = index_maps[i];
     }
 
-    tmp_file res = create_tmp_file("tuple_XXXXXX", tuple_size * n * (MAX_INT_LENGTH + 1), true, true);
+    tmp_file res = create_tmp_file("tuple", tuple_size * n * (MAX_INT_LENGTH + 1), true, true);
     char *tuple = res.map;
 
     size_t i = 0;
@@ -544,6 +546,7 @@ char **separate_tuple(Table *table, Column *idx_column, tmp_file tuple, size_t n
 // the sorting order of the first column
 void propagate_sort(Table *tbl, Column *idx_column)
 {
+    return;
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
 
     char *index_maps[tbl->col_count - 1];

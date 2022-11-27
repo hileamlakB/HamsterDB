@@ -146,7 +146,9 @@ ColumnIndex create_index(
 
 	col->indexed = true;
 	col->index = idx;
-	serialize_column(col);
+	serialize_data meta_data = serialize_column(col);
+	write(col->fd, meta_data.data, meta_data.size);
+	free(meta_data.data);
 
 	return idx;
 }

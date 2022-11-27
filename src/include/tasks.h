@@ -1,8 +1,9 @@
 #ifndef TAKS_H
 #define TAKS_H
 
-#include "thread.h"
+// #include "thread.h"
 #include "cs165_api.h"
+#include "data_structures.h"
 
 typedef enum task_type
 {
@@ -39,5 +40,6 @@ typedef struct grouped_tasks
 } grouped_tasks;
 
 grouped_tasks query_planner(DbOperator **db_ops, int num_ops, Status *status);
+void free_grouped_tasks(grouped_tasks grouped_tasks);
 
 #endif

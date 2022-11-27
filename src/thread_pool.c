@@ -22,12 +22,14 @@ void *generic_task()
             pthread_cond_wait(&thread_pool.job_cond, &thread_pool.job_mutex);
             if (thread_pool.stop)
             {
+
                 pthread_mutex_unlock(&thread_pool.job_mutex);
+                // thread_pool.count--;
                 return NULL;
             }
         }
         job *current_job = thread_pool.jobs;
-        thread_pool.jobs = current_job->job_next;
+        thread_pool.jobs = thread_pool.jobs->job_next;
         if (thread_pool.jobs == NULL)
         {
             thread_pool.last_job = NULL;

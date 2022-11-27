@@ -165,7 +165,7 @@ int erase_ht(hashtable *ht, hash_element key)
 
 // This method frees all memory occupied by the hash table.
 // It returns an error code, 0 for success and -1 otherwise.
-int deallocate_ht(hashtable *ht)
+int deallocate_ht(hashtable *ht, bool free_key)
 {
 
     for (size_t i = 0; i < ht->size; i++)
@@ -175,6 +175,10 @@ int deallocate_ht(hashtable *ht)
         {
             node *to_free = curr;
             curr = curr->next;
+            if (free_key)
+            {
+                free(to_free->key);
+            }
             free(to_free);
         }
     }

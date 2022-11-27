@@ -393,13 +393,13 @@ String print_tuple(PrintOperator print_operator)
     if (print_operator.type == SINGLE_FLOAT)
     {
         char *str = malloc(sizeof(char) * MAX_INT_LENGTH);
-        int len = sprintf(str, "%.2f", print_operator.data.fvalue);
+        size_t len = sprintf(str, "%.2f", print_operator.data.fvalue);
         return (String){.str = str, len = len};
     }
     else if (print_operator.type == SINGLE_INT)
     {
         char *str = malloc(sizeof(char) * MAX_INT_LENGTH);
-        int len = sprintf(str, "%d", print_operator.data.ivalue);
+        size_t len = sprintf(str, "%d", print_operator.data.ivalue);
         return (String){.str = str, len = len};
     }
 
@@ -850,7 +850,7 @@ Status shutdown_server(DbOperator *dbo)
     free_var_pool();
     free_db();
     free(dbo);
-    //  destroy_thread_pool();
+    // destroy_thread_pool();
     exit(0);
     // Think about delaying the exit after sending the ack message
 

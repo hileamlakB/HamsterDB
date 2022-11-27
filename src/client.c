@@ -92,6 +92,7 @@ void communicate_server(int client_socket, message send_message, bool wait)
     }
 
     bool is_done = false;
+    bool print_newline = false;
     // Always wait for server response (even if it is just an OK message)
     while (!is_done)
     {
@@ -109,7 +110,8 @@ void communicate_server(int client_socket, message send_message, bool wait)
                 if ((len = recv(client_socket, payload, num_bytes, 0)) > 0)
                 {
                     payload[num_bytes] = '\0';
-                    printf("%s\n", payload);
+                    printf("%s", payload);
+                    print_newline = true;
                 }
             }
 
@@ -141,6 +143,11 @@ void communicate_server(int client_socket, message send_message, bool wait)
 
             exit(1);
         }
+    }
+
+    if (print_newline)
+    {
+        printf("\n");
     }
 }
 

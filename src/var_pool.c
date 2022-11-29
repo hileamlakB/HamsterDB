@@ -19,16 +19,10 @@
 
 pthread_mutex_t var_pool_lock;
 
-void add_var(char *name, vector result, variable_type var_type)
+void add_var(Variable *var)
 {
 
     linkedList *node = malloc(sizeof(linkedList));
-
-    Variable *var = malloc(sizeof(Variable));
-    var->name = strdup(name);
-    var->result = result;
-    var->type = var_type;
-    var->exists = true;
 
     node->data = (void *)var;
 
@@ -56,6 +50,18 @@ Variable *find_var(char *name)
     return NULL;
 }
 
+void free_linked_list(linkedList *node)
+{
+
+    while (node != NULL)
+    {
+        linkedList *next = node->next;
+        free(node->data);
+        free(node);
+        node = next;
+    }
+}
+
 void free_var_pool()
 {
     linkedList *node = var_pool;
@@ -63,11 +69,16 @@ void free_var_pool()
     {
         linkedList *next = node->next;
         Variable *var = (Variable *)node->data;
-        free(var->name);
-        if (var->result.values)
+        if (var->type == VECTOR_CHAIN)
         {
-            free(var->result.values);
+            free_linked_list(var->result.pos_vec_chain);
         }
+        if (var->type == POSITION_VECTOR)
+        {
+            free(var->result.values.values);
+        }
+
+        free(var->name);
         free(var);
         free(node);
         node = next;

@@ -311,7 +311,7 @@ int zerounpadd(char *data, char sep)
 // create_tmp_file - creates a temporary file whose name has the prefix file_name
 // and returns the file descriptor of the file along with the map if mapped is set
 // to true
-tmp_file create_tmp_file(char *file_name, size_t size, bool mapped, bool unlinked)
+tmp_file create_tmp_file(char *file_name, size_t size, bool mapped, bool unlinked, bool shared)
 {
 
     char tmp_file_name[256];
@@ -336,9 +336,60 @@ tmp_file create_tmp_file(char *file_name, size_t size, bool mapped, bool unlinke
 
     if (mapped)
     {
-        file.map = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, file.fd, 0);
+        file.map = mmap(NULL, size, PROT_READ | PROT_WRITE, shared ? MAP_SHARED : MAP_PRIVATE, file.fd, 0);
     }
     return file;
+}
+
+// compare string ints
+int compare_sints(const void *a, const void *b)
+{
+    int a_int = atoi((char *)a);
+    int b_int = atoi((char *)b);
+    if (a_int < b_int)
+    {
+        return -1;
+    }
+
+    if (a_int > b_int)
+    {
+        return 1;
+    }
+    return 0;
+}
+
+void *closest_search(const void *key, const void *base,
+                     size_t nmemb, size_t size,
+                     int (*compar)(const void *, const void *))
+{
+    // uses binary search to find the closest value in a sorted array
+    // returns a pointer to the closest value
+    size_t l, u, idx;
+    const char *p;
+    int r;
+
+    l = 0;
+    u = nmemb;
+    while (l < u)
+    {
+        idx = (l + u) / 2;
+        p = (const char *)base + idx * size;
+        r = compar(key, p);
+        if (r < 0)
+        {
+            u = idx;
+        }
+        else if (r > 0)
+        {
+            l = idx + 1;
+        }
+        else
+        {
+            return (void *)p;
+        }
+    }
+
+    return (void *)p;
 }
 
 /* The following three functions will show output on the terminal

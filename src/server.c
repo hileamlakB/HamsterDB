@@ -12,6 +12,9 @@
  * For more information on unix sockets, refer to:
  * http://beej.us/guide/bgipc/output/html/multipage/unixsock.html
  **/
+#define _DEFAULT_SOURCE
+#include <string.h>
+#include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -20,7 +23,6 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <string.h>
 #include <sys/mman.h>
 #include <fcntl.h>
 
@@ -41,6 +43,55 @@ String empty_string = {
 String failed_string = {
     .str = "Failed",
     .len = 6};
+
+void batch_loader()
+{
+    char *to_load = bload.end->data;
+
+    Status status;
+
+    // char *fst_line = NULL;
+    // if (bload.left_over)
+    // {
+
+    //     fst_line = catnstr(2, bload.left_over, strsep(&to_load, "\n"));
+    //     for (size_t i = 0; i < bload.num_columns; i++)
+    //     {
+    //         char *val = strsep(&fst_line, ",");
+    //         insert_col(bload.table, bload.columns[i], val, &status);
+    //     }
+    //     free(bload.left_over);
+    //     bload.left_over = NULL;
+    //     bload.table->rows++;
+    // }
+
+    size_t cur_col = 0;
+    while (to_load && *to_load != '\0')
+    {
+
+        char *next_val;
+        if (cur_col == bload.num_columns - 1)
+        {
+            next_val = strsep(&to_load, "\n");
+        }
+        else
+        {
+            next_val = strsep(&to_load, ",");
+        }
+
+        insert_col(bload.table, bload.columns[cur_col], next_val, &status);
+        cur_col++;
+
+        if (cur_col == bload.num_columns)
+        {
+            cur_col = 0;
+            bload.table->rows++;
+        }
+    }
+
+    free(bload.end);
+    bload.data = bload.end = NULL;
+}
 
 String execute_DbOperator(DbOperator *query)
 {
@@ -186,12 +237,13 @@ String execute_DbOperator(DbOperator *query)
 
         if (query->operator_fields.select_operator.type == SELECT_COL)
         {
-            select_col(query->operator_fields.select_operator.table,
-                       query->operator_fields.select_operator.column,
-                       query->operator_fields.select_operator.handler,
-                       query->operator_fields.select_operator.low,
-                       query->operator_fields.select_operator.high,
-                       &select_status);
+            select_args args = {
+                .tbl = query->operator_fields.select_operator.table,
+                .col = query->operator_fields.select_operator.column,
+                .handle = query->operator_fields.select_operator.handler,
+                .low = query->operator_fields.select_operator.low,
+                .high = query->operator_fields.select_operator.high};
+            select_col(&args);
         }
         else if (query->operator_fields.select_operator.type == SELECT_POS)
         {
@@ -267,6 +319,12 @@ String execute_DbOperator(DbOperator *query)
         batch.mode = false;
         return result;
     }
+    else if (query->type == BATCH_LOAD)
+    {
+        // free the linked list
+        batch_loader();
+        return empty_string;
+    }
     else if (query && query->type == SHUTDOWN)
     {
 
@@ -278,12 +336,6 @@ String execute_DbOperator(DbOperator *query)
     return empty_string;
 }
 
-typedef struct created_threads
-{
-    pthread_t *threads;
-    size_t num_threads;
-} created_threads;
-
 void *execute_query(void *q_group)
 {
     node *query_group = (node *)q_group;
@@ -291,7 +343,6 @@ void *execute_query(void *q_group)
     Table *table = db_op->operator_fields.select_operator.table;
     Column *column = db_op->operator_fields.select_operator.column;
 
-    const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
     Status status;
     create_colf(table, column, &status);
     if (status.code != OK)
@@ -303,19 +354,12 @@ void *execute_query(void *q_group)
     struct stat sb;
     fstat(column->fd, &sb);
 
-    char *buffer = mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, column->fd, column->meta_data_size * PAGE_SIZE);
-    if (buffer == MAP_FAILED)
-    {
-        log_err("--Error mapping file for column read");
-        return NULL;
-    }
-
     pthread_t threads[query_group->depth];
 
     // thread_group *allocated_threads = allocate_threads(query_group->depth);
     size_t depth = query_group->depth;
 
-    thread_select_args args[depth];
+    select_args args[depth];
 
     //  here if the number of quries is less than one you won't need to create threads
     // you can use this thread itself for one query
@@ -323,14 +367,15 @@ void *execute_query(void *q_group)
     {
         DbOperator *dbs = (DbOperator *)query_group->val;
 
-        args[i] = (thread_select_args){
+        args[i] = (select_args){
             .low = dbs->operator_fields.select_operator.low,
             .high = dbs->operator_fields.select_operator.high,
-            .file = buffer,
             .read_size = dbs->operator_fields.select_operator.table->rows * (MAX_INT_LENGTH + 1),
-            .handle = dbs->operator_fields.select_operator.handler};
-
-        pthread_create(&threads[i], NULL, thread_select_col, &args[i]);
+            .handle = dbs->operator_fields.select_operator.handler,
+            .tbl = table,
+            .col = column};
+        // handle the case where there are other commands besides select_col
+        pthread_create(&threads[i], NULL, select_col, &args[i]);
         query_group = query_group->next;
     }
 
@@ -406,6 +451,17 @@ String print_tuple(PrintOperator print_operator)
     int width = print_operator.data.tuple.width;
     int height = print_operator.data.tuple.height;
     Variable **results = print_operator.data.tuple.data;
+    linkedList *lst[width];
+    size_t list_indexs[width];
+
+    for (int i = 0; i < width; i++)
+    {
+        if (results[i]->type == VECTOR_CHAIN)
+        {
+            lst[i] = results[i]->result.pos_vec_chain;
+            list_indexs[i] = 0;
+        }
+    }
 
     // for commas and extra variables, we have + 1,  MAX_INT_LENGTH + 1, +1 for newline
     size_t size = (width * height * (MAX_INT_LENGTH + 1));
@@ -425,9 +481,20 @@ String print_tuple(PrintOperator print_operator)
             {
                 printed = sprintf(result_i, "%.2f,", current_var->result.fvalue);
             }
-            else
+            else if (current_var->type == POSITION_VECTOR || current_var->type == VALUE_VECTOR)
             {
-                printed = sprintf(result_i, "%d,", current_var->result.values[row]);
+                printed = sprintf(result_i, "%d,", current_var->result.values.values[row]);
+            }
+            else if (current_var->type == VECTOR_CHAIN)
+            {
+
+                if (list_indexs[col] >= ((pos_vec *)lst[col]->data)->size)
+                {
+                    list_indexs[col] = 0;
+                    lst[col] = lst[col]->next;
+                }
+
+                printed = sprintf(result_i, "%d,", ((pos_vec *)lst[col]->data)->values[list_indexs[col]]);
             }
             result_i += printed;
         }
@@ -446,11 +513,31 @@ String print_tuple(PrintOperator print_operator)
 
 int generic_sum(Variable *variable)
 {
+
     int sum = 0;
-    for (int i = 0; i < variable->result.size; i++)
+    if (variable->type == VALUE_VECTOR)
     {
-        sum += variable->result.values[i];
+
+        for (size_t i = 0; i < variable->result.values.size; i++)
+        {
+            sum += variable->result.values.values[i];
+        }
     }
+    else if (variable->type == VECTOR_CHAIN)
+    {
+        size_t index = 0;
+        linkedList *lst = variable->result.pos_vec_chain;
+        for (size_t i = 0; i < variable->vec_chain_size; i++)
+        {
+            if (index >= ((pos_vec *)lst->data)->size)
+            {
+                lst = lst->next;
+                index = 0;
+            }
+            sum += variable->result.values.values[i];
+        }
+    }
+
     return sum;
 }
 
@@ -461,10 +548,15 @@ void sum(AvgOperator avg_operator, Status *status)
     if (avg_operator.type == VARIABLE_O)
     {
         Variable *variable = avg_operator.variable;
+        int sum = generic_sum(variable);
+        Variable *fin_result = malloc(sizeof(Variable));
+        *fin_result = (Variable){
+            .type = INT_VALUE,
+            .result.ivalue = sum,
+            .name = strdup(handler),
+            .exists = true};
 
-        add_var(handler,
-                (vector){.ivalue = generic_sum(variable), .size = 1},
-                INT_VALUE);
+        add_var(fin_result);
     }
     else if (avg_operator.type == COLUMN_O)
     {
@@ -476,9 +568,13 @@ void sum(AvgOperator avg_operator, Status *status)
         if (column->sum[0] == 1)
         {
             // handle new inserts and and new loads
-            add_var(handler,
-                    (vector){.ivalue = column->sum[1], .size = 1},
-                    INT_VALUE);
+            Variable *fin_result = malloc(sizeof(Variable));
+            *fin_result = (Variable){
+                .type = INT_VALUE,
+                .result.ivalue = column->sum[1],
+                .name = strdup(handler),
+                .exists = true};
+            add_var(fin_result);
             return;
         }
 
@@ -510,39 +606,138 @@ void sum(AvgOperator avg_operator, Status *status)
         munmap(buffer, sb.st_size);
         column->sum[0] = 1;
         column->sum[1] = sum;
-        add_var(handler,
-                (vector){.ivalue = sum, .size = 1},
-                INT_VALUE);
+
+        Variable *fin_result = malloc(sizeof(Variable));
+        *fin_result = (Variable){
+            .type = INT_VALUE,
+            .result.ivalue = sum,
+            .name = strdup(handler),
+            .exists = true};
+
+        add_var(fin_result);
     }
 }
 
 void average(char *handler, Variable *variable)
 {
-    add_var(handler,
-            (vector){.fvalue = (float)generic_sum(variable) / variable->result.size, .size = 1},
-            FLOAT_VALUE);
+    Variable *fin_result = malloc(sizeof(Variable));
+    *fin_result = (Variable){
+        .type = FLOAT_VALUE,
+        .result.fvalue = (float)generic_sum(variable) / variable->result.values.size,
+        .name = strdup(handler),
+        .exists = true};
+    add_var(fin_result);
+}
+
+int add_op(int a, int b)
+{
+    return a + b;
+}
+
+int sub_op(int a, int b)
+{
+    return a - b;
+}
+
+void add_sub(char *handler, Variable *variable1, Variable *variable2, int (*op)(int a, int b))
+{
+    linkedList *variable1_lst;
+    size_t variable1_index = 0;
+    linkedList *variable2_lst;
+    size_t variable2_index = 0;
+    size_t result_size = 0;
+
+    if (variable1->type == VECTOR_CHAIN)
+    {
+        variable1_lst = variable1->result.pos_vec_chain;
+        result_size = variable1->vec_chain_size;
+    }
+    else
+    {
+        result_size = variable1->result.values.size;
+    }
+
+    if (variable2->type == VECTOR_CHAIN)
+    {
+        variable2_lst = variable2->result.pos_vec_chain;
+        if (result_size == 0)
+        {
+            result_size = variable2->vec_chain_size;
+        }
+        assert(result_size == variable2->vec_chain_size);
+    }
+    else
+    {
+        result_size = variable2->result.values.size;
+    }
+
+    int *result = malloc(sizeof(int) * variable1->result.values.size);
+    for (size_t i = 0; i < variable1->result.values.size; i++)
+    {
+        int valu1, value2;
+        if (variable1->type == VECTOR_CHAIN)
+        {
+            if (variable1_index >= ((pos_vec *)variable1_lst->data)->size)
+            {
+                variable1_lst = variable1_lst->next;
+                variable1_index = 0;
+            }
+            valu1 = ((pos_vec *)variable1_lst->data)->values[variable1_index];
+            variable1_index++;
+        }
+        else
+        {
+            valu1 = variable1->result.values.values[i];
+        }
+
+        if (variable2->type == VECTOR_CHAIN)
+        {
+            if (variable2_index >= ((pos_vec *)variable2_lst->data)->size)
+            {
+                variable2_lst = variable2_lst->next;
+                variable2_index = 0;
+            }
+            value2 = ((pos_vec *)variable2_lst->data)->values[variable2_index];
+            variable2_index++;
+        }
+        else
+        {
+            value2 = variable2->result.values.values[i];
+        }
+
+        result[i] = op(valu1, value2);
+    }
+
+    Variable *fin_result = malloc(sizeof(Variable));
+    *fin_result = (Variable){
+        .type = VALUE_VECTOR,
+        .result.values.values = result,
+        .result.values.size = variable1->result.values.size,
+        .name = strdup(handler),
+        .exists = true};
+
+    add_var(fin_result);
 }
 
 void add(char *handler, Variable *variable1, Variable *variable2)
 {
-
-    int *result = malloc(sizeof(int) * variable1->result.size);
-    for (int i = 0; i < variable1->result.size; i++)
-    {
-        result[i] = variable1->result.values[i] + variable2->result.values[i];
-    }
-    add_var(handler, (vector){.values = result, .size = variable1->result.size}, VALUE_VECTOR);
+    add_sub(handler, variable1, variable2, add_op);
 }
 
 void sub(char *handler, Variable *variable1, Variable *variable2)
 {
 
-    int *result = malloc(sizeof(int) * variable1->result.size);
-    for (int i = 0; i < variable1->result.size; i++)
-    {
-        result[i] = variable1->result.values[i] - variable2->result.values[i];
-    }
-    add_var(handler, (vector){.values = result, .size = variable1->result.size}, VALUE_VECTOR);
+    add_sub(handler, variable1, variable2, sub_op);
+}
+
+bool min_op(int a, int b)
+{
+    return a < b;
+}
+
+bool max_op(int a, int b)
+{
+    return a > b;
 }
 
 void MinMax(MinMaxOperator minmax_operator, Status *status)
@@ -550,36 +745,56 @@ void MinMax(MinMaxOperator minmax_operator, Status *status)
     status->code = OK;
     char *handler = minmax_operator.handler;
     Variable *variable = minmax_operator.variable;
+    bool (*op)(int a, int b) = (minmax_operator.operation == MIN) ? min_op : max_op;
 
     int result[2];
-    result[0] = variable->result.values[0];
+    result[0] = variable->result.values.values[0];
     int index = 1;
 
-    if (minmax_operator.operation == MIN)
+    size_t size = 0;
+    size_t chain_index = 0;
+    linkedList *lst;
+    if (variable->type == VECTOR_CHAIN)
     {
-        for (int i = 1; i < variable->result.size; i++)
-        {
-            result[index] = variable->result.values[i];
-            index -= variable->result.values[i] < result[0];
-            result[index] = variable->result.values[i];
-            index = 1;
-        }
+        size = variable->vec_chain_size;
+        lst = variable->result.pos_vec_chain;
+    }
+    else
+    {
+        size = variable->result.values.size;
     }
 
-    else if (minmax_operator.operation == MAX)
+    for (size_t i = 1; i < size; i++)
     {
-        for (int i = 1; i < variable->result.size; i++)
+        int value;
+        if (variable->type == VECTOR_CHAIN)
         {
-            result[index] = variable->result.values[i];
-            index -= variable->result.values[i] > result[0];
-            result[index] = variable->result.values[i];
-            index = 1;
+            if (chain_index >= ((pos_vec *)lst->data)->size)
+            {
+                lst = lst->next;
+                chain_index = 0;
+            }
+            value = ((pos_vec *)lst->data)->values[chain_index];
+            chain_index++;
         }
+        else
+        {
+            value = variable->result.values.values[i];
+        }
+        result[index] = value;
+        index -= op(value, result[0]);
+        result[index] = value;
+        index = 1;
     }
 
-    add_var(handler,
-            (vector){.ivalue = result[0], .size = 1},
-            INT_VALUE);
+    Variable *fin_result = malloc(sizeof(Variable));
+    *fin_result = (Variable){
+        .type = INT_VALUE,
+        .result.ivalue = result[0],
+        .name = strdup(handler),
+        .exists = true};
+
+    add_var(fin_result);
 }
 
 int send_message(int client_socket, message_status status, String result)
@@ -674,7 +889,15 @@ void handle_client(int client_socket)
 
             // 1. Parse command
             //    Query string is converted into a request for an database operator
-            DbOperator *query = parse_command(recv_message.payload, &s_message, client_socket, client_context);
+            DbOperator *query = NULL;
+            if (bload.mode)
+            {
+                query = parse_load_parallel(recv_message.payload, &s_message);
+            }
+            else
+            {
+                query = parse_command(recv_message.payload, &s_message, client_socket, client_context);
+            }
 
             // 2. Handle request
             //    Corresponding database operator is executed over the query

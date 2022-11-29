@@ -14,6 +14,7 @@
 // 12 including negative sign
 #define MAX_INT_LENGTH 12
 #define min(a, b) (((a) < (b)) ? (a) : (b))
+#define max(a, b) (((a) > (b)) ? (a) : (b))
 
 /**
  * Error codes used to indicate the outcome of an API call
@@ -163,6 +164,10 @@ typedef struct tmp_file
     char *map;
 } tmp_file;
 
-tmp_file create_tmp_file(char *file_name, size_t size, bool mapped, bool unlinked);
+tmp_file create_tmp_file(char *file_name, size_t size, bool mapped, bool unlinked, bool shared);
+int compare_sints(const void *a, const void *b);
+void *closest_search(const void *key, const void *base,
+                     size_t nmemb, size_t size,
+                     int (*compar)(const void *, const void *));
 
 #endif /* __UTILS_H__ */

@@ -13,15 +13,85 @@
 #include "unistd.h"
 
 #define initial_size 1024
+// #define PAGE_SIZE ((size_t)sysconf(_SC_PAGESIZE))
+// #define NUM_COMMA_LEN (MAX_INT_LENGTH + 1)
+// #define NUM_TUPLE_LEN (2 * (MAX_INT_LENGTH + 1))
+
+Variable btree_select(select_args args)
+{
+    return sorted_select(args);
+}
+
+Variable sorted_select(select_args args)
+{
+    char *starting = args.file;
+    char *ending = args.file + args.tbl->rows * (MAX_INT_LENGTH + 1);
+
+    if (*args.low)
+    {
+        starting = closest_search(
+            args.low, args.file, args.tbl->rows,
+            sizeof(char[MAX_INT_LENGTH + 1]), compare_sints);
+
+        // make sure this is the first occurance of the value
+        while (starting != args.file && compare_sints(starting, starting - sizeof(char[MAX_INT_LENGTH + 1])) == 0)
+        {
+            starting -= sizeof(char[MAX_INT_LENGTH + 1]);
+        }
+    }
+
+    if (*args.high)
+    {
+
+        ending = closest_search(args.high, args.file, args.tbl->rows, sizeof(char[MAX_INT_LENGTH + 1]), compare_sints);
+        // make sure this is the last occurance of the value
+        while (ending != args.file + args.tbl->rows * (MAX_INT_LENGTH + 1) && compare_sints(ending, ending + sizeof(char[MAX_INT_LENGTH + 1])) == 0)
+        {
+            ending += sizeof(char[MAX_INT_LENGTH + 1]);
+        }
+    }
+
+    // return a pos_vec with the positions of the values in the range
+    Variable res = (Variable){
+        .type = RANGE, .name = strdup(args.handle), .exists = true};
+    res.result.range[0] = starting - args.file;
+    res.result.range[1] = ending - args.file;
+    return res;
+}
+
+// choose search algorithms between
+// using sorted search, btree or normal search
+Variable (*choose_algorithm(select_args args))(select_args)
+{
+
+    // pointer to a funtion that returns a pos_vec and takes an int
+    if (args.col->indexed)
+    {
+        ColumnIndex idx = args.col->index;
+        if (idx.type == SORTED)
+        {
+            return sorted_select;
+        }
+        else if (idx.type == BTREE)
+        {
+            // in this case you might want to choose using sorted_search even
+            // if the option exists.
+            return btree_select;
+        }
+    }
+
+    return generic_select;
+}
 
 void *select_section(void *arg)
 {
-    thread_select_args *args = (thread_select_args *)arg;
-    int **result = args->result;
+    select_args *args = (select_args *)arg;
+    int *result_p = malloc(sizeof(int) * initial_size);
+    size_t rcapacity = initial_size;
+
     int *low = args->low;
     int *high = args->high;
     size_t read_size = args->read_size;
-    size_t rcapacity = args->result_capacity;
     char *file = args->file;
 
     size_t offset = args->offset;
@@ -29,7 +99,6 @@ void *select_section(void *arg)
     size_t index = 0;
     size_t result_size = 0;
 
-    int *result_p = *result;
     while (file[index] != '\0' && index < read_size)
     {
         int num = zerounpadd(file + index, ',');
@@ -56,13 +125,19 @@ void *select_section(void *arg)
         index += MAX_INT_LENGTH + 1;
     }
 
-    // int *new_result = realloc(result_p, result_size * sizeof(int));
-    // if (new_result)
-    // {
-    //     result_p = new_result;
-    // }
+    if (result_size == 0)
+    {
+        free(result_p);
+        return NULL;
+    }
 
-    *result = result_p;
+    int *new_result = realloc(result_p, result_size * sizeof(int));
+    if (new_result)
+    {
+        result_p = new_result;
+    }
+
+    args->result = result_p;
     args->result_size = result_size;
 
     return NULL;
@@ -72,161 +147,123 @@ void *select_section(void *arg)
 // satisfy the condition
 // right now it returns all at onces, but it should
 // return in a batche dmanner
-
-pos_vec generic_select(int *low, int *high, char *file, int **result, size_t result_capacity, Status *status, size_t read_size)
+Variable generic_select(select_args args)
 {
-    (void)status;
 
-    // make sure you cut a file into sections
+    // makes sure you cut a file into sections
     // at meaningfull locaitons
     const size_t PAGE_SIZE = 1 * ((size_t)sysconf(_SC_PAGESIZE) / (MAX_INT_LENGTH + 1)) * (MAX_INT_LENGTH + 1);
+    // Variable *final_res = malloc(sizeof(Variable));
 
     // if file size is bigger than page size,
     // create multiple threads and later merge the result instead of
-    // running it here
-    if (read_size <= PAGE_SIZE || (low && high && ((size_t)*high - *low < PAGE_SIZE)))
+    // running it in one thread
+    if (args.read_size <= PAGE_SIZE ||
+        (args.low && args.high && ((size_t)*args.high - *args.low < PAGE_SIZE)))
     {
 
-        thread_select_args args = (thread_select_args){
-            .low = low,
-            .high = high,
-            .file = file,
-            .result = result,
-            .read_size = read_size,
-            .result_capacity = result_capacity};
         select_section(&args);
-        return (pos_vec){.values = *result, .size = args.result_size, .ivalue = 0, .fvalue = 0.0};
+        return (Variable){
+            .type = POSITION_VECTOR,
+            .name = strdup(args.handle),
+            .result.values.values = args.result,
+            .result.values.size = args.result_size,
+            .exists = true};
+
+        // return final_res;
     }
     else // (read_size > PAGE_SIZE )
     {
-        size_t num_threads = read_size / PAGE_SIZE;
-        if (read_size % PAGE_SIZE)
+        size_t num_threads = args.read_size / PAGE_SIZE;
+        if (args.read_size % PAGE_SIZE)
         {
             num_threads++;
         }
         pthread_t threads[num_threads];
-        thread_select_args args[num_threads];
-        int *results[num_threads];
+        select_args targs[num_threads];
 
-        for (size_t i = 1; i < num_threads; i++)
+        for (size_t i = 0; i < num_threads; i++)
         {
-            results[i] = malloc(initial_size * sizeof(int));
-            args[i] = (thread_select_args){
-                .low = low,
-                .high = high,
-                .file = file + i * PAGE_SIZE,
-                .result = &results[i],
+            targs[i] = (select_args){
+                .low = args.low,
+                .high = args.high,
+                .col = args.col,
+                .tbl = args.tbl,
+                .file = args.file + i * PAGE_SIZE,
                 .read_size = PAGE_SIZE,
-                .result_capacity = initial_size,
                 .offset = (i * PAGE_SIZE) / (MAX_INT_LENGTH + 1)};
 
-            pthread_create(&threads[i], NULL, select_section, &args[i]);
+            pthread_create(&threads[i], NULL, select_section, &targs[i]);
         }
-        // how should I join answers here
 
-        // read the first section
-        results[0] = malloc(initial_size * sizeof(int));
-        args[0] = (thread_select_args){
-            .low = low,
-            .high = high,
-            .file = file,
-            .result = &results[0],
-            .read_size = PAGE_SIZE,
-            .result_capacity = initial_size,
-            .offset = 0};
-        select_section(&args[0]);
+        linkedList head_chain = {
+            .next = NULL};
+        linkedList *end_chain = &head_chain;
+
+        size_t total_size = 0;
 
         // wait for all threads to finish
         // and join answers
-        for (size_t i = 1; i < num_threads; i++)
+        for (size_t i = 0; i < num_threads; i++)
         {
             pthread_join(threads[i], NULL);
+            if (targs[i].result_size)
+            {
+                linkedList *new_node = malloc(sizeof(linkedList));
+                new_node->next = NULL;
+
+                pos_vec *new_vec = malloc(sizeof(pos_vec));
+                new_vec->values = targs[i].result;
+                new_vec->size = targs[i].result_size;
+                new_node->data = new_vec;
+                end_chain->next = new_node;
+                end_chain = new_node;
+                total_size += targs[i].result_size;
+            }
         }
 
         // merge results
-        size_t result_size = args[0].result_size;
-        *result = realloc(*result, result_size * sizeof(int));
-        memcpy(*result, results[0], result_size * sizeof(int));
-        free(results[0]);
-        for (size_t i = 1; i < num_threads; i++)
-        {
-            result_size += args[i].result_size;
-            *result = realloc(*result, (result_size) * sizeof(int));
-            memcpy(*result + result_size - args[i].result_size, results[i], args[i].result_size * sizeof(int));
-            // free the runs
-            free(results[i]);
-        }
-
-        return (pos_vec){.values = *result, .size = result_size, .ivalue = 0, .fvalue = 0.0};
+        // V2.0
+        // instead of merging them put them in a linked list
+        // Variable *final_result = malloc(sizeof(Variable));
+        return (Variable){
+            .type = VECTOR_CHAIN,
+            .name = strdup(args.handle),
+            .result.pos_vec_chain = head_chain.next,
+            .vec_chain_size = total_size,
+            .exists = true};
+        // return final_result;
     }
 }
 
-void *thread_select_col(void *args)
-
+void *select_col(void *arg)
 {
-    thread_select_args *targs = (thread_select_args *)args;
-    Status status = {.code = OK};
-
-    int *results = malloc(initial_size * sizeof(int));
-    pos_vec pos = generic_select(targs->low,
-                                 targs->high, targs->file,
-                                 &results, initial_size,
-                                 &status, targs->read_size);
-    if (status.code == ERROR)
-    {
-        log_err("Error in select");
-        return NULL;
-    }
-
-    add_var(targs->handle, pos, POSITION_VECTOR);
-    return args;
-}
-
-void select_col(Table *table, Column *column, char *var_name, int *low, int *high, Status *status)
-{
+    select_args *args = (select_args *)arg;
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
 
-    create_colf(table, column, status);
-    if (status->code != OK)
-    {
-        log_err("-- Error opening file for column write");
-        return;
-    }
-
-    struct stat sb;
-    fstat(column->fd, &sb);
-
-    int result_capacity = (PAGE_SIZE / sizeof(int));
-    int *result = malloc(result_capacity * sizeof(int));
+    Status status;
+    create_colf(args->tbl, args->col, &status);
 
     // mmap file for read
-    if (!column->read_map)
+    if (!args->col->read_map)
     {
-        char *buffer = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, column->fd, column->meta_data_size * PAGE_SIZE);
-        if (buffer == MAP_FAILED)
-        {
-            log_err("-- Error mapping file for column read");
-            return;
-        }
+        char *buffer = mmap(NULL,
+                            args->tbl->rows * (MAX_INT_LENGTH + 1),
+                            PROT_READ, MAP_SHARED,
+                            args->col->fd, args->col->meta_data_size * PAGE_SIZE);
 
-        column->read_map = buffer;
-        column->read_map_size = sb.st_size;
+        args->col->read_map = buffer;
+        args->col->read_map_size = args->tbl->rows * (MAX_INT_LENGTH + 1);
     }
+    args->file = args->col->read_map;
+    args->read_size = args->col->read_map_size;
 
-    pos_vec fin_result = generic_select(low, high,
-                                        column->read_map,
-                                        &result,
-                                        result_capacity,
-                                        status,
-                                        table->rows * (MAX_INT_LENGTH + 1));
+    Variable (*search_algorithm)(select_args) = choose_algorithm(*args);
+    Variable *fin_result = malloc(sizeof(Variable));
 
-    // resize result vector to minimize memory usages
-    if (status->code == OK)
-    {
-        add_var(var_name, fin_result, POSITION_VECTOR);
-    }
-
-    // munmap(buffer, sb.st_size);
+    *fin_result = search_algorithm(*args);
+    add_var(fin_result);
+    return NULL;
 }
 
 void select_pos(Variable *posVec, Variable *valVec, char *handle, int *low, int *high, Status *status)
@@ -241,15 +278,135 @@ void select_pos(Variable *posVec, Variable *valVec, char *handle, int *low, int 
 
     status->code = OK;
 
-    int *result = calloc(posVec->result.size, sizeof(int));
-    int result_size = 0;
-    for (int i = 0; i < posVec->result.size; i++)
+    size_t positions = 0;
+    linkedList *pos_chain;
+    linkedList *val_chain;
+    size_t pos_index = 0;
+    size_t val_index = 0;
+    if (posVec->type == VECTOR_CHAIN)
     {
-        result[result_size] = posVec->result.values[i];
-        result_size += ((!low || valVec->result.values[i] >= *low) && (!high || valVec->result.values[i] < *high));
+        positions = posVec->vec_chain_size;
+        pos_chain = posVec->result.pos_vec_chain;
+    }
+    else
+    {
+        positions = posVec->result.values.size;
     }
 
-    add_var(handle, (pos_vec){.values = result, .size = result_size, .ivalue = 0, .fvalue = 0.0}, POSITION_VECTOR);
+    if (valVec->type == VECTOR_CHAIN)
+    {
+        val_chain = valVec->result.pos_vec_chain;
+    }
+
+    int *result = calloc(positions, sizeof(int));
+    size_t result_size = 0;
+    for (size_t i = 0; i < positions; i++)
+    {
+        int pos, value;
+        if (posVec->type == VECTOR_CHAIN)
+        {
+            if (pos_index >= ((pos_vec *)pos_chain->data)->size)
+            {
+                pos_chain = pos_chain->next;
+                pos_index = 0;
+            }
+            pos = ((pos_vec *)pos_chain->data)->values[pos_index];
+            pos_index++;
+        }
+        else
+        {
+            pos = posVec->result.values.values[i];
+        }
+
+        if (valVec->type == VECTOR_CHAIN)
+        {
+            if (val_index >= ((pos_vec *)val_chain->data)->size)
+            {
+                val_chain = val_chain->next;
+                val_index = 0;
+            }
+            value = ((pos_vec *)val_chain->data)->values[val_index];
+            val_index++;
+        }
+        else
+        {
+            value = valVec->result.values.values[i];
+        }
+
+        result[result_size] = pos;
+        result_size += ((!low || value >= *low) &&
+                        (!high || value < *high));
+    }
+
+    Variable *fin_result = malloc(sizeof(Variable));
+    *fin_result = (Variable){
+        .type = POSITION_VECTOR,
+        .name = strdup(handle),
+        .result.values.values = result,
+        .result.values.size = result_size,
+        .exists = true};
+
+    add_var(fin_result);
+}
+
+int generic_fetch(int *result, Column *column, pos_vec vec)
+{
+
+    int result_size = 0;
+
+    int position = 0;
+    size_t result_p = 0;
+
+    size_t index = 0;
+    while (column->read_map[index] != '\0' && result_p < vec.size)
+    {
+
+        if (position == vec.values[result_p])
+        {
+            result[result_size++] = zerounpadd(column->read_map + index, ',');
+            result_p++;
+        }
+
+        position++;
+        // including separating comma
+        index += MAX_INT_LENGTH + 1;
+    }
+    return result_size;
+}
+
+void fetch_from_chain(Table *table, Column *column, Variable *var, char *var_name)
+{
+    (void)table;
+
+    size_t max_size_result = 0;
+    for (linkedList *chain = var->result.pos_vec_chain; chain; chain = chain->next)
+    {
+        max_size_result += ((pos_vec *)chain->data)->size;
+    }
+
+    int *result = calloc(max_size_result, sizeof(int));
+    int result_size = 0;
+    // iterate through the chain and execute gneric fetch on each
+    for (linkedList *chain = var->result.pos_vec_chain; chain; chain = chain->next)
+    {
+        result_size += generic_fetch(result + result_size, column, *((pos_vec *)chain->data));
+    }
+
+    // resize result
+    int *new_result = realloc(result, result_size * sizeof(int));
+    if (new_result)
+    {
+        result = new_result;
+    }
+
+    Variable *fin_result = malloc(sizeof(Variable));
+    *fin_result = (Variable){
+        .type = VALUE_VECTOR,
+        .name = strdup(var_name),
+        .result.values.values = result,
+        .result.values.size = result_size,
+        .exists = true};
+    add_var(fin_result);
 }
 
 void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Status *status)
@@ -263,19 +420,8 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
         return;
     }
 
-    //  chekc if the file is already mapped
-    // make sure the map is at the start of the file if not create a new map
-    // may be have a reading map and a writing map separately
-    // to start with just do a simple read
-
     create_colf(table, column, status);
 
-    if (column->fd == 0)
-    {
-        // do something about file fialing to write
-        log_err("Error opening file for column write");
-        return;
-    }
     struct stat sb;
     fstat(column->fd, &sb);
 
@@ -294,32 +440,24 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
         column->read_map_size = sb.st_size;
     }
 
-    int *result = calloc(var->result.size, sizeof(int));
-    int result_size = 0;
-
-    int position = 0;
-    int result_p = 0;
-
-    int index = 0;
-    while (column->read_map[index] != '\0' && result_p < var->result.size)
+    if (var->type == VECTOR_CHAIN)
     {
-
-        if (position == var->result.values[result_p])
-        {
-            result[result_size++] = zerounpadd(column->read_map + index, ',');
-            result_p++;
-        }
-
-        position++;
-        // including separating comma
-        index += MAX_INT_LENGTH + 1;
+        fetch_from_chain(table, column, var, var_name);
     }
-
-    int *new_result = realloc(result, result_size * sizeof(int));
-    if (new_result)
+    else
     {
-        result = new_result;
+        int *result = calloc(var->result.values.size, sizeof(int));
+        int result_size = generic_fetch(result, column, var->result.values);
+
+        Variable *fin_result = malloc(sizeof(Variable));
+
+        *fin_result = (Variable){
+            .type = VALUE_VECTOR,
+            .name = strdup(var_name),
+            .result.values.values = result,
+            .result.values.size = result_size,
+            .exists = true};
+        add_var(fin_result);
     }
-    add_var(var_name, (pos_vec){.size = result_size, .values = result, .ivalue = 0, .fvalue = 0.0},
-            POSITION_VECTOR);
+    status->code = OK;
 }

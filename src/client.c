@@ -219,7 +219,7 @@ void load_file3(int client_socket, char *file_name)
             column_names[i],
             size * (MAX_INT_LENGTH + 1),
             true,
-            true);
+            true, true);
     }
 
     // read the file and copy the data into the temporary files
@@ -278,51 +278,62 @@ void load_file4(int client_socket, char *file_name)
     // Read the header
     String header = read_line(file);
 
-    // get the number of columns
-    size_t num_columns = 0;
-    for (size_t i = 0; i < header.len; i++)
-    {
-        if (header.str[i] == ',')
-        {
-            num_columns++;
-        }
-    }
-    num_columns += 1;
-
-    // extract column
-    // char *column_names[num_columns];
-    // for (size_t i = 0; i < num_columns; i++)
+    // // get the number of columns
+    // size_t num_columns = 0;
+    // for (size_t i = 0; i < header.len; i++)
     // {
-    //     column_names[i] = strsep(&header.str, ",");
+    //     if (header.str[i] == ',')
+    //     {
+    //         num_columns++;
+    //     }
     // }
-    // (void *)column_names;
+    // num_columns += 1;
 
-    tmp_file tmp = create_tmp_file(
-        "loader",
-        size * (MAX_INT_LENGTH + 1),
-        true,
-        true);
+    char *starter = catnstr(3, "load_start(", header.str, ")");
+    communicate_server(client_socket,
+                       (message){
+                           .status = OK_DONE,
+                           .length = header.len + 12,
+                           .payload = starter},
+                       false);
 
-    size_t i = 0;
+    size_t chunk_size = 8 * PAGE_SIZE;
+    size_t i = header.len + 1;
     while (i < size)
     {
-        size_t write_location = sprintf(tmp.map, "load_parallel(%s|", header.str);
-        size_t start = i;
-        i += PAGE_SIZE;
-        while (file[i] != '\n')
+
+        if (i + chunk_size > size)
         {
-            i--;
+            chunk_size = size - i;
         }
-        memcpy(tmp.map + write_location, file + start, i - start);
-        write_location += i - start;
-        tmp.map[write_location] = ')';
-        write_location += 1;
-        flush_load(client_socket, tmp.map, write_location);
+
+        // find the closest new line
+        size_t last_index = i + chunk_size - 1;
+        while (file[last_index] != '\n' && file[last_index] != '\0')
+        {
+            chunk_size--;
+            last_index--;
+        }
+        communicate_server(client_socket,
+                           (message){
+                               .status = OK_DONE,
+                               .length = chunk_size,
+                               .payload = file + i},
+                           false);
+        i += chunk_size;
     }
+
+    communicate_server(client_socket,
+                       (message){
+                           .status = OK_DONE,
+                           .length = 10,
+                           .payload = "load_end()"},
+                       false);
+
     // unmup an close temporary file
-    munmap(tmp.map, tmp.size);
-    close(tmp.fd);
-    free(tmp.file_name);
+    munmap(file, size);
+    close(fd);
+    free(starter);
 }
 
 void load_file(int client_socket, char *file_name)
@@ -433,7 +444,7 @@ void load_file(int client_socket, char *file_name)
                     char sz[MAX_INT_LENGTH + 1];
                     sprintf(sz, "%012d", (int)(column_current[current_col] - starting_point[current_col]));
 
-                    strncpy(colums[current_col] + (starting_point[current_col] - 1 - MAX_INT_LENGTH), sz, MAX_INT_LENGTH);
+                    memcpy(colums[current_col] + (starting_point[current_col] - 1 - MAX_INT_LENGTH), sz, MAX_INT_LENGTH);
                     colums[current_col][column_current[current_col]] = ')';
                     colums[current_col][column_current[current_col] + 1] = '\0';
 
@@ -464,7 +475,7 @@ void load_file(int client_socket, char *file_name)
             char sz[MAX_INT_LENGTH + 1];
             sprintf(sz, "%012lu", column_current[current_col] - starting_point[current_col]);
 
-            strncpy(colums[current_col] + (starting_point[current_col] - 1 - MAX_INT_LENGTH), sz, MAX_INT_LENGTH);
+            memcpy(colums[current_col] + (starting_point[current_col] - 1 - MAX_INT_LENGTH), sz, MAX_INT_LENGTH);
             colums[current_col][column_current[current_col]] = ')';
             colums[current_col][column_current[current_col] + 1] = '\0';
 
@@ -496,7 +507,7 @@ void load_file(int client_socket, char *file_name)
         char sz[MAX_INT_LENGTH + 1];
         sprintf(sz, "%012lu", column_current[i] - starting_point[i]);
 
-        strncpy(colums[i] + (starting_point[i] - 1 - MAX_INT_LENGTH), sz, MAX_INT_LENGTH);
+        memcpy(colums[i] + (starting_point[i] - 1 - MAX_INT_LENGTH), sz, MAX_INT_LENGTH);
         colums[i][column_current[i]] = ')';
         colums[i][column_current[i] + 1] = '\0';
 

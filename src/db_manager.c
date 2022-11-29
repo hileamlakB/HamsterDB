@@ -13,6 +13,7 @@
 #include "utils.h"
 #include "client_context.h"
 #include <assert.h>
+#include <math.h>
 #include "sort.h"
 
 // In this class, there will always be only one active database at a time
@@ -28,6 +29,7 @@ batch_query batch = {
 
 batch_load bload = {
 	.mode = false,
+	.left_over = NULL,
 
 };
 
@@ -95,15 +97,106 @@ ColumnIndex create_sorted_index(Table *tbl, Column *col, ClusterType cluster_typ
 // unimplemented
 ColumnIndex create_btree_index(Table *tbl, Column *col, ClusterType cluster_type, Status *ret_status)
 {
-	(void)cluster_type;
-	(void)tbl;
-	(void)col;
-	(void)ret_status;
-	return create_sorted_index(tbl, col, cluster_type, ret_status);
+	create_sorted_index(tbl, col, cluster_type, ret_status);
+	col->index.type = BTREE;
+	return col->index;
 }
 
-void create_btree()
+#define fanout 4096 / sizeof(int)
+
+typedef struct BTREE_META
 {
+	int level;
+	int total_nodes;
+	int levels_below[10];
+	char file_path[MAX_PATH_NAME];
+} BTREE_META;
+
+void create_btree(Table *tbl, Column *col)
+{
+	const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
+	// laod the sorted column
+	// create the btree
+	// save the btree
+	char *sorted_col = catnstr(2, col->file_path, ".sorted");
+	int fd = open(sorted_col, O_RDONLY);
+	free(sorted_col);
+	// mmap sorted file
+	char *sorted = mmap(NULL, tbl->rows * (MAX_INT_LENGTH + 1), PROT_READ, MAP_PRIVATE, fd, 0);
+
+	char *btree_file = catnstr(2, col->file_path, ".btree");
+	int btree_fd = open(btree_file, O_RDWR | O_CREAT, 0666);
+
+	// prepare the btree file
+
+	size_t levels = 0;
+	size_t num_nodes = 0;
+	size_t nodes_per_level = tbl->rows / fanout;
+	size_t nodes_below[10]; // assming max 10 levels
+
+	while (nodes_per_level > 0)
+	{
+		nodes_below[levels] = num_nodes;
+		num_nodes += nodes_per_level;
+		levels++;
+		nodes_per_level /= fanout;
+		if (nodes_per_level == 0)
+		{
+			nodes_below[levels] = num_nodes;
+			num_nodes++;
+			levels++;
+		}
+	}
+
+	size_t btree_size = num_nodes * fanout * sizeof(int);
+
+	lseek(btree_fd, btree_size, SEEK_SET);
+	write(btree_fd, " ", 1);
+	BTREE_META *btree_ = mmap(NULL, btree_size + sizeof(BTREE), PROT_READ | PROT_WRITE, MAP_SHARED, btree_fd, 0);
+	int *btree = (int *)(btree_ + 1);
+
+	// create the lowest level of the btree
+	int lowes_level_index = (num_nodes - nodes_below[levels - 1]) * PAGE_SIZE;
+	for (size_t i = 0; i < tbl->rows / PAGE_SIZE; i += 1)
+	{
+		size_t last_page_element = i * PAGE_SIZE + ((PAGE_SIZE / (MAX_INT_LENGTH + 1)) - 1) * (MAX_INT_LENGTH + 1);
+		int last_element = atoi(sorted + last_page_element);
+		btree[lowes_level_index + i] = last_element;
+	}
+
+	// create the rest of the levels
+	for (size_t i = 1; i <= levels; i++)
+	{
+		int level_index = (num_nodes - nodes_below[levels - i]) * PAGE_SIZE;
+		int next_level_index = (num_nodes - nodes_below[levels - i - 1]) * PAGE_SIZE;
+		int next_level_size = nodes_below[levels - i] - nodes_below[levels - i - 1];
+		for (int j = 0; j < next_level_size; j++)
+		{
+			int last_element = btree[next_level_index + j * fanout + fanout - 1];
+			btree[level_index + j] = last_element;
+		}
+	}
+
+	// create the root node
+	int next_node_start = (num_nodes - nodes_below[levels - 1]) * PAGE_SIZE;
+	int num_internal_nodes = nodes_below[levels - 1];
+	for (int i = 0; i < num_internal_nodes; i++)
+	{
+		btree[i] = btree[next_node_start + i * fanout + fanout - 1];
+	}
+
+	// write meta_data
+	btree_->level = levels;
+	btree_->total_nodes = num_nodes;
+	memcpy(btree_->levels_below, nodes_below, sizeof(nodes_below));
+	memcpy(btree_->file_path, btree_file, strlen(btree_file));
+	free(btree_file);
+
+	// unmap
+	munmap(btree, btree_size);
+	munmap(sorted, tbl->rows * (MAX_INT_LENGTH + 1));
+	close(btree_fd);
+	close(fd);
 }
 
 void populate_index(Table *tbl, Column *col)
@@ -127,14 +220,18 @@ void populate_index(Table *tbl, Column *col)
 	if (idx.type == BTREE)
 	{
 		// create btree index
-		create_btree();
+		create_btree(tbl, col);
 	}
 }
 
 ColumnIndex create_index(
 	Table *tbl, Column *col, IndexType index_type, ClusterType cluster_type, Status *ret_status)
 {
-	ColumnIndex idx;
+	ColumnIndex idx = {
+		.type = NO_INDEX,
+		.clustered = NO_CLUSTER,
+	};
+
 	if (index_type == SORTED)
 	{
 		idx = create_sorted_index(tbl, col, cluster_type, ret_status);
@@ -180,7 +277,7 @@ Table *create_table(Db *db, const char *name, size_t num_columns, Status *ret_st
 
 	Table table = empty_table;
 
-	strncpy(table.name, name, MAX_SIZE_NAME);
+	memcpy(table.name, name, MAX_SIZE_NAME);
 	char *file_path = catnstr(4, "dbdir/", db->name, ".", name);
 	if (!file_path || prepend(&props.to_free, file_path) != 0)
 	{
@@ -265,7 +362,7 @@ Status create_db(const char *db_name)
 		return retrack(props, "System Failure: error allocating memory for active_db");
 	}
 
-	strncpy(active_db->name, db_name, MAX_SIZE_NAME);
+	memcpy(active_db->name, db_name, MAX_SIZE_NAME);
 	strcpy(active_db->file_path, file_path);
 
 	active_db->tables = NULL;

@@ -28,7 +28,7 @@ typedef struct pool_t
 extern pool_t thread_pool;
 
 void thread_pool_init(int num_threads);
-void *generic_task();
+void *generic_task(void *);
 void destroy_thread_pool();
 void add_job(void *(*job_func)(void *), void *job_arg);
 

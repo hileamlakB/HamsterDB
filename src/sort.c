@@ -73,7 +73,7 @@ void *merge(void *sarg)
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
     size += PAGE_SIZE - (size - ((size / PAGE_SIZE) * PAGE_SIZE));
 
-    tmp_file tmp = create_tmp_file("merge", size, true, true);
+    tmp_file tmp = create_tmp_file("merge", size, true, true, true);
 
     // map the file to memory
     char *result = tmp.map;
@@ -158,6 +158,7 @@ void external_sort(char *maped_file, int file_size)
     size_t num_ints = PAGE_SIZE / (MAX_INT_LENGTH + MAX_INT_LENGTH + 2);
 
     sort_args args[num_runs];
+    pthread_t threads[num_runs];
     for (size_t i = 0; i < num_runs; i++)
     {
         num_ints = min(
@@ -170,7 +171,15 @@ void external_sort(char *maped_file, int file_size)
             .compare = compare_external_ints,
             .is_sorted = false};
 
-        add_job(sort_block, &args[i]);
+        pthread_create(&threads[i], NULL, sort_block, &args[i]);
+
+        // add_job(sort_block, &args[i]);
+    }
+
+    // wait for the sort threads to finish
+    for (size_t i = 0; i < num_runs; i++)
+    {
+        pthread_join(threads[i], NULL);
     }
 
     if (num_runs == 1)
@@ -185,6 +194,7 @@ void external_sort(char *maped_file, int file_size)
     }
 
     // size_t pass = 1;
+
     size_t num_blocks = 1;
     while (num_runs > 1)
     {
@@ -192,6 +202,7 @@ void external_sort(char *maped_file, int file_size)
         size_t odd = num_runs % 2;
         merge_args margs[num_runs / 2];
         atomic_bool is_merged[num_runs / 2];
+        pthread_t mthreads[num_runs / 2];
 
         for (size_t i = 0, j = 0; i < num_runs - (odd); i += 2, j++)
         {
@@ -203,17 +214,15 @@ void external_sort(char *maped_file, int file_size)
                 .array2 = maped_file + (i + 1) * (num_blocks * PAGE_SIZE),
                 .size2 = individual_run_sizes[i + 1],
                 .is_merged = &is_merged[j]};
+            pthread_create(&mthreads[j], NULL, merge, &margs[j]);
 
-            add_job(merge, &margs[j]);
+            // add_job(merge, &margs[j]);
         }
 
         for (size_t i = 0; i < num_runs / 2; i++)
         {
-            while (!is_merged[i])
-            {
 
-                sleep(0);
-            }
+            pthread_join(mthreads[i], NULL);
             individual_run_sizes[i] = margs[i].size1 + margs[i].size2;
         }
         if (odd)
@@ -225,9 +234,13 @@ void external_sort(char *maped_file, int file_size)
     }
 }
 
+void simple_sort(char *maped_file, int file_size)
+{
+    qsort(maped_file, file_size, sizeof(char[MAX_INT_LENGTH + MAX_INT_LENGTH + 2]), compare_external_ints);
+}
 // this function prepraes a nomral integer file to be sorted using the external
 // sort
-int prepare_file(Table *tbl, Column *col)
+int prepare_file(Table *tbl, Column *col, bool simple)
 {
 
     char *file_name = col->file_path;
@@ -268,9 +281,10 @@ int prepare_file(Table *tbl, Column *col)
     // satisfying the page requirment
     size_t i = atoi(orignal_file) * PAGE_SIZE, j = 0, k = 0;
     size_t int_location = 0;
+    bool is_location = false;
     while (i - atoi(orignal_file) * PAGE_SIZE < tbl->rows * (MAX_INT_LENGTH + 1))
     {
-        if (k == block)
+        if (k == block && !simple)
         {
             // add the padding and move to the next page
             for (size_t l = 0; l < diff; l++)
@@ -281,24 +295,22 @@ int prepare_file(Table *tbl, Column *col)
             k = 0;
         }
 
-        if (orignal_file[i] == ',')
+        if (!is_location)
         {
-            to_sort[j] = ',';
-            j++;
-            sprintf(to_sort + j, "%012d,", (int)int_location);
+            memcpy(to_sort + j, orignal_file + i, MAX_INT_LENGTH + 1);
             j += MAX_INT_LENGTH + 1;
-            k++;
-            i++;
-            int_location += 1;
+            i += MAX_INT_LENGTH + 1;
         }
         else
         {
-            to_sort[j] = orignal_file[i];
-            j++;
-            i++;
+            sprintf(to_sort + j, "%012d,", (int)int_location);
+            j += MAX_INT_LENGTH + 1;
+            k++;
+            int_location += 1;
         }
+        is_location = !is_location;
     }
-    to_sort[j] = '\0';
+    sprintf(to_sort + j, "%012d,", (int)int_location);
     free(to_sort_col);
     munmap(orignal_file, file_size);
     munmap(to_sort, new_size);
@@ -371,12 +383,12 @@ int extract_sorted(Table *tbl, Column *col)
 int sort_col(Table *tbl, Column *col)
 {
 
-    thread_pool_init(5);
+    // thread_pool_init(5);
 
     // const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
     char *file_name = col->file_path;
 
-    int prep = prepare_file(tbl, col);
+    int prep = prepare_file(tbl, col, true);
     if (prep != 0)
     {
         return -1;
@@ -389,13 +401,14 @@ int sort_col(Table *tbl, Column *col)
     size_t file_size = st.st_size;
 
     char *to_sort = mmap(NULL, file_size + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd_to_sort, 0);
-    to_sort[file_size + 1] = '\0';
+    // to_sort[file_size + 1] = '\0';
     if (to_sort == MAP_FAILED)
     {
         return -1;
     }
+    simple_sort(to_sort, tbl->rows);
 
-    external_sort(to_sort, file_size);
+    // external_sort(to_sort, file_size);
 
     munmap(to_sort, file_size + 1);
     close(fd_to_sort);
@@ -409,68 +422,105 @@ int sort_col(Table *tbl, Column *col)
     }
     // remove(to_sort_col);
     free(to_sort_col);
-    destroy_thread_pool();
+    // destroy_thread_pool();
 
     return 0;
 }
 
 // reorders the file according to the map file
-tmp_file reorder(tmp_file tuple_file, char *map_name)
+tmp_file reorder(tmp_file tuple_file, Table *tbl, Column *idx_column)
 {
 
-    // open and mape map file and the original file
-    int fd_map = open(map_name, O_RDONLY, 0666);
+    // mmap map file
+
+    char *file_path = catnstr(2, idx_column->file_path, ".map");
+    int fd = open(file_path, O_RDONLY, 0666);
+    struct stat st;
+    fstat(fd, &st);
+    size_t file_size = st.st_size;
+
+    char *map = mmap(NULL, file_size, PROT_READ, MAP_SHARED, fd, 0);
+
+    // mmap tuple file
     if (tuple_file.fd == -1)
     {
         tuple_file.fd = open(tuple_file.file_name, O_RDWR, 0666);
     }
 
-    // map size must be equal to the file size
-    struct stat st;
-    fstat(tuple_file.fd, &st);
-    size_t file_size = st.st_size;
-
-    char *map = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, fd_map, 0);
     if (!tuple_file.map)
     {
-        tuple_file.map = mmap(NULL, file_size, PROT_READ | PROT_WRITE, MAP_SHARED, tuple_file.fd, 0);
+        struct stat st2;
+        fstat(tuple_file.fd, &st2);
+        tuple_file.size = st2.st_size;
+
+        tuple_file.map = mmap(NULL, tuple_file.size, PROT_READ | PROT_WRITE, MAP_SHARED, tuple_file.fd, 0);
     }
 
     // create a new file to write the reordered file
     tmp_file reordered = create_tmp_file(
         "reordered_tuple",
-        file_size,
+        tbl->rows * (tbl->col_count - 1) * (MAX_INT_LENGTH + 1),
         true,
-        true);
+        true, true);
 
     // reorder the file and write it to the new file
-    for (size_t i = 0; i < file_size; i += MAX_INT_LENGTH + 1)
+    size_t i = 0;
+    size_t map_location = 0;
+    size_t writing_location = 0;
+    while (i < tbl->rows)
     {
-        int location = atoi(map + i);
-        memcpy(reordered.map + i, tuple_file.map + location * (MAX_INT_LENGTH + 1), MAX_INT_LENGTH + 1);
+
+        int old_location = atoi(map + map_location);
+        // char tmp[(tbl->col_count - 1) * (MAX_INT_LENGTH + 1)];
+        // memcpy(tmp, tuple_file.map + old_location * (tbl->col_count - 1) * (MAX_INT_LENGTH + 1), (tbl->col_count - 1) * (MAX_INT_LENGTH + 1));
+        // printf("old location: %d %s\n", old_location, tmp);
+        // memcpy(reordered.map + writing_location, tmp, (tbl->col_count - 1) * (MAX_INT_LENGTH + 1));
+
+        // size_t j = 0;
+        // while (j < (tbl->col_count - 1) * (MAX_INT_LENGTH + 1))
+        // {
+        //     reordered.map[writing_location + j] = tuple_file.map[old_location * (tbl->col_count - 1) * (MAX_INT_LENGTH + 1) + j];
+        //     j += 1;
+        // }
+
+        memcpy(
+            reordered.map + writing_location,
+            tuple_file.map + old_location * (tbl->col_count - 1) * (MAX_INT_LENGTH + 1),
+            (tbl->col_count - 1) * (MAX_INT_LENGTH + 1));
+
+        i += 1;
+        map_location += MAX_INT_LENGTH + 1;
+        writing_location += (MAX_INT_LENGTH + 1) * (tbl->col_count - 1);
     }
 
-    // unmap and close all files
-    free(reordered.file_name);
+    // for (size_t i = 0, j = 0; i < tbl->rows * (MAX_INT_LENGTH + 1); i += (MAX_INT_LENGTH + 1))
+    // {
+    //     int location = atoi(map + i);
+    //     char *dest = reordered.map + j;
+    //     char *src = tuple_file.map + location * (tbl->col_count - 1) * (MAX_INT_LENGTH + 1);
+
+    //     memcpy(
+    //         reordered.map + j,
+    //         tuple_file.map + location * (tbl->col_count - 1) * (MAX_INT_LENGTH + 1),
+    //         (tbl->col_count - 1) * (MAX_INT_LENGTH + 1));
+    //     j += (tbl->col_count - 1) * (MAX_INT_LENGTH + 1);
+    // }
+
+    // // unmap and close all files
+    // free(reordered.file_name);
+    free(file_path);
     munmap(map, file_size);
-    close(fd_map);
+    close(fd);
 
     return reordered;
 }
 
 // create a tuple of multiple files
 // and write it to a temporary file
-tmp_file create_tuple(size_t n, size_t tuple_size, char **index_maps)
+tmp_file create_tuple(size_t n, size_t tuple_size, char **tuple_elements)
 {
 
-    // get the size of the tuple
-    char *columns[tuple_size];
-    for (size_t i = 0; i < tuple_size; i++)
-    {
-        columns[i] = index_maps[i];
-    }
-
-    tmp_file res = create_tmp_file("tuple", tuple_size * n * (MAX_INT_LENGTH + 1), true, true);
+    tmp_file res = create_tmp_file("tuple", tuple_size * n * (MAX_INT_LENGTH + 1), true, true, true);
     char *tuple = res.map;
 
     size_t i = 0;
@@ -481,13 +531,12 @@ tmp_file create_tuple(size_t n, size_t tuple_size, char **index_maps)
         for (size_t j = 0; j < tuple_size; j++)
         {
 
-            memcpy(tuple + i, columns[j] + k * (MAX_INT_LENGTH + 1), MAX_INT_LENGTH);
+            memcpy(tuple + i, tuple_elements[j] + k * (MAX_INT_LENGTH + 1), MAX_INT_LENGTH);
             i += MAX_INT_LENGTH;
             tuple[i] = '-';
             i++;
         }
         tuple[i - 1] = ',';
-        i++;
     }
     tuple[i - 1] = '\0';
 
@@ -508,11 +557,12 @@ char **separate_tuple(Table *table, Column *idx_column, tmp_file tuple, size_t n
         char *file_name = catnstr(3, table->columns[i].file_path, ".clustered.", idx_column->name);
         //    open and  map the file
         int fd = open(file_name, O_RDWR | O_CREAT | O_TRUNC, 0666);
-        struct stat st;
-        fstat(fd, &st);
-        size_t file_size = st.st_size;
+        // expand the file
+        lseek(fd, table->rows * (MAX_INT_LENGTH + 1), SEEK_SET);
+        write(fd, " ", 1);
+
         fds[i] = fd;
-        res[i] = mmap(NULL, file_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        res[i] = mmap(NULL, table->rows * (MAX_INT_LENGTH + 1), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
         free(file_name);
     }
 
@@ -529,6 +579,7 @@ char **separate_tuple(Table *table, Column *idx_column, tmp_file tuple, size_t n
                 res[j] + i * (MAX_INT_LENGTH + 1),
                 tuple_map + i * (MAX_INT_LENGTH + 1) * (table->col_count - 1) + j * (MAX_INT_LENGTH + 1),
                 MAX_INT_LENGTH + 1);
+            res[j][i * (MAX_INT_LENGTH + 1) + MAX_INT_LENGTH] = ',';
         }
     }
 
@@ -546,12 +597,12 @@ char **separate_tuple(Table *table, Column *idx_column, tmp_file tuple, size_t n
 // the sorting order of the first column
 void propagate_sort(Table *tbl, Column *idx_column)
 {
-    return;
+
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
 
     char *index_maps[tbl->col_count - 1];
 
-    for (size_t i = 0; i < tbl->col_count - 1; i++)
+    for (size_t i = 0, j = 0; i < tbl->col_count; i++)
     {
         if (idx_column == &tbl->columns[i])
         {
@@ -570,25 +621,23 @@ void propagate_sort(Table *tbl, Column *idx_column)
             struct stat st;
             fstat(tbl->columns[i].fd, &st);
 
-            tbl->columns[i].read_map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, tbl->columns[i].fd, tbl->columns[i].meta_data_size * PAGE_SIZE);
+            tbl->columns[i].read_map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, tbl->columns[i].fd, 0);
             tbl->columns[i].read_map_size = st.st_size;
         }
-        index_maps[i] = tbl->columns[i].read_map + tbl->columns[i].meta_data_size * PAGE_SIZE;
+        index_maps[j] = tbl->columns[i].read_map + tbl->columns[i].meta_data_size * PAGE_SIZE;
+        j++;
     }
 
-    tmp_file tuple = create_tuple(tbl->col_count - 1, tbl->rows, index_maps);
+    tmp_file tuple = create_tuple(tbl->rows, tbl->col_count - 1, index_maps);
 
-    if (!idx_column->read_map)
-    {
-        char *file_path = catnstr(2, idx_column->name, ".map");
-        int fd = open(file_path, O_RDONLY, 0666);
-        struct stat st;
-        fstat(fd, &st);
-        size_t file_size = st.st_size;
-
-        idx_column->read_map = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    }
-
-    tmp_file reordered = reorder(tuple, idx_column->read_map);
+    tmp_file reordered = reorder(tuple, tbl, idx_column);
     separate_tuple(tbl, idx_column, reordered, tbl->rows);
+
+    free(tuple.file_name);
+    munmap(tuple.map, tuple.size);
+    close(tuple.fd);
+
+    free(reordered.file_name);
+    munmap(reordered.map, reordered.size);
+    close(reordered.fd);
 }

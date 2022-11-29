@@ -224,7 +224,7 @@ DbOperator *parse_print(char *print_argument)
     // remove parenthesis
     tokenizer++;
 
-    int number_of_commas = 0;
+    size_t number_of_commas = 0;
     for (int i = 0; tokenizer[i]; i++)
     {
         if (tokenizer[i] == ',')
@@ -233,13 +233,13 @@ DbOperator *parse_print(char *print_argument)
         }
     }
 
-    // rremove trailing parenthesis
+    // remove trailing parenthesis
     tokenizer[strlen(tokenizer) - 1] = '\0';
 
     Variable **result_tupls = malloc(sizeof(Variable *) * (number_of_commas + 1));
 
-    int i = 0;
-    int max_row = 0;
+    size_t i = 0;
+    size_t max_row = 0;
     while (i <= number_of_commas)
     {
         char *var = next_token(&tokenizer, &status);
@@ -251,7 +251,22 @@ DbOperator *parse_print(char *print_argument)
             return NULL;
         }
         result_tupls[i] = var_location;
-        max_row = var_location->result.size > max_row ? var_location->result.size : max_row;
+
+        size_t var_size = 0;
+        if (var_location->type == POSITION_VECTOR || var_location->type == VALUE_VECTOR)
+        {
+            var_size = var_location->result.values.size;
+        }
+        else if (var_location->type == INT_VALUE || var_location->type == FLOAT_VALUE)
+        {
+            var_size = 1;
+        }
+        else
+        {
+            var_size = var_location->vec_chain_size;
+        }
+
+        max_row = max(max_row, var_size);
         i++;
     }
 
@@ -841,36 +856,99 @@ EntityAddress parse_column_name(char *token, Status *status)
 }
 DbOperator *parse_load_start(char *token, message *send_message)
 {
-    (void)token;
-    (void)send_message;
-    return NULL;
+    // extract columns and number of colums from message
+    size_t num_columns = 0;
+
+    for (size_t i = 0; i < strlen(token); i++)
+    {
+        if (token[i] == ',')
+        {
+            num_columns++;
+        }
+    }
+    num_columns++;
+
+    // remove parenthesis
+    token++;
+    token[strlen(token) - 1] = '\0';
+
+    bload.columns = malloc(sizeof(char *) * num_columns);
+    for (size_t i = 0; i < num_columns; i++)
+    {
+        char *name = strsep(&token, ",");
+        // get db.table.column
+        Status status;
+        EntityAddress address = parse_column_name(name, &status);
+        bload.columns[i] = address.col;
+        bload.table = address.table;
+    }
+    send_message->status = OK_DONE;
+
+    DbOperator *dbo = malloc(sizeof(DbOperator));
+    dbo->type = BATCH_LOAD_START;
+    bload.mode = true;
+    bload.num_columns = num_columns;
+    return dbo;
+}
+DbOperator *parse_load_end(char *query_command, message *send_message)
+{
+    (void)query_command;
+    DbOperator *dbo = malloc(sizeof(DbOperator));
+    dbo->type = BATCH_LOAD_END;
+
+    // free the linked list
+    linkedList *current = bload.data;
+    while (current != NULL)
+    {
+        linkedList *next = current->next;
+        free(current);
+        current = next;
+    };
+
+    // if (bload.left_over)
+    // {
+    //     Status status;
+    //     for (size_t i = 0; i < bload.num_columns; i++)
+    //     {
+    //         char *val = strsep(&bload.left_over, ",");
+    //         insert_col(bload.table, bload.columns[i], val, &status);
+    //     }
+    //     free(bload.left_over);
+    // }
+
+    bload.mode = false;
+
+    send_message->status = OK_DONE;
+    return dbo;
 }
 
 DbOperator *parse_load_parallel(char *query_command, message *send_message)
 {
-    (void)query_command;
-    (void)send_message;
-    // char *columns = strsep(&query_command, "|");
+    if (strncmp(query_command, "load_end", 8) == 0)
+    {
+        query_command += 8;
+        return parse_load_end(query_command, send_message);
+    }
 
-    // size_t num_columns = 0;
-    // for (size_t i = 0; columns[i]; i++)
-    // {
-    //     if (columns[i] == ',')
-    //     {
-    //         num_columns++;
-    //     }
-    // }
-    // num_columns += 1;
+    DbOperator *dbo = malloc(sizeof(DbOperator));
+    dbo->type = BATCH_LOAD;
 
-    // // extract column
-    // char *column_names[num_columns];
-    // for (size_t i = 0; i < num_columns; i++)
-    // {
-    //     column_names[i] = strsep(&columns, ",");
-    // }
-    // (void *)column_names;
+    linkedList *new_list = malloc(sizeof(struct linkedList));
+    new_list->next = NULL;
+    new_list->data = query_command;
+    if (bload.end)
+    {
+        bload.end->next = new_list;
+        bload.end = new_list;
+    }
+    else
+    {
+        bload.data = bload.end = new_list;
+    }
 
-    return NULL;
+    send_message->status = OK_DONE;
+
+    return dbo;
 }
 
 DbOperator *parse_load(char *query_command, message *send_message)
@@ -915,12 +993,6 @@ DbOperator *parse_load(char *query_command, message *send_message)
     return dbo;
 }
 
-DbOperator *parse_load_end(char *token, message *send_message)
-{
-    (void)token;
-    (void)send_message;
-    return NULL;
-}
 /**
  * parse_insert reads in the arguments for a create statement and
  * then passes these arguments to a database function to insert a row.
@@ -1058,6 +1130,11 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
         query_command += 17;
         dbo = parse_insert(query_command, send_message);
     }
+    else if (strncmp(query_command, "load_start", 10) == 0)
+    {
+        query_command += 10;
+        dbo = parse_load_start(query_command, send_message);
+    }
     else if (strncmp(query_command, "load", 4) == 0)
     {
         query_command += 4;
@@ -1125,21 +1202,6 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
     {
         query_command += 13;
         dbo = parse_batch_execute(query_command, send_message);
-    }
-    else if (strncmp(query_command, "load_start", 11) == 0)
-    {
-        query_command += 11;
-        dbo = parse_load_start(query_command, send_message);
-    }
-    else if (strncmp(query_command, "load_parallel", 14) == 0)
-    {
-        query_command += 13;
-        dbo = parse_load_parallel(query_command, send_message);
-    }
-    else if (strncmp(query_command, "load_end", 9) == 0)
-    {
-        query_command += 9;
-        dbo = parse_load_end(query_command, send_message);
     }
 
     if (dbo == NULL)

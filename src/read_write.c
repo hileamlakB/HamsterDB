@@ -50,7 +50,7 @@ void map_col(Table *table, Column *column, Status *status)
     status->code = OK;
     const size_t page_size = sysconf(_SC_PAGESIZE);
     // experiment with this number, the overhead mx_size
-    const size_t map_size = 2 * page_size;
+    const size_t map_size = 4 * page_size;
 
     // check if the file is open if not open it
     create_colf(table, column, status);
@@ -170,11 +170,8 @@ bool insert_col(Table *table, Column *col, char *value, Status *status)
         }
     }
 
-    char *zero_padded_str = zeropadd(value, NULL);
-    memcpy(col->file + col->end, zero_padded_str, MAX_INT_LENGTH);
-    memcpy(col->file + col->end + MAX_INT_LENGTH, ",", 1);
+    sprintf(col->file + col->end, "%012d,", atoi(value));
     col->end += MAX_INT_LENGTH + 1;
-    free(zero_padded_str);
     return true;
 }
 // insert to database

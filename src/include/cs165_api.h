@@ -30,6 +30,7 @@ SOFTWARE.
 #include <stdio.h>
 #include <pthread.h>
 #include "utils.h"
+#include "message.h"
 // Limits the size of a name in our database to 64 characters
 #define MAX_SIZE_NAME 64
 #define MAX_PATH_NAME 256 // path name at max = dir/db.table.column
@@ -48,29 +49,39 @@ SOFTWARE.
 typedef struct vector
 {
     int *values;
-    float fvalue;
-    int ivalue;
-    int size;
+    size_t size;
 } vector;
+
+typedef vector pos_vec;
+typedef vector val_vec;
 
 typedef enum variable_type
 {
     POSITION_VECTOR, // position vector
+    VECTOR_CHAIN,    // position vector chain
     VALUE_VECTOR,    // int vectors
     FLOAT_VALUE,     // single float value
     INT_VALUE,       // single int value
+    RANGE,           // range of values
 } variable_type;
 
 typedef struct Variable
 {
     char *name;
-    vector result;
+    union
+    {
+        pos_vec values;
+        linkedList *pos_vec_chain;
+        float fvalue;
+        int ivalue;
+        int range[2];
+    } result;
+
+    size_t vec_chain_size;
+
     variable_type type;
     bool exists;
 } Variable;
-
-typedef vector pos_vec;
-typedef vector val_vec;
 
 typedef enum DataType
 {
@@ -318,7 +329,10 @@ typedef enum OperatorType
     SUB,
     BATCH_EXECUTE,
     BATCH_QUERY,
-    INDEX
+    INDEX,
+    BATCH_LOAD,
+    BATCH_LOAD_END,
+    BATCH_LOAD_START
 
 } OperatorType;
 
@@ -502,6 +516,12 @@ typedef struct batch_query
 typedef struct batch_load
 {
     bool mode;
+    size_t num_columns;
+    Column **columns;
+    Table *table;
+    linkedList *data;
+    linkedList *end;
+    char *left_over;
 
 } batch_load;
 
@@ -520,6 +540,7 @@ extern batch_load bload;
 Status db_startup();
 
 Status create_db(const char *db_name);
+DbOperator *parse_load_parallel(char *query_command, message *send_message);
 
 // loads a database from disk
 Status load_db(const char *db_name);
@@ -579,19 +600,21 @@ typedef struct thread_select_args
     size_t result_size;
     size_t offset; // which part of the file is this thread reading
 } thread_select_args;
-void *thread_select_col(void *args);
-void select_col(Table *, Column *, char *, int *, int *, Status *);
+
+// void *select_col(Table *, Column *, char *, int *, int *, Status *);
+void *select_col(void *args);
 void select_pos(Variable *, Variable *, char *, int *, int *, Status *);
 void fetch_col(Table *, Column *, Variable *, char *, Status *);
 
 // var_pool.c
-void add_var(char *, vector, variable_type);
+void add_var(Variable *);
 Variable *find_var(char *);
 void free_var_pool();
 
 // server.c
 
 void insert(Table *, char **, Status *);
+bool insert_col(Table *table, Column *col, char *value, Status *status);
 String print_tuple(PrintOperator);
 void average(char *, Variable *);
 void sum(AvgOperator, Status *);
@@ -601,6 +624,29 @@ void sub(char *, Variable *, Variable *);
 void MinMax(MinMaxOperator, Status *);
 
 String batch_execute(DbOperator **queries, size_t n, Status *status);
+// pos_vec generic_select(int *low, int *high, char *file, int **result, size_t result_capacity, Status *status, size_t read_size);
+// pos_vec btree_select(int *low, int *high, char *file, int **result, size_t result_capacity, Status *status, size_t read_size);
+// pos_vec sorted_select(int *low, int *high, char *file, int **result, size_t result_capacity, Status *status, size_t read_size);
+
+typedef struct select_args
+{
+    int *low; // lower int boundery
+    int *high;
+    Column *col; // searched column
+    Table *tbl;  // searched table
+    char *file;  // a sectino of the file mapped for the column to be searched
+    size_t read_size;
+    char *handle;       // handle for a certain search query
+    size_t offset;      // which section of the file is passes, to be used in multithreaded sorting
+    int *result;        // point to a location for result
+    size_t result_size; // point to a location for result size
+
+} select_args;
+
+Variable generic_select(select_args);
+Variable sorted_select(select_args);
+Variable btree_select(select_args);
+Variable (*choose_algorithm(select_args args))(select_args);
 
 // available threads
 typedef struct num_threads

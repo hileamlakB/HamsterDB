@@ -6,8 +6,9 @@
 
 pool_t thread_pool;
 
-void *generic_task()
+void *generic_task(void *arg)
 {
+    (void)arg;
     // condtionaly wait for to be awaken and when awaken
     // check if there is a job to do
     // if there is a job to do, do it

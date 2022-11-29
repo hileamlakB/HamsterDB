@@ -77,6 +77,9 @@ typedef struct Variable
         int range[2];
     } result;
 
+    bool is_sorted;    // only applicaple for pos_vecs
+    bool is_clustered; // only applicaple for pos_vecs
+
     size_t vec_chain_size;
 
     variable_type type;

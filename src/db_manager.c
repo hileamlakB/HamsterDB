@@ -102,7 +102,7 @@ ColumnIndex create_btree_index(Table *tbl, Column *col, ClusterType cluster_type
 	return col->index;
 }
 
-#define fanout 4096 / sizeof(int)
+#define fanout 1024 // 4096 /sizeof(int)
 
 typedef struct BTREE_META
 {
@@ -199,6 +199,96 @@ void create_btree(Table *tbl, Column *col)
 	close(fd);
 }
 
+void create_btree2(Table *tbl, Column *col)
+{
+	const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
+	// laod the sorted column
+	// create the btree
+	// save the btree
+	char *sorted_col = catnstr(2, col->file_path, ".sorted");
+	int fd = open(sorted_col, O_RDONLY);
+	free(sorted_col);
+	// mmap sorted file
+	char *sorted = mmap(NULL, tbl->rows * (MAX_INT_LENGTH + 1), PROT_READ, MAP_PRIVATE, fd, 0);
+
+	char *btree_file = catnstr(2, col->file_path, ".btree");
+	int btree_fd = open(btree_file, O_RDWR | O_CREAT, 0666);
+	free(btree_file);
+
+	lseek(btree_fd, tbl->rows * (MAX_INT_LENGTH + 1), SEEK_SET);
+	write(btree_fd, " ", 1);
+
+	int *btree = mmap(NULL, tbl->rows * (sizeof(int)), PROT_READ | PROT_WRITE, MAP_SHARED, btree_fd, 0);
+
+	size_t levels = 0;
+	size_t nodes_per_level[10] = {0}; // max 10 levels assumption
+
+	size_t num_pages = (tbl->rows * (MAX_INT_LENGTH + 1)) / PAGE_SIZE;
+	size_t num_elements_per_page = PAGE_SIZE / (MAX_INT_LENGTH + 1);
+	size_t btree_index = 0;
+	// create the lowest level of the btree
+	for (size_t i = 0; i < num_pages; i += 1, btree_index += 1)
+	{
+		// get the last element of the page
+		size_t num_elements = ((i + 1) * PAGE_SIZE) / (MAX_INT_LENGTH + 1);
+		size_t last_page_element = (num_elements - 1) * (MAX_INT_LENGTH + 1);
+		int last_element = atoi(sorted + last_page_element);
+		btree[btree_index] = last_element;
+	}
+	nodes_per_level[levels] += num_pages * sizeof(int) / PAGE_SIZE;
+	size_t last_level_start = 0;
+	size_t last_level_end = btree_index;
+	bool is_last_full = true;
+	bool last_filled_index = 0;
+	// add extra elements
+	if (num_pages * sizeof(int) > PAGE_SIZE && num_pages % PAGE_SIZE != 0)
+	{
+		size_t last_page_element = tbl->rows * (MAX_INT_LENGTH + 1) - (MAX_INT_LENGTH + 1);
+		int last_element = atoi(sorted + last_page_element);
+		btree[num_pages] = last_element;
+		btree[num_pages + 1] = -1; // this is to indicate the end of an incomplete node
+
+		size_t next_page = (num_pages / PAGE_SIZE + 1) * PAGE_SIZE;
+
+		btree[next_page - 1] = last_element; // for easy access
+		btree[next_page - 2] = btree_index;	 // this stores the last place where the btree was written
+		btree_index = next_page;
+		nodes_per_level[levels] += 1;
+		is_last_full = false;
+	}
+	last_level_end = btree_index;
+
+	levels++;
+
+	while (last_level_end - last_level_start > 1)
+	{
+
+		// becaue the last one might not be full
+		for (size_t i = 0; i < (last_level_end - last_level_start) / fanout; i += 1, btree_index += 1)
+		{
+			btree[btree_index] = btree[last_level_start + i * fanout + fanout - 1];
+		}
+
+		last_level_start = last_level_end;
+		last_level_end += nodes_per_level[levels - 1] / fanout;
+		nodes_per_level[levels] += nodes_per_level[levels - 1] / fanout;
+
+		if (!is_last_full)
+		{
+		}
+
+		levels++;
+	}
+
+	// unmap file
+	munmap(btree, tbl->rows);
+	munmap(sorted, tbl->rows * (MAX_INT_LENGTH + 1));
+	close(btree_fd);
+	close(fd);
+}
+
+void laod_btree(Table *tble, Column *col) {}
+
 void populate_index(Table *tbl, Column *col)
 {
 
@@ -217,11 +307,11 @@ void populate_index(Table *tbl, Column *col)
 		propagate_sort(tbl, col);
 	}
 
-	if (idx.type == BTREE)
-	{
-		// create btree index
-		create_btree(tbl, col);
-	}
+	// if (idx.type == BTREE)
+	// {
+	// 	// create btree index
+	// 	// create_btree2(tbl, col);
+	// }
 }
 
 ColumnIndex create_index(

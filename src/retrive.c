@@ -24,17 +24,31 @@ Variable btree_select(select_args args)
 
 Variable sorted_select(select_args args)
 {
-    char *starting = args.file;
-    char *ending = args.file + args.tbl->rows * (MAX_INT_LENGTH + 1);
+
+    if (!args.col->index.read_map)
+    {
+        char *filename = catnstr(2, args.col->file_path, ".sorted");
+        int fd = open(filename, O_RDONLY);
+        args.col->index.read_map = mmap(NULL, args.tbl->rows * (MAX_INT_LENGTH + 1), PROT_READ, MAP_PRIVATE, fd, 0);
+    }
+
+    char *sorted_file = args.col->index.read_map;
+
+    // map file
+
+    char *starting = sorted_file;
+    char *ending = sorted_file + args.tbl->rows * (MAX_INT_LENGTH + 1);
 
     if (*args.low)
     {
+        char *key_str = malloc(MAX_INT_LENGTH + 1);
+        sprintf(key_str, "%012d", *args.low);
         starting = closest_search(
-            args.low, args.file, args.tbl->rows,
+            key_str, sorted_file, args.tbl->rows,
             sizeof(char[MAX_INT_LENGTH + 1]), compare_sints);
 
         // make sure this is the first occurance of the value
-        while (starting != args.file && compare_sints(starting, starting - sizeof(char[MAX_INT_LENGTH + 1])) == 0)
+        while (starting != sorted_file && compare_sints(starting, starting - sizeof(char[MAX_INT_LENGTH + 1])) == 0)
         {
             starting -= sizeof(char[MAX_INT_LENGTH + 1]);
         }
@@ -42,10 +56,14 @@ Variable sorted_select(select_args args)
 
     if (*args.high)
     {
-
-        ending = closest_search(args.high, args.file, args.tbl->rows, sizeof(char[MAX_INT_LENGTH + 1]), compare_sints);
+        char *key_str = malloc(MAX_INT_LENGTH + 1);
+        sprintf(key_str, "%012d", *args.high);
+        ending = closest_search(
+            key_str,
+            sorted_file,
+            args.tbl->rows, sizeof(char[MAX_INT_LENGTH + 1]), compare_sints);
         // make sure this is the last occurance of the value
-        while (ending != args.file + args.tbl->rows * (MAX_INT_LENGTH + 1) && compare_sints(ending, ending + sizeof(char[MAX_INT_LENGTH + 1])) == 0)
+        while (ending != sorted_file + args.tbl->rows * (MAX_INT_LENGTH + 1) && compare_sints(ending, ending + sizeof(char[MAX_INT_LENGTH + 1])) == 0)
         {
             ending += sizeof(char[MAX_INT_LENGTH + 1]);
         }
@@ -54,8 +72,8 @@ Variable sorted_select(select_args args)
     // return a pos_vec with the positions of the values in the range
     Variable res = (Variable){
         .type = RANGE, .name = strdup(args.handle), .exists = true};
-    res.result.range[0] = starting - args.file;
-    res.result.range[1] = ending - args.file;
+    res.result.range[0] = starting - sorted_file;
+    res.result.range[1] = ending - sorted_file;
     return res;
 }
 
@@ -374,6 +392,19 @@ int generic_fetch(int *result, Column *column, pos_vec vec)
     return result_size;
 }
 
+int fetch_from_range(int *result, Column *column, int low, int high)
+{
+    int result_size = 0;
+    int position = low;
+
+    while (position < high)
+    {
+        result[result_size++] = atoi(column->read_map + (position * (MAX_INT_LENGTH + 1)));
+        position++;
+    }
+    return result_size;
+}
+
 void fetch_from_chain(Table *table, Column *column, Variable *var, char *var_name)
 {
     (void)table;
@@ -444,10 +475,25 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
     {
         fetch_from_chain(table, column, var, var_name);
     }
-    else
+    else if (var->type == POSITION_VECTOR)
     {
         int *result = calloc(var->result.values.size, sizeof(int));
         int result_size = generic_fetch(result, column, var->result.values);
+
+        Variable *fin_result = malloc(sizeof(Variable));
+
+        *fin_result = (Variable){
+            .type = VALUE_VECTOR,
+            .name = strdup(var_name),
+            .result.values.values = result,
+            .result.values.size = result_size,
+            .exists = true};
+        add_var(fin_result);
+    }
+    else if (var->type == RANGE)
+    {
+        int *result = calloc(var->result.range[1] - var->result.range[1], sizeof(int));
+        int result_size = fetch_from_range(result, column, var->result.range[0], var->result.range[1]);
 
         Variable *fin_result = malloc(sizeof(Variable));
 

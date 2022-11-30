@@ -96,8 +96,8 @@ Variable sorted_select(select_args args)
     strcpy(res.sorting_column, args.col->name);
     strcpy(res.sorting_column_path, args.col->file_path);
 
-    res.result.range[0] = starting - sorted_file;
-    res.result.range[1] = ending - sorted_file;
+    res.result.range[0] = (starting - sorted_file) / (MAX_INT_LENGTH + 1);
+    res.result.range[1] = (ending - sorted_file) / (MAX_INT_LENGTH + 1);
     return res;
 }
 
@@ -310,10 +310,10 @@ void *select_col(void *arg)
 
 void select_pos_range(Variable *posVec, Variable *valVec, char *handle, int *low, int *high)
 {
-    int position = posVec->result.range[0] / (MAX_INT_LENGTH + 1);
+    int position = posVec->result.range[0];
 
     int *result = calloc(
-        (posVec->result.range[1] - posVec->result.range[0]) / (MAX_INT_LENGTH + 1),
+        posVec->result.range[1] - posVec->result.range[0],
         sizeof(int));
     size_t result_size = 0;
 
@@ -578,7 +578,7 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
     else if (var->type == RANGE)
     {
 
-        int *result = calloc((var->result.range[1] - var->result.range[0]) / (MAX_INT_LENGTH + 1), sizeof(int));
+        int *result = calloc(var->result.range[1] - var->result.range[0], sizeof(int));
         int result_size = fetch_from_range(read_from, index_map, result, var->result.range[0], var->result.range[1]);
 
         Variable *fin_result = malloc(sizeof(Variable));

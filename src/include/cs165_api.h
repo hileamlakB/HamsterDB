@@ -337,7 +337,8 @@ typedef enum OperatorType
     INDEX,
     BATCH_LOAD,
     BATCH_LOAD_END,
-    BATCH_LOAD_START
+    BATCH_LOAD_START,
+    JOIN
 
 } OperatorType;
 
@@ -481,6 +482,28 @@ typedef struct MinMaxOperator
     OperatorType operation;
 
 } MinMaxOperator;
+
+typedef enum join_type
+{
+    NESTED_LOOP,
+    HASH_JOIN,
+    SORT_MERGE
+} join_type;
+
+typedef struct JoinOperator
+{
+    char *handler1;
+    char *handler2;
+
+    Variable *pos1;
+    Variable *pos2;
+
+    Variable *val1;
+    Variable *val2;
+
+    join_type type;
+
+} JoinOperator;
 /*
  * union type holding the fields of any operator
  */
@@ -495,6 +518,7 @@ typedef union OperatorFields
     AvgOperator avg_operator;
     MathOperator math_operator;
     MinMaxOperator min_max_operator;
+    JoinOperator join_operator;
 } OperatorFields;
 /*
  * DbOperator holds the following fields:
@@ -627,6 +651,8 @@ void sum(AvgOperator, Status *);
 void add(char *, Variable *, Variable *);
 void sub(char *, Variable *, Variable *);
 void MinMax(MinMaxOperator, Status *);
+
+void join(DbOperator *query);
 
 String batch_execute(DbOperator **queries, size_t n, Status *status);
 // pos_vec generic_select(int *low, int *high, char *file, int **result, size_t result_capacity, Status *status, size_t read_size);

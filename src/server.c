@@ -332,6 +332,10 @@ String execute_DbOperator(DbOperator *query)
         return empty_string;
         // return "Shutting down";
     }
+    else if (query && query->type == JOIN)
+    {
+        join(query);
+    }
 
     return empty_string;
 }
@@ -840,6 +844,11 @@ void free_db_operator(DbOperator *query)
         if (query->type == FETCH)
         {
             free(query->operator_fields.fetch_operator.handler);
+        }
+        if (query->type == JOIN)
+        {
+            free(query->operator_fields.join_operator.handler1);
+            free(query->operator_fields.join_operator.handler2);
         }
 
         free(query);

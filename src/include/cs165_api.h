@@ -73,12 +73,14 @@ typedef struct Variable
         pos_vec values;
         linkedList *pos_vec_chain;
         float fvalue;
-        int ivalue;
+        long ivalue;
         int range[2];
     } result;
 
     bool is_sorted;    // only applicaple for pos_vecs
     bool is_clustered; // only applicaple for pos_vecs
+    char sorting_column[MAX_SIZE_NAME];
+    char sorting_column_path[MAX_PATH_NAME];
 
     size_t vec_chain_size;
 
@@ -444,7 +446,7 @@ typedef struct PrintOperator
     {
         PrintTuple tuple;
         float fvalue;
-        int ivalue;
+        long int ivalue;
     } data;
 } PrintOperator;
 

@@ -30,6 +30,7 @@ Variable sorted_select(select_args args)
         char *filename = catnstr(2, args.col->file_path, ".sorted");
         int fd = open(filename, O_RDONLY);
         args.col->index.read_map = mmap(NULL, args.tbl->rows * (MAX_INT_LENGTH + 1), PROT_READ, MAP_PRIVATE, fd, 0);
+        free(filename);
     }
 
     char *sorted_file = args.col->index.read_map;
@@ -48,10 +49,17 @@ Variable sorted_select(select_args args)
             sizeof(char[MAX_INT_LENGTH + 1]), compare_sints);
 
         // make sure this is the first occurance of the value
-        while (starting != sorted_file && compare_sints(starting, starting - sizeof(char[MAX_INT_LENGTH + 1])) == 0)
+        while (starting > sorted_file && compare_sints(key_str, starting - sizeof(char[MAX_INT_LENGTH + 1])) == 0)
         {
             starting -= sizeof(char[MAX_INT_LENGTH + 1]);
         }
+
+        // if the value isn't in the file, find the insertion point
+        while (compare_sints(starting, key_str) < 0)
+        {
+            starting += sizeof(char[MAX_INT_LENGTH + 1]);
+        }
+        free(key_str);
     }
 
     if (*args.high)
@@ -62,16 +70,32 @@ Variable sorted_select(select_args args)
             key_str,
             sorted_file,
             args.tbl->rows, sizeof(char[MAX_INT_LENGTH + 1]), compare_sints);
-        // make sure this is the last occurance of the value
-        while (ending != sorted_file + args.tbl->rows * (MAX_INT_LENGTH + 1) && compare_sints(ending, ending + sizeof(char[MAX_INT_LENGTH + 1])) == 0)
+        // make sure this isn't included  the last occurance of the value
+        while (ending != sorted_file && compare_sints(key_str, ending - sizeof(char[MAX_INT_LENGTH + 1])) == 0)
+        {
+            ending -= sizeof(char[MAX_INT_LENGTH + 1]);
+        }
+
+        char *max_end = sorted_file + (args.tbl->rows) * (MAX_INT_LENGTH + 1);
+        // if the value isn't in the file, find the insertion point
+        while (compare_sints(ending, key_str) < 0 && ending < max_end)
         {
             ending += sizeof(char[MAX_INT_LENGTH + 1]);
         }
+
+        free(key_str);
     }
 
     // return a pos_vec with the positions of the values in the range
     Variable res = (Variable){
-        .type = RANGE, .name = strdup(args.handle), .exists = true};
+        .type = RANGE,
+        .name = strdup(args.handle),
+        .exists = true,
+        .is_sorted = true,
+        .is_clustered = (args.col->index.clustered == CLUSTERED)};
+    strcpy(res.sorting_column, args.col->name);
+    strcpy(res.sorting_column_path, args.col->file_path);
+
     res.result.range[0] = starting - sorted_file;
     res.result.range[1] = ending - sorted_file;
     return res;
@@ -284,13 +308,50 @@ void *select_col(void *arg)
     return NULL;
 }
 
+void select_pos_range(Variable *posVec, Variable *valVec, char *handle, int *low, int *high)
+{
+    int position = posVec->result.range[0] / (MAX_INT_LENGTH + 1);
+
+    int *result = calloc(
+        (posVec->result.range[1] - posVec->result.range[0]) / (MAX_INT_LENGTH + 1),
+        sizeof(int));
+    size_t result_size = 0;
+
+    size_t i = 0;
+    while (i < valVec->result.values.size)
+    {
+        int value = valVec->result.values.values[i];
+
+        result[result_size] = position;
+        result_size += ((!low || value >= *low) &&
+                        (!high || value < *high));
+        position += 1;
+        i++;
+    }
+
+    Variable *fin_result = malloc(sizeof(Variable));
+    *fin_result = (Variable){
+        .type = POSITION_VECTOR,
+        .name = strdup(handle),
+        .result.values.values = result,
+        .result.values.size = result_size,
+        .is_sorted = posVec->is_sorted,
+        .is_clustered = posVec->is_clustered,
+        .exists = true};
+    strcpy(fin_result->sorting_column, posVec->sorting_column);
+    strcpy(fin_result->sorting_column_path, posVec->sorting_column_path);
+
+    add_var(fin_result);
+}
+
 void select_pos(Variable *posVec, Variable *valVec, char *handle, int *low, int *high, Status *status)
 {
 
-    if (!posVec->exists || !valVec->exists)
+    assert(posVec->exists && valVec->exists);
+
+    if (posVec->type == RANGE)
     {
-        log_err("Error: Invalid variable");
-        status->code = ERROR;
+        select_pos_range(posVec, valVec, handle, low, high);
         return;
     }
 
@@ -367,47 +428,60 @@ void select_pos(Variable *posVec, Variable *valVec, char *handle, int *low, int 
     add_var(fin_result);
 }
 
-int generic_fetch(int *result, Column *column, pos_vec vec)
+int generic_fetch(char *from, char *map, int *result, pos_vec vec)
 {
 
     int result_size = 0;
 
     int position = 0;
-    size_t result_p = 0;
 
     size_t index = 0;
-    while (column->read_map[index] != '\0' && result_p < vec.size)
+
+    while (index < vec.size)
     {
-
-        if (position == vec.values[result_p])
+        position = vec.values[index];
+        int value;
+        if (map)
         {
-            result[result_size++] = zerounpadd(column->read_map + index, ',');
-            result_p++;
+            int maped_index = atoi(map + position * (MAX_INT_LENGTH + 1));
+            value = atoi(from + maped_index * (MAX_INT_LENGTH + 1));
         }
-
-        position++;
-        // including separating comma
-        index += MAX_INT_LENGTH + 1;
+        else
+        {
+            value = atoi(from + position * (MAX_INT_LENGTH + 1));
+        }
+        result[result_size++] = value;
+        index++;
     }
+
     return result_size;
 }
 
-int fetch_from_range(int *result, Column *column, int low, int high)
+int fetch_from_range(char *from, char *map, int *result, int low, int high)
 {
     int result_size = 0;
     int position = low;
 
     while (position < high)
     {
-        result[result_size++] = atoi(column->read_map + (position * (MAX_INT_LENGTH + 1)));
-        position++;
+        int value;
+        if (map)
+        {
+            int maped_index = atoi(map + position);
+            value = atoi(from + maped_index * (MAX_INT_LENGTH + 1));
+        }
+        else
+        {
+            value = atoi(from + position);
+        }
+        result[result_size++] = value;
+        position += (MAX_INT_LENGTH + 1);
     }
     return result_size;
 }
 
-void fetch_from_chain(Table *table, Column *column, Variable *var, char *var_name)
+void fetch_from_chain(char *from, char *index_map, Variable *var, char *var_name)
 {
-    (void)table;
 
     size_t max_size_result = 0;
     for (linkedList *chain = var->result.pos_vec_chain; chain; chain = chain->next)
@@ -420,7 +494,7 @@ void fetch_from_chain(Table *table, Column *column, Variable *var, char *var_nam
     // iterate through the chain and execute gneric fetch on each
     for (linkedList *chain = var->result.pos_vec_chain; chain; chain = chain->next)
     {
-        result_size += generic_fetch(result + result_size, column, *((pos_vec *)chain->data));
+        result_size += generic_fetch(from, index_map, result + result_size, *((pos_vec *)chain->data));
     }
 
     // resize result
@@ -444,41 +518,52 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
 {
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
 
-    if (!var->exists)
-    {
-        log_err("Error: Invalid variable");
-        status->code = ERROR;
-        return;
-    }
+    assert(var->exists);
 
     create_colf(table, column, status);
 
-    struct stat sb;
-    fstat(column->fd, &sb);
+    char *read_from = NULL, *index_map = NULL;
+    ;
 
-    // here instead use mmap to create an area and use that to write to file
-    // which you can delete at the end
-    // mmap file for read
-    if (!column->read_map)
+    if (var->is_sorted && var->is_clustered)
     {
-        char *buffer = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, column->fd, column->meta_data_size * PAGE_SIZE);
-        if (buffer == MAP_FAILED)
+        char *clusterd_sorted = catnstr(3, column->file_path, ".clustered.", var->sorting_column);
+        int fd = open(clusterd_sorted, O_RDONLY);
+        read_from = mmap(NULL, table->rows * (MAX_INT_LENGTH + 1), PROT_READ, MAP_PRIVATE, fd, 0);
+    }
+    else
+    {
+        if (!column->read_map)
         {
-            log_err("Error mapping file for column read");
-            return;
+            char *buffer = mmap(NULL, table->rows * (MAX_INT_LENGTH + 1), PROT_READ, MAP_SHARED, column->fd, column->meta_data_size * PAGE_SIZE);
+            if (buffer == MAP_FAILED)
+            {
+                log_err("Error mapping file for column read");
+                return;
+            }
+            column->read_map = buffer;
+            column->read_map_size = table->rows * (MAX_INT_LENGTH + 1);
         }
-        column->read_map = buffer;
-        column->read_map_size = sb.st_size;
+
+        read_from = column->read_map;
+
+        if (var->is_sorted && !var->is_clustered)
+        {
+            char *map_name = catnstr(2, var->sorting_column_path, ".map");
+            int fd = open(map_name, O_RDONLY);
+            index_map = mmap(NULL, table->rows * (MAX_INT_LENGTH + 1), PROT_READ, MAP_SHARED, fd, 0);
+            free(map_name);
+        }
     }
 
     if (var->type == VECTOR_CHAIN)
     {
-        fetch_from_chain(table, column, var, var_name);
+        fetch_from_chain(read_from, index_map, var, var_name);
     }
     else if (var->type == POSITION_VECTOR)
     {
         int *result = calloc(var->result.values.size, sizeof(int));
-        int result_size = generic_fetch(result, column, var->result.values);
+        int result_size = generic_fetch(read_from, index_map, result, var->result.values);
 
         Variable *fin_result = malloc(sizeof(Variable));
 
@@ -492,8 +577,9 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
     }
     else if (var->type == RANGE)
     {
-        int *result = calloc(var->result.range[1] - var->result.range[1], sizeof(int));
-        int result_size = fetch_from_range(result, column, var->result.range[0], var->result.range[1]);
+
+        int *result = calloc((var->result.range[1] - var->result.range[0]) / (MAX_INT_LENGTH + 1), sizeof(int));
+        int result_size = fetch_from_range(read_from, index_map, result, var->result.range[0], var->result.range[1]);
 
         Variable *fin_result = malloc(sizeof(Variable));
 

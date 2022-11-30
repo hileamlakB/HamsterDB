@@ -224,7 +224,7 @@ void create_btree2(Table *tbl, Column *col)
 	size_t nodes_per_level[10] = {0}; // max 10 levels assumption
 
 	size_t num_pages = (tbl->rows * (MAX_INT_LENGTH + 1)) / PAGE_SIZE;
-	size_t num_elements_per_page = PAGE_SIZE / (MAX_INT_LENGTH + 1);
+
 	size_t btree_index = 0;
 	// create the lowest level of the btree
 	for (size_t i = 0; i < num_pages; i += 1, btree_index += 1)
@@ -239,7 +239,7 @@ void create_btree2(Table *tbl, Column *col)
 	size_t last_level_start = 0;
 	size_t last_level_end = btree_index;
 	bool is_last_full = true;
-	bool last_filled_index = 0;
+
 	// add extra elements
 	if (num_pages * sizeof(int) > PAGE_SIZE && num_pages % PAGE_SIZE != 0)
 	{
@@ -287,7 +287,11 @@ void create_btree2(Table *tbl, Column *col)
 	close(fd);
 }
 
-void laod_btree(Table *tble, Column *col) {}
+void laod_btree(Table *tble, Column *col)
+{
+	(void)tble;
+	(void)col;
+}
 
 void populate_index(Table *tbl, Column *col)
 {

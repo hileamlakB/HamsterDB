@@ -73,7 +73,7 @@ void free_var_pool()
         {
             free_linked_list(var->result.pos_vec_chain);
         }
-        if (var->type == POSITION_VECTOR)
+        if (var->type == POSITION_VECTOR || var->type == VALUE_VECTOR)
         {
             free(var->result.values.values);
         }

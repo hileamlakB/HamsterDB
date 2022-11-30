@@ -444,7 +444,7 @@ String print_tuple(PrintOperator print_operator)
     else if (print_operator.type == SINGLE_INT)
     {
         char *str = malloc(sizeof(char) * MAX_INT_LENGTH);
-        size_t len = sprintf(str, "%d", print_operator.data.ivalue);
+        size_t len = sprintf(str, "%ld", print_operator.data.ivalue);
         return (String){.str = str, len = len};
     }
 
@@ -475,7 +475,7 @@ String print_tuple(PrintOperator print_operator)
             int printed;
             if (current_var->type == INT_VALUE)
             {
-                printed = sprintf(result_i, "%d,", current_var->result.ivalue);
+                printed = sprintf(result_i, "%ld,", current_var->result.ivalue);
             }
             else if (current_var->type == FLOAT_VALUE)
             {
@@ -511,10 +511,10 @@ String print_tuple(PrintOperator print_operator)
     return (String){.str = result, .len = result_i - result};
 }
 
-int generic_sum(Variable *variable)
+long int generic_sum(Variable *variable)
 {
 
-    int sum = 0;
+    long int sum = 0;
     if (variable->type == VALUE_VECTOR)
     {
 
@@ -548,7 +548,7 @@ void sum(AvgOperator avg_operator, Status *status)
     if (avg_operator.type == VARIABLE_O)
     {
         Variable *variable = avg_operator.variable;
-        int sum = generic_sum(variable);
+        long int sum = generic_sum(variable);
         Variable *fin_result = malloc(sizeof(Variable));
         *fin_result = (Variable){
             .type = INT_VALUE,
@@ -620,10 +620,12 @@ void sum(AvgOperator avg_operator, Status *status)
 
 void average(char *handler, Variable *variable)
 {
+
+    float avg = (variable->result.values.size) ? (float)generic_sum(variable) / variable->result.values.size : 0;
     Variable *fin_result = malloc(sizeof(Variable));
     *fin_result = (Variable){
         .type = FLOAT_VALUE,
-        .result.fvalue = (float)generic_sum(variable) / variable->result.values.size,
+        .result.fvalue = avg,
         .name = strdup(handler),
         .exists = true};
     add_var(fin_result);

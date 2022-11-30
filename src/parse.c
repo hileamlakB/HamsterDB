@@ -387,6 +387,16 @@ DbOperator *parse_avg(char *handle, char *avg_arg)
     return average_op;
 }
 
+DbOperator *parse_join(char *handle, char *join_args)
+{
+    (void)handle;
+    (void)join_args;
+
+    DbOperator *join_op = malloc(sizeof(DbOperator));
+
+    return join_op;
+}
+
 DbOperator *parse_sum(char *handle, char *sum_arg)
 {
     char *tokenizer = sum_arg;
@@ -1202,6 +1212,11 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
     {
         query_command += 13;
         dbo = parse_batch_execute(query_command, send_message);
+    }
+    else if (strncmp(query_command, "join", 4) == 0)
+    {
+        query_command += 4;
+        dbo = parse_join(handle, query_command);
     }
 
     if (dbo == NULL)

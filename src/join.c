@@ -271,8 +271,8 @@ void hash_join(DbOperator *query)
 
     // print_ht(ht);
 
-    int *lresult = malloc(sizeof(int) * size);
-    int *rresult = malloc(sizeof(int) * size);
+    int *lresult = malloc(sizeof(int) * size * size);
+    int *rresult = malloc(sizeof(int) * size * size);
     size_t l, r = 0;
 
     // go through the second variable and check if the values are in the hashtable, if it is add it to results

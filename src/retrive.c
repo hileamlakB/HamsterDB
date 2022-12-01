@@ -467,15 +467,15 @@ int fetch_from_range(char *from, char *map, int *result, int low, int high)
         int value;
         if (map)
         {
-            int maped_index = atoi(map + position);
+            int maped_index = atoi(map + position * (MAX_INT_LENGTH + 1));
             value = atoi(from + maped_index * (MAX_INT_LENGTH + 1));
         }
         else
         {
-            value = atoi(from + position);
+            value = atoi(from + position * (MAX_INT_LENGTH + 1));
         }
         result[result_size++] = value;
-        position += (MAX_INT_LENGTH + 1);
+        position += 1;
     }
     return result_size;
 }

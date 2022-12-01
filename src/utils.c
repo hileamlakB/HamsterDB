@@ -13,6 +13,10 @@
 #include <sys/mman.h>
 #include <stdlib.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #define ANSI_COLOR_RED "\x1b[31m"
 #define ANSI_COLOR_GREEN "\x1b[32m"
 #define ANSI_COLOR_RESET "\x1b[0m"
@@ -395,6 +399,27 @@ void *closest_search(const void *key, const void *base,
     }
 
     return (void *)p;
+}
+
+long find_closet_prime(long int x)
+{
+    // load the list of primes
+    int fd = open("primes.long", O_RDONLY);
+    struct stat s;
+    fstat(fd, &s);
+    size_t size = s.st_size;
+    long *data = mmap(NULL, size, PROT_READ, MAP_SHARED, fd, 0);
+
+    // find the closes prime
+    size_t i = 1;
+    while (data[i] < x)
+    {
+        i *= 2;
+    }
+    long ans = data[i];
+    munmap(data, size);
+    close(fd);
+    return ans;
 }
 
 /* The following three functions will show output on the terminal

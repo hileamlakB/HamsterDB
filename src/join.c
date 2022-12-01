@@ -4,6 +4,11 @@
 #include "cs165_api.h"
 #include <assert.h>
 #include <unistd.h>
+#include "data_structures.h"
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 size_t get_size(Variable *var)
 {
@@ -166,9 +171,174 @@ void nested_loop_join(DbOperator *query)
     add_var(inner_result);
 }
 
+long robert_junkins_hash(long a)
+{
+    a = (a + 0x7ed55d16) + (a << 12);
+    a = (a ^ 0xc761c23c) ^ (a >> 19);
+    a = (a + 0x165667b1) + (a << 5);
+    a = (a + 0xd3a2646c) ^ (a << 9);
+    a = (a + 0xfd7046c5) + (a << 3);
+    a = (a ^ 0xb55a4f09) ^ (a >> 16);
+    return a;
+}
+
+size_t int_hash(hash_element element, size_t size)
+{
+    return robert_junkins_hash(*((int *)element)) % size;
+}
+
+size_t int_compare(hash_element a, hash_element b)
+{
+    if (*((int *)a) > *((int *)b))
+    {
+        return 1;
+    }
+    else if (*((int *)a) < *((int *)b))
+    {
+        return -1;
+    }
+
+    return 0;
+}
+
 void hash_join(DbOperator *query)
 {
-    (void)query;
+    Variable *left_result = malloc(sizeof(Variable));
+    Variable *right_result = malloc(sizeof(Variable));
+
+    Variable *val1 = query->operator_fields.join_operator.val1;
+    Variable *val2 = query->operator_fields.join_operator.val2;
+
+    Variable *pos1 = query->operator_fields.join_operator.pos1;
+    Variable *pos2 = query->operator_fields.join_operator.pos2;
+
+    hashtable *ht;
+    size_t pos1_size = get_size(pos1);
+    size_t pos2_size = get_size(pos2);
+    int size = max(pos1_size, pos2_size);
+    long int hash_table_size = find_closet_prime(size);
+    create_ht(&ht, hash_table_size, int_hash, int_compare);
+
+    // iterate throught the values and positions of the first variable and insert
+    // them into the hastable
+
+    linkedList *left_chain, *right_chain;
+    size_t left_chain_index = 0, right_chain_index = 0;
+
+    if (pos1->type == VECTOR_CHAIN)
+    {
+        left_chain = pos1->result.pos_vec_chain;
+        left_chain_index = 0;
+    }
+
+    if (pos2->type == VECTOR_CHAIN)
+    {
+        right_chain = pos2->result.pos_vec_chain;
+        right_chain_index = 0;
+    }
+
+    for (size_t i = 0; i < pos1_size; i++)
+    {
+        int value = val1->result.values.values[i];
+        int position;
+        if (pos1->type == POSITION_VECTOR)
+        {
+            position = pos1->result.values.values[i];
+        }
+        else if (pos1->type == RANGE)
+        {
+            position = pos1->result.range[0] + i;
+        }
+        else
+        {
+            assert(pos1->type == VECTOR_CHAIN);
+            if (left_chain_index >= ((pos_vec *)left_chain->data)->size)
+            {
+                left_chain_index = 0;
+                left_chain = left_chain->next;
+            }
+            position = ((pos_vec *)left_chain->data)->values[left_chain_index];
+            left_chain_index += 1;
+        }
+
+        int *key = malloc(sizeof(int));
+        *key = value;
+        int *value_ptr = malloc(sizeof(int));
+        *value_ptr = position;
+
+        put_ht(ht, key, value_ptr);
+    }
+
+    // print_ht(ht);
+
+    int *lresult = malloc(sizeof(int) * size);
+    int *rresult = malloc(sizeof(int) * size);
+    size_t l, r = 0;
+
+    // go through the second variable and check if the values are in the hashtable, if it is add it to results
+    for (size_t i = 0; i < pos2_size; i++)
+    {
+        int value = val2->result.values.values[i];
+        int position;
+        if (pos2->type == POSITION_VECTOR)
+        {
+            position = pos2->result.values.values[i];
+        }
+        else if (pos2->type == RANGE)
+        {
+            position = pos2->result.range[0] + i;
+        }
+        else
+        {
+            assert(pos2->type == VECTOR_CHAIN);
+            if (right_chain_index >= ((pos_vec *)right_chain->data)->size)
+            {
+                right_chain_index = 0;
+                right_chain = right_chain->next;
+            }
+            position = ((pos_vec *)right_chain->data)->values[right_chain_index];
+            right_chain_index += 1;
+        }
+
+        int *tmp_positions[size];
+        int local_result = 0;
+
+        get_ht(ht, &value, (void **)&tmp_positions, size, &local_result);
+        while (local_result)
+        {
+            lresult[l] = *tmp_positions[local_result - 1];
+            rresult[r] = position;
+            l++;
+            r++;
+            local_result--;
+        }
+    }
+
+    *left_result = (Variable){
+        .type = POSITION_VECTOR,
+        .result = {
+            .values = {
+                .values = lresult,
+                .size = l,
+            },
+        },
+        .exists = true,
+        .name = strdup(query->operator_fields.join_operator.handler1)};
+
+    *right_result = (Variable){
+        .type = POSITION_VECTOR,
+        .result = {
+            .values = {
+                .values = rresult,
+                .size = r,
+            },
+        },
+        .exists = true,
+        .name = strdup(query->operator_fields.join_operator.handler2)};
+
+    add_var(left_result);
+    add_var(right_result);
+    deallocate_ht(ht, true, true);
 }
 
 void join(DbOperator *query)

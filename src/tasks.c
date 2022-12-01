@@ -140,6 +140,6 @@ grouped_tasks query_planner(DbOperator **db_ops, int num_ops, Status *status)
 
 void free_grouped_tasks(grouped_tasks grouped_tasks)
 {
-    deallocate_ht(grouped_tasks.independent, true);
+    deallocate_ht(grouped_tasks.independent, true, false);
     free(grouped_tasks.dependent.task);
 }

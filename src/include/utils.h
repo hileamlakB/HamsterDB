@@ -170,4 +170,6 @@ void *closest_search(const void *key, const void *base,
                      size_t nmemb, size_t size,
                      int (*compar)(const void *, const void *));
 
+long find_closet_prime(long int x);
+
 #endif /* __UTILS_H__ */

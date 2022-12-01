@@ -56,6 +56,8 @@ void free_linked_list(linkedList *node)
     while (node != NULL)
     {
         linkedList *next = node->next;
+        pos_vec *pos = (pos_vec *)node->data;
+        free(pos->values);
         free(node->data);
         free(node);
         node = next;

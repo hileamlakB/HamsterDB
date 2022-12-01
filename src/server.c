@@ -515,31 +515,16 @@ String print_tuple(PrintOperator print_operator)
     return (String){.str = result, .len = result_i - result};
 }
 
-long int generic_sum(Variable *variable)
+double generic_sum(Variable *variable)
 {
 
-    long int sum = 0;
-    if (variable->type == VALUE_VECTOR)
-    {
+    double sum = 0;
+    // sum is to be used only for fetched values
+    assert(variable->type == VALUE_VECTOR);
 
-        for (size_t i = 0; i < variable->result.values.size; i++)
-        {
-            sum += variable->result.values.values[i];
-        }
-    }
-    else if (variable->type == VECTOR_CHAIN)
+    for (size_t i = 0; i < variable->result.values.size; i++)
     {
-        size_t index = 0;
-        linkedList *lst = variable->result.pos_vec_chain;
-        for (size_t i = 0; i < variable->vec_chain_size; i++)
-        {
-            if (index >= ((pos_vec *)lst->data)->size)
-            {
-                lst = lst->next;
-                index = 0;
-            }
-            sum += variable->result.values.values[i];
-        }
+        sum += variable->result.values.values[i];
     }
 
     return sum;
@@ -625,7 +610,7 @@ void sum(AvgOperator avg_operator, Status *status)
 void average(char *handler, Variable *variable)
 {
 
-    float avg = (variable->result.values.size) ? (float)generic_sum(variable) / variable->result.values.size : 0;
+    double avg = (variable->result.values.size) ? (double)generic_sum(variable) / variable->result.values.size : 0;
     Variable *fin_result = malloc(sizeof(Variable));
     *fin_result = (Variable){
         .type = FLOAT_VALUE,

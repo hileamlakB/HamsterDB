@@ -72,7 +72,7 @@ typedef struct Variable
     {
         pos_vec values;
         linkedList *pos_vec_chain;
-        float fvalue;
+        double fvalue;
         long ivalue;
         int range[2];
     } result;
@@ -446,7 +446,7 @@ typedef struct PrintOperator
     union
     {
         PrintTuple tuple;
-        float fvalue;
+        double fvalue;
         long int ivalue;
     } data;
 } PrintOperator;

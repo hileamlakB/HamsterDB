@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <stdio.h>
 
 // Improvment ideas
 // 1. sophisticated hash function
@@ -107,7 +108,7 @@ int get_ht(hashtable *ht, hash_element key, hash_element *values, int num_values
     node *curr = ht->array[index];
     while (curr)
     {
-        if (ht->compare_function(curr->key, key))
+        if (ht->compare_function(curr->key, key) == 0)
         {
             found++;
             *num_results = found;
@@ -165,7 +166,7 @@ int erase_ht(hashtable *ht, hash_element key)
 
 // This method frees all memory occupied by the hash table.
 // It returns an error code, 0 for success and -1 otherwise.
-int deallocate_ht(hashtable *ht, bool free_key)
+int deallocate_ht(hashtable *ht, bool free_key, bool free_value)
 {
 
     for (size_t i = 0; i < ht->size; i++)
@@ -179,10 +180,29 @@ int deallocate_ht(hashtable *ht, bool free_key)
             {
                 free(to_free->key);
             }
+            if (free_value)
+            {
+                free(to_free->val);
+            }
             free(to_free);
         }
     }
     free(ht->array);
     free(ht);
     return 0;
+}
+
+// This method prints the contents of the hash table.
+void print_ht(hashtable *ht)
+{
+    for (size_t i = 0; i < ht->size; i++)
+    {
+        node *curr = ht->array[i];
+        while (curr)
+        {
+            printf("key: %d, val: %d, depth: %ld->", *((int *)curr->key), *((int *)curr->val), curr->depth);
+            curr = curr->next;
+        }
+        printf("\n");
+    }
 }

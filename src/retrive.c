@@ -12,7 +12,6 @@
 #include "cs165_api.h"
 #include "unistd.h"
 
-#define initial_size 1024
 // #define PAGE_SIZE ((size_t)sysconf(_SC_PAGESIZE))
 // #define NUM_COMMA_LEN (MAX_INT_LENGTH + 1)
 // #define NUM_TUPLE_LEN (2 * (MAX_INT_LENGTH + 1))

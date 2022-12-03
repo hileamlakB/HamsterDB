@@ -33,10 +33,18 @@ queue_element dequeue(Queue *queue);
 
 typedef void *hash_element;
 
+typedef struct hash_elements
+{
+    hash_element *values;
+    size_t values_size;
+    size_t capacity;
+} hash_elements;
+
 typedef struct node
 {
     hash_element key;
     hash_element val;
+    hash_elements fat_val;
     size_t depth;
     struct node *next;
 } node;
@@ -48,6 +56,7 @@ typedef struct hashtable
     size_t (*hash_function)(hash_element, size_t);
     size_t (*compare_function)(hash_element, hash_element);
     node **array;
+    bool is_fat;
 } hashtable;
 
 typedef struct node_array
@@ -57,9 +66,9 @@ typedef struct node_array
 
 } node_array;
 
-int create_ht(hashtable **ht, size_t size, size_t (*hash_function)(hash_element, size_t), size_t (*compare_function)(hash_element, hash_element));
+int create_ht(hashtable **ht, size_t size, size_t (*hash_function)(hash_element, size_t), size_t (*compare_function)(hash_element, hash_element), bool fat);
 int put_ht(hashtable *ht, hash_element key, hash_element value);
-int get_ht(hashtable *ht, hash_element key, hash_element *values, int num_values, int *num_results);
+hash_elements get_ht(hashtable *ht, hash_element key);
 int erase_ht(hashtable *ht, hash_element key);
 node_array get_keys(hashtable *ht);
 int deallocate_ht(hashtable *ht, bool free_key, bool free_value); // the boolean is to determine if the key should be freed or not

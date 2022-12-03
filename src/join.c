@@ -203,8 +203,8 @@ size_t int_compare(hash_element a, hash_element b)
 
 void hash_join(DbOperator *query)
 {
-    Variable *left_result = malloc(sizeof(Variable));
-    Variable *right_result = malloc(sizeof(Variable));
+    Variable *left_result = calloc(1, sizeof(Variable));
+    Variable *right_result = calloc(1, sizeof(Variable));
 
     Variable *val1 = query->operator_fields.join_operator.val1;
     Variable *val2 = query->operator_fields.join_operator.val2;
@@ -217,11 +217,10 @@ void hash_join(DbOperator *query)
     size_t pos2_size = get_size(pos2);
     int size = max(pos1_size, pos2_size);
     long int hash_table_size = find_closet_prime(size);
-    create_ht(&ht, hash_table_size, int_hash, int_compare);
+    create_ht(&ht, hash_table_size, int_hash, int_compare, true);
 
     // iterate throught the values and positions of the first variable and insert
     // them into the hastable
-
     linkedList *left_chain, *right_chain;
     size_t left_chain_index = 0, right_chain_index = 0;
 
@@ -266,14 +265,15 @@ void hash_join(DbOperator *query)
         int *value_ptr = malloc(sizeof(int));
         *value_ptr = position;
 
+        // printf("-- inserting %d %d\n", *key, *value_ptr);
         put_ht(ht, key, value_ptr);
     }
 
-    print_ht(ht);
+    // print_ht(ht);
 
     int *lresult = malloc(sizeof(int) * size * size);
     int *rresult = malloc(sizeof(int) * size * size);
-    size_t l, r = 0;
+    size_t l = 0, r = 0;
 
     // go through the second variable and check if the values are in the hashtable, if it is add it to results
     for (size_t i = 0; i < pos2_size; i++)
@@ -300,18 +300,15 @@ void hash_join(DbOperator *query)
             right_chain_index += 1;
         }
 
-        int *tmp_positions[size];
-        int local_result = 0;
-
-        get_ht(ht, &value, (void **)&tmp_positions, size, &local_result);
-        while (local_result)
+        hash_elements results = get_ht(ht, &value);
+        for (size_t j = 0; j < results.values_size; j++)
         {
-            lresult[l] = *tmp_positions[local_result - 1];
+            lresult[l] = *((int *)results.values[j]);
             rresult[r] = position;
             l++;
             r++;
-            local_result--;
         }
+        free(results.values);
     }
 
     *left_result = (Variable){

@@ -13,6 +13,7 @@
 
 // 12 including negative sign
 #define MAX_INT_LENGTH 12
+#define initial_size 1024
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 

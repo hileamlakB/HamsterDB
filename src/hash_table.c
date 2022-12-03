@@ -22,9 +22,9 @@ int hash(int key, int size)
 // The size parameter is the expected number of elements to be inserted.
 // This method returns an error code, 0 for success and -1 otherwise (e.g., if the parameter passed to the method is not null, if malloc fails, etc).
 int create_ht(hashtable **ht, size_t size, size_t (*hash_function)(hash_element, size_t),
-              size_t (*compare_function)(hash_element, hash_element))
+              size_t (*compare_function)(hash_element, hash_element), bool fat)
 {
-
+    (void)fat;
     *ht = malloc(sizeof(hashtable));
     if (*ht == NULL)
     {
@@ -93,34 +93,39 @@ int put_ht(hashtable *ht, hash_element key, hash_element value)
 // num_values, the caller can invoke this function again (with a larger buffer)
 // to get values that it missed during the first call.
 // This method returns an error code, 0 for success and -1 otherwise (e.g., if the hashtable is not allocated).
-int get_ht(hashtable *ht, hash_element key, hash_element *values, int num_values, int *num_results)
+hash_elements get_ht(hashtable *ht, hash_element key)
 {
     int index = ht->hash_function(key, ht->size);
+    hash_elements res = {
+        .values_size = 0,
+        .values = NULL,
+        .capacity = 0,
+    };
 
     // if there is no element in the location
     if (!ht->array[index])
     {
-        *num_results = 0;
-        return 0;
+        return res;
     }
 
-    int found = 0;
+    size_t found = 0;
     node *curr = ht->array[index];
     while (curr)
     {
         if (ht->compare_function(curr->key, key) == 0)
         {
             found++;
-            *num_results = found;
-            if (found <= num_values)
+            if (res.capacity <= found)
             {
-                values[found - 1] = curr->val;
+                res.capacity = found * 2;
+                res.values = realloc(res.values, res.capacity * sizeof(hash_element));
             }
+            res.values[res.values_size++] = curr->val;
         }
         curr = curr->next;
     }
 
-    return 0;
+    return res;
 }
 
 // This method erases all key-value pairs with a given key from the hash table.

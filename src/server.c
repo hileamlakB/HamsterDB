@@ -31,7 +31,7 @@
 #include "cs165_api.h"
 #include "message.h"
 #include "Utils/utils.h"
-#include "client_context.h"
+
 #include <assert.h>
 #include "tasks.h"
 
@@ -41,6 +41,7 @@
 #include <Loader/load.h>
 #include <Serializer/serialize.h>
 #include <Parser/parse.h>
+#include <Create/create.h>
 
 #define DEFAULT_QUERY_BUFFER_SIZE 1024
 
@@ -50,6 +51,24 @@ String empty_string = {
 String failed_string = {
     .str = "Failed",
     .len = 6};
+Db *current_db;
+linkedList *var_pool;
+Column empty_column = {
+    .fd = -1,
+    .end = 0,
+    .data = NULL,
+};
+Table empty_table;
+batch_query batch = {
+    .mode = false,
+    .num_queries = 0
+
+};
+
+ParallelLoader bload = {
+    .mode = false,
+    .done = false,
+};
 
 String execute_DbOperator(DbOperator *query)
 {
@@ -844,6 +863,11 @@ void handle_client(int client_socket)
                 {
                     free_db_operator(query);
                 }
+            }
+
+            if (!bload.mode)
+            {
+                free(recv_buffer);
             }
         }
     } while (!done);

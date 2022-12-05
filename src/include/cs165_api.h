@@ -649,9 +649,8 @@ void MinMax(MinMaxOperator, Status *);
 void join(DbOperator *query);
 
 String batch_execute(DbOperator **queries, size_t n, Status *status);
-// pos_vec generic_select(int *low, int *high, char *file, int **result, size_t result_capacity, Status *status, size_t read_size);
-// pos_vec btree_select(int *low, int *high, char *file, int **result, size_t result_capacity, Status *status, size_t read_size);
-// pos_vec sorted_select(int *low, int *high, char *file, int **result, size_t result_capacity, Status *status, size_t read_size);
+Table *lookup_table(Db *, char *);
+Column *lookup_column(Table *, char *);
 
 typedef struct select_args
 {

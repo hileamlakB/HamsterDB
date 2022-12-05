@@ -236,9 +236,23 @@ void external_sort(char *maped_file, int file_size)
     }
 }
 
-void simple_sort(char *maped_file, int file_size)
+int compare_ints(const void *a, const void *b)
 {
-    qsort(maped_file, file_size, sizeof(char[MAX_INT_LENGTH + MAX_INT_LENGTH + 2]), compare_external_ints);
+    if (*(int *)a < *(int *)b)
+    {
+        return -1;
+    }
+    else if (*(int *)a > *(int *)b)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+void simple_sort(int *maped_file, int file_size)
+{
+    qsort(maped_file, file_size, sizeof(int), compare_ints);
 }
 // this function prepraes a nomral integer file to be sorted using the external
 // sort
@@ -402,7 +416,7 @@ int sort_col(Table *tbl, Column *col)
     fstat(fd_to_sort, &st);
     size_t file_size = st.st_size;
 
-    char *to_sort = mmap(NULL, file_size + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd_to_sort, 0);
+    int *to_sort = mmap(NULL, file_size + 1, PROT_READ | PROT_WRITE, MAP_SHARED, fd_to_sort, 0);
     // to_sort[file_size + 1] = '\0';
     if (to_sort == MAP_FAILED)
     {

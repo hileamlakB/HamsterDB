@@ -30,10 +30,17 @@
 #include "parse.h"
 #include "cs165_api.h"
 #include "message.h"
-#include "utils.h"
+#include "Utils/utils.h"
 #include "client_context.h"
 #include <assert.h>
 #include "tasks.h"
+
+#include <stdatomic.h>
+#include <pthread.h>
+
+#include <Loader/load.h>
+#include <Serializer/serialize.h>
+#include <Parser/parse.h>
 
 #define DEFAULT_QUERY_BUFFER_SIZE 1024
 
@@ -43,55 +50,6 @@ String empty_string = {
 String failed_string = {
     .str = "Failed",
     .len = 6};
-
-void batch_loader()
-{
-    char *to_load = bload.end->data;
-
-    Status status;
-
-    // char *fst_line = NULL;
-    // if (bload.left_over)
-    // {
-
-    //     fst_line = catnstr(2, bload.left_over, strsep(&to_load, "\n"));
-    //     for (size_t i = 0; i < bload.num_columns; i++)
-    //     {
-    //         char *val = strsep(&fst_line, ",");
-    //         insert_col(bload.table, bload.columns[i], val, &status);
-    //     }
-    //     free(bload.left_over);
-    //     bload.left_over = NULL;
-    //     bload.table->rows++;
-    // }
-
-    size_t cur_col = 0;
-    while (to_load && *to_load != '\0')
-    {
-
-        char *next_val;
-        if (cur_col == bload.num_columns - 1)
-        {
-            next_val = strsep(&to_load, "\n");
-        }
-        else
-        {
-            next_val = strsep(&to_load, ",");
-        }
-
-        insert_col(bload.table, bload.columns[cur_col], next_val, &status);
-        cur_col++;
-
-        if (cur_col == bload.num_columns)
-        {
-            cur_col = 0;
-            bload.table->rows++;
-        }
-    }
-
-    free(bload.end);
-    bload.data = bload.end = NULL;
-}
 
 String execute_DbOperator(DbOperator *query)
 {
@@ -123,16 +81,11 @@ String execute_DbOperator(DbOperator *query)
         }
         else if (query->operator_fields.create_operator.create_type == _TABLE)
         {
-            Status create_status;
+
             create_table(query->operator_fields.create_operator.db,
                          query->operator_fields.create_operator.name,
-                         query->operator_fields.create_operator.col_count,
-                         &create_status);
+                         query->operator_fields.create_operator.col_count);
 
-            if (create_status.code != OK)
-            {
-                cs165_log(stdout, "--Adding table failed.\n");
-            }
             return empty_string;
         }
         else if (query->operator_fields.create_operator.create_type == _COLUMN)
@@ -140,7 +93,6 @@ String execute_DbOperator(DbOperator *query)
             Status create_status;
             create_column(query->operator_fields.create_operator.table,
                           query->operator_fields.create_operator.name,
-                          false,
                           &create_status);
 
             if (create_status.code != OK)
@@ -151,85 +103,25 @@ String execute_DbOperator(DbOperator *query)
         }
         else if (query->operator_fields.create_operator.create_type == _INDEX)
         {
-            Status create_status;
+
             create_index(query->operator_fields.create_operator.table,
                          query->operator_fields.create_operator.column,
                          query->operator_fields.create_operator.index_type,
-                         query->operator_fields.create_operator.cluster_type,
-                         &create_status);
+                         query->operator_fields.create_operator.cluster_type);
 
-            if (create_status.code != OK)
-            {
-                cs165_log(stdout, "-- Adding index failed.\n");
-            }
             return empty_string;
         }
     }
 
-    else if (query->type == LOAD)
-    {
-
-        Status write_load_status;
-
-        Table *table = query->operator_fields.load_operator.address.table;
-        if (query->operator_fields.load_operator.complete)
-        {
-
-            size_t loaded = table->columns[0].pending_load;
-            bool can_load = true;
-            // make sure all the columns have the same amount loaded
-            for (size_t i = 0; i < table->col_count; i++)
-            {
-                if (loaded != table->columns[i].pending_load)
-                {
-                    can_load = false;
-                }
-                table->columns[i].pending_load = 0;
-            }
-
-            if (can_load == false)
-            {
-                update_col_end(table);
-                cs165_log(stdout, "-- Unbalanced column, adding column failed.");
-                return failed_string;
-            }
-            table->rows += loaded;
-            update_col_end(table);
-
-            // populte indexes
-            for (size_t i = 0; i < table->col_count; i++)
-            {
-                populate_index(table, &table->columns[i]);
-            }
-
-            return empty_string;
-        }
-
-        // consider adding status
-        // log_info("Loading column %s %d\n", query->operator_fields.load_operator.address.col->name, query->operator_fields.load_operator.size);
-        write_load(
-            table,
-            query->operator_fields.load_operator.address.col,
-            query->operator_fields.load_operator.data,
-            query->operator_fields.load_operator.size,
-            &write_load_status);
-        query->operator_fields.load_operator.address.col->pending_load += (query->operator_fields.load_operator.size / (MAX_INT_LENGTH + 1));
-
-        if (write_load_status.code == OK)
-        {
-
-            return empty_string;
-        }
-
-        // interrupt the loading so that the client will stop
-        return failed_string;
-    }
     else if (query->type == INSERT)
     {
-        Status insert_status;
+        size_t len = strlen(query->operator_fields.insert_operator.value);
+        String str = {
+            .str = query->operator_fields.insert_operator.value,
+            .len = len};
+
         insert(query->operator_fields.insert_operator.table,
-               query->operator_fields.insert_operator.values,
-               &insert_status);
+               str);
     }
     else if (query->type == SELECT)
     {
@@ -284,8 +176,8 @@ String execute_DbOperator(DbOperator *query)
     }
     else if (query->type == SUM)
     {
-        Status sum_status;
-        sum(query->operator_fields.avg_operator, &sum_status);
+
+        sum(query->operator_fields.avg_operator);
 
         return empty_string;
     }
@@ -319,10 +211,18 @@ String execute_DbOperator(DbOperator *query)
         batch.mode = false;
         return result;
     }
+    else if (query->type == BATCH_LOAD_START)
+    {
+        prepare_load(query);
+    }
+    else if (query->type == BATCH_LOAD_END)
+    {
+        finish_load(query);
+    }
     else if (query->type == BATCH_LOAD)
     {
         // free the linked list
-        batch_loader();
+        batch_load(query);
         return empty_string;
     }
     else if (query && query->type == SHUTDOWN)
@@ -347,14 +247,7 @@ void *execute_query(void *q_group)
     Table *table = db_op->operator_fields.select_operator.table;
     Column *column = db_op->operator_fields.select_operator.column;
 
-    Status status;
-    create_colf(table, column, &status);
-    if (status.code != OK)
-    {
-        log_err("--Error opening file for column write");
-        return NULL;
-    }
-
+    map_col(table, column, 0);
     struct stat sb;
     fstat(column->fd, &sb);
 
@@ -374,7 +267,7 @@ void *execute_query(void *q_group)
         args[i] = (select_args){
             .low = dbs->operator_fields.select_operator.low,
             .high = dbs->operator_fields.select_operator.high,
-            .read_size = dbs->operator_fields.select_operator.table->rows * (MAX_INT_LENGTH + 1),
+            .read_size = dbs->operator_fields.select_operator.table->rows,
             .handle = dbs->operator_fields.select_operator.handler,
             .tbl = table,
             .col = column};
@@ -443,13 +336,13 @@ String print_tuple(PrintOperator print_operator)
     {
         char *str = malloc(sizeof(char) * MAX_INT_LENGTH);
         size_t len = sprintf(str, "%.2f", print_operator.data.fvalue);
-        return (String){.str = str, len = len};
+        return (String){.str = str, .len = len};
     }
     else if (print_operator.type == SINGLE_INT)
     {
         char *str = malloc(sizeof(char) * MAX_INT_LENGTH);
         size_t len = sprintf(str, "%ld", print_operator.data.ivalue);
-        return (String){.str = str, len = len};
+        return (String){.str = str, .len = len};
     }
 
     int width = print_operator.data.tuple.width;
@@ -476,7 +369,7 @@ String print_tuple(PrintOperator print_operator)
         for (int col = 0; col < width; col++)
         {
             Variable *current_var = results[col];
-            int printed;
+            int printed = 0;
             if (current_var->type == INT_VALUE)
             {
                 printed = sprintf(result_i, "%ld,", current_var->result.ivalue);
@@ -530,7 +423,7 @@ double generic_sum(Variable *variable)
     return sum;
 }
 
-void sum(AvgOperator avg_operator, Status *status)
+void sum(AvgOperator avg_operator)
 {
     char *handler = avg_operator.handler;
 
@@ -554,47 +447,31 @@ void sum(AvgOperator avg_operator, Status *status)
         Column *column = avg_operator.address.col;
 
         // check if sum is already calculated
-        if (column->sum[0] == 1)
+        if (column->metadata->sum[0] == 1)
         {
             // handle new inserts and and new loads
             Variable *fin_result = malloc(sizeof(Variable));
             *fin_result = (Variable){
                 .type = INT_VALUE,
-                .result.ivalue = column->sum[1],
+                .result.ivalue = column->metadata->sum[1],
                 .name = strdup(handler),
                 .exists = true};
             add_var(fin_result);
             return;
         }
 
-        const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
+        map_col(table, column, 0);
 
-        create_colf(table, column, status);
-
-        if (status->code != OK)
+        double sum = 0;
+        size_t index = 0;
+        while (index < table->rows)
         {
-            log_err("Error opening file for column write");
-            return;
+            sum += column->data[index];
+            index++;
         }
 
-        struct stat sb;
-        fstat(column->fd, &sb);
-
-        // create a map for the column file
-        char *buffer = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, column->fd, 0);
-        int index = column->meta_data_size * PAGE_SIZE;
-
-        int sum = 0;
-        while (buffer[index] != '\0')
-        {
-            int num = zerounpadd(buffer + index, ',');
-            sum += num;
-            index += MAX_INT_LENGTH + 1;
-        }
-
-        munmap(buffer, sb.st_size);
-        column->sum[0] = 1;
-        column->sum[1] = sum;
+        column->metadata->sum[0] = 1;
+        column->metadata->sum[1] = sum;
 
         Variable *fin_result = malloc(sizeof(Variable));
         *fin_result = (Variable){
@@ -877,7 +754,7 @@ void handle_client(int client_socket)
         if (!done)
         {
 
-            char recv_buffer[recv_message.length + 1];
+            char *recv_buffer = malloc(sizeof(char) * (recv_message.length + 1));
             length = recv(client_socket, recv_buffer, recv_message.length, 0);
 
             recv_message.payload = recv_buffer;
@@ -888,7 +765,10 @@ void handle_client(int client_socket)
             DbOperator *query = NULL;
             if (bload.mode)
             {
-                query = parse_load_parallel(recv_message.payload, &s_message);
+                String load_str = {
+                    .str = recv_message.payload,
+                    .len = recv_message.length};
+                query = parse_load_parallel(load_str, &s_message);
             }
             else
             {
@@ -1021,6 +901,28 @@ int setup_server()
     return server_socket;
 }
 
+void init_bload()
+{
+    // initalize the bload mutex and condition variable
+    pthread_mutex_init(&bload.batch_load_mutex, NULL);
+    // pthread_mutex_init(&bload.ticket_lock, NULL);
+}
+
+void init_db()
+{
+
+    init_bload();
+    // init_storage();
+    // init_catalog();
+    // init_buffer_pool();
+    // init_lock_table();
+    // init_transaction_table();
+    // init_query_cache();
+    // init_bload();
+    // init_batch();
+    // init_stats();
+}
+
 // Currently this main will setup the socket and accept a single client.
 // After handling the client, it will exit.
 // You WILL need to extend this to handle MULTIPLE concurrent clients
@@ -1037,6 +939,9 @@ int main(void)
     {
         exit(1);
     }
+
+    // Setup the database
+    init_db();
 
     while (true)
     {
@@ -1057,13 +962,11 @@ int main(void)
     return 0;
 }
 
-Status shutdown_server(DbOperator *dbo)
+void shutdown_server(DbOperator *dbo)
 {
 
-    // flush stuatus
-    Status flush_status;
     // cache everything to file
-    flush_db(current_db, &flush_status);
+    flush_db(current_db);
 
     // free var pool
     free_var_pool();
@@ -1077,6 +980,4 @@ Status shutdown_server(DbOperator *dbo)
     // for good practice
 
     // make sure to only close one socket at a time one you implement multiple clients
-
-    return flush_status;
 }

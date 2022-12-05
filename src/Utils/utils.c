@@ -9,9 +9,10 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <unistd.h>
-#include "utils.h"
+#include "Utils/utils.h"
 #include <sys/mman.h>
 #include <stdlib.h>
+#include <message.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -102,6 +103,23 @@ char *trim_quotes(char *str)
     // Write new null terminator
     str[current] = '\0';
     return str;
+}
+
+/**
+ * Takes a pointer to a string.
+ * This method returns the original string truncated to where its first comma lies.
+ * In addition, the original string now points to the first character after that comma.
+ * This method destroys its input.
+ **/
+
+char *next_token(char **tokenizer, message_status *status)
+{
+    char *token = strsep(tokenizer, ",");
+    if (token == NULL)
+    {
+        *status = INCORRECT_FORMAT;
+    }
+    return token;
 }
 
 void remove_files(files *head)
@@ -310,6 +328,38 @@ int zerounpadd(char *data, char sep)
         i++;
     }
     return num * sign;
+}
+
+int _atoi(const char *str)
+{
+
+    int result = 0;
+    const char *p = str;
+
+    int sign = 0;
+    for (; *p != '\0'; p++)
+    {
+
+        if (*p == ' ')
+        {
+            continue;
+        }
+
+        if (*p == '+' || *p == '-')
+        {
+            sign = (*p == '-');
+            continue;
+        }
+
+        if (*p < '0' || *p > '9')
+        {
+            break;
+        }
+
+        result = result * 10 + (*p - '0');
+    }
+
+    return sign ? -result : result;
 }
 
 // create_tmp_file - creates a temporary file whose name has the prefix file_name

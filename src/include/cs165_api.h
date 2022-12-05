@@ -29,7 +29,8 @@ SOFTWARE.
 #include <stdbool.h>
 #include <stdio.h>
 #include <pthread.h>
-#include "utils.h"
+#include <stdatomic.h>
+#include <Utils/utils.h>
 #include "message.h"
 // Limits the size of a name in our database to 64 characters
 #define MAX_SIZE_NAME 64
@@ -128,57 +129,30 @@ typedef struct ColumnIndex
     char *read_map;
 
 } ColumnIndex;
-typedef struct Column
+
+typedef struct ColumnMetaData
 {
-    char name[MAX_SIZE_NAME];
-
-    char file_path[MAX_PATH_NAME];
-
-    // mmaped file
-    int fd;
-    // fd should be initialized to 0 at first
-    // When I am keeping track of the fd, I am taking into account
-    // the number of fd's I could keep as well as the cost of
-    // opening and closing files which is the alternative
-
-    // These values should be initalized during column
-    // creation
-    char *file;       // mapped file, this map is used for writting and usually it maps the last map_size sized section of the file
-    size_t file_size; // contains the file_size
-
-    // end is the offset of the last meaningfull character
-    // if you want to write more data you should write it starting
-    // at end
-    size_t end;
-
-    size_t map_size; // size of the maped section for writting
-
-    size_t pending_load; // this is to keep track of number of rows written using the load function
-    // this is to be persisited once all the columns have the same pending_load
-    // and loading is complete
-
-    // possible writing cache ontop of the mapped file for more control
-    char *pending_i;
-    size_t pending_i_t;
-    char *pending_delete;
-    size_t pending_delete_t;
-
-    //  read_map
-    char *read_map;
-    size_t read_map_size;
-
-    // You will implement column indexes later.
-    bool indexed;
-    ColumnIndex index;
-
     // metadata
-    // the first index of these metadetas indicate
-    // if the the data has been calculated before
-    size_t meta_data_size; // number of pages used for metadata
-    size_t count;
     size_t min[2];
     size_t max[2];
     size_t sum[2];
+} ColumnMetaData;
+
+typedef struct Column
+{
+    char name[MAX_SIZE_NAME];
+    char file_path[MAX_PATH_NAME];
+    bool indexed;
+    ColumnIndex index;
+
+    // mmaped file
+    int fd;
+    char *file;
+    size_t file_size;
+
+    ColumnMetaData *metadata;
+    int *data;
+    size_t end;
 
 } Column;
 
@@ -211,7 +185,7 @@ typedef struct Table
 
     // this is an auto incrementing id
     size_t last_id;
-    size_t rows; // number of tuples inserted
+    atomic_size_t rows; // number of tuples inserted
 } Table;
 
 /**
@@ -378,7 +352,7 @@ typedef struct CreateOperator
 typedef struct InsertOperator
 {
     Table *table;
-    char **values;
+    char *value;
 } InsertOperator;
 
 typedef struct EntityAddress
@@ -504,6 +478,13 @@ typedef struct JoinOperator
     join_type type;
 
 } JoinOperator;
+
+typedef struct ParallelLoad
+{
+    size_t load_size;
+    String data;
+} ParallelLoad;
+
 /*
  * union type holding the fields of any operator
  */
@@ -519,6 +500,7 @@ typedef union OperatorFields
     MathOperator math_operator;
     MinMaxOperator min_max_operator;
     JoinOperator join_operator;
+    ParallelLoad parellel_load;
 } OperatorFields;
 /*
  * DbOperator holds the following fields:
@@ -542,17 +524,32 @@ typedef struct batch_query
     size_t num_queries;
 } batch_query;
 
-typedef struct batch_load
+typedef struct ParallelLoader
 {
-    bool mode;
-    size_t num_columns;
-    Column **columns;
-    Table *table;
+    atomic_bool mode; // prevent more than one batch load at a time
+
+    // atomic_size_t current_loc;
+
+    // atomic_size_t given_tickets;
+    // atomic_size_t current_ticket;
+    // pthread_mutex_t ticket_lock;
+    // pthread_cond_t ticket_cond;
+
+    // pthread_t *writing_threads; // threads that are currenlty writing
+    // size_t num_writig_threads;
+    // size_t thread_capacity;
+    // pthread_mutex_t thread_lock; // mutex for the writing threads
+
+    Table *table; // table to load into
+
+    pthread_mutex_t batch_load_mutex; // mutex load to modify the linked list
+    pthread_cond_t batch_load_cond;   // condition variable for the linked list
     linkedList *data;
     linkedList *end;
-    char *left_over;
+    atomic_bool done;
+    pthread_t writer_thread;
 
-} batch_load;
+} ParallelLoader;
 
 extern Db *current_db;
 extern Column empty_column;
@@ -560,7 +557,7 @@ extern Table empty_table;
 extern linkedList *var_pool;
 extern pthread_mutex_t var_pool_lock;
 extern batch_query batch;
-extern batch_load bload;
+extern ParallelLoader bload;
 
 /*
  * Use this command to see if databases that were persisted start up properly. If files
@@ -569,19 +566,18 @@ extern batch_load bload;
 Status db_startup();
 
 Status create_db(const char *db_name);
-DbOperator *parse_load_parallel(char *query_command, message *send_message);
 
 // loads a database from disk
-Status load_db(const char *db_name);
+int load_db(const char *db_name);
 void free_db();
 
-Table *create_table(Db *db, const char *name, size_t num_columns, Status *status);
+Table *create_table(Db *db, const char *name, size_t num_columns);
 
-Column *create_column(Table *table, char *name, bool sorted, Status *ret_status);
-ColumnIndex create_index(Table *table, Column *col, IndexType, ClusterType, Status *ret_status);
+Column *create_column(Table *table, char *name, Status *ret_status);
+ColumnIndex create_index(Table *table, Column *col, IndexType, ClusterType);
 void populate_index(Table *tbl, Column *col);
 
-Status shutdown_server(DbOperator *);
+void shutdown_server(DbOperator *);
 
 void db_operator_free(DbOperator *query);
 
@@ -600,18 +596,18 @@ serialize_data serialize_column(Column *);
 Column deserialize_column(char *, Status *);
 
 serialize_data serialize_table(Table *);
-Table deserialize_table(char *, Status *);
+Table deserialize_table(char *);
 
 serialize_data serialize_db(Db *);
-Db deserialize_db(char *, Status *);
+Db deserialize_db(char *);
 
 // read_write.c
-void create_colf(Table *, Column *, Status *);
-void write_load(Table *, Column *, char *, size_t, Status *);
-void flush_col(Table *, Column *, Status *);
 
-void flush_table(Table *, Status *);
-void flush_db(Db *, Status *);
+void write_load(Table *, Column *, char *, size_t, Status *);
+void flush_col(Table *, Column *);
+
+void flush_table(Table *);
+void flush_db(Db *);
 
 void update_col_end(Table *);
 
@@ -642,11 +638,9 @@ void free_var_pool();
 
 // server.c
 
-void insert(Table *, char **, Status *);
-bool insert_col(Table *table, Column *col, char *value, Status *status);
 String print_tuple(PrintOperator);
 void average(char *, Variable *);
-void sum(AvgOperator, Status *);
+void sum(AvgOperator);
 
 void add(char *, Variable *, Variable *);
 void sub(char *, Variable *, Variable *);
@@ -665,7 +659,7 @@ typedef struct select_args
     int *high;
     Column *col; // searched column
     Table *tbl;  // searched table
-    char *file;  // a sectino of the file mapped for the column to be searched
+    int *file;   // a sectino of the file mapped for the column to be searched
     size_t read_size;
     char *handle;       // handle for a certain search query
     size_t offset;      // which section of the file is passes, to be used in multithreaded sorting

@@ -10,8 +10,10 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <message.h>
 
 // 12 including negative sign
+#define LOAD_BATCH_SIZE 4096
 #define MAX_INT_LENGTH 12
 #define initial_size 1024
 #define min(a, b) (((a) < (b)) ? (a) : (b))
@@ -157,6 +159,8 @@ char *zeropadd(char *, char *);
 // until reaching a separator character
 int zerounpadd(char *, char);
 
+int _atoi(const char *);
+
 typedef struct tmp_file
 {
     char *file_name;
@@ -164,6 +168,8 @@ typedef struct tmp_file
     size_t size;
     char *map;
 } tmp_file;
+
+char *next_token(char **tokenizer, message_status *status);
 
 tmp_file create_tmp_file(char *file_name, size_t size, bool mapped, bool unlinked, bool shared);
 int compare_sints(const void *a, const void *b);

@@ -1,4 +1,4 @@
-#include "cs165_api.h"
+
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/types.h>
@@ -10,16 +10,21 @@
 #include <dirent.h>
 #include <errno.h>
 #include <string.h>
-#include "utils.h"
+#include "Utils/utils.h"
 #include "client_context.h"
 #include <assert.h>
 #include <math.h>
 #include "sort.h"
+#include <Serializer/serialize.h>
 
 // In this class, there will always be only one active database at a time
 Db *current_db;
 linkedList *var_pool;
-Column empty_column;
+Column empty_column = {
+	.fd = -1,
+	.end = 0,
+	.data = NULL,
+};
 Table empty_table;
 batch_query batch = {
 	.mode = false,
@@ -27,21 +32,19 @@ batch_query batch = {
 
 };
 
-batch_load bload = {
+ParallelLoader bload = {
 	.mode = false,
-	.left_over = NULL,
-
+	.done = false,
 };
 
-Column *create_column(Table *table, char *name, bool sorted, Status *ret_status)
+Column *create_column(Table *table, char *name, Status *ret_status)
 {
-	// this is going to be used with indexing
-	(void)sorted;
 
-	// default status to error and improve it to
-	// success if everything goes well
-	ret_status->code = ERROR;
-
+	if (!table)
+	{
+		ret_status->error_message = "Table doesn't exist";
+		return NULL;
+	}
 	if (lookup_column(table, name))
 	{
 		ret_status->error_message = "Column already exists";
@@ -51,8 +54,7 @@ Column *create_column(Table *table, char *name, bool sorted, Status *ret_status)
 	Column column = empty_column;
 
 	strcpy(column.name, name);
-	char *file_path = catnstr(6, "dbdir/", current_db->name, ".", table->name, ".", name); // hanle possible failure
-
+	char *file_path = catnstr(6, "dbdir/", current_db->name, ".", table->name, ".", name);
 	strcpy(column.file_path, file_path);
 
 	if (table->col_count <= table->table_length)
@@ -73,14 +75,14 @@ Column *create_column(Table *table, char *name, bool sorted, Status *ret_status)
 	return &table->columns[table->table_length - 1];
 }
 
-ColumnIndex create_sorted_index(Table *tbl, Column *col, ClusterType cluster_type, Status *ret_status)
+ColumnIndex create_sorted_index(Table *tbl, Column *col, ClusterType cluster_type)
 {
 	if (col->indexed)
 	{
 		return col->index;
 	}
 
-	create_colf(tbl, col, ret_status);
+	map_col(tbl, col, 0);
 
 	ColumnIndex idx = (ColumnIndex){
 		.type = SORTED,
@@ -95,9 +97,9 @@ ColumnIndex create_sorted_index(Table *tbl, Column *col, ClusterType cluster_typ
 }
 
 // unimplemented
-ColumnIndex create_btree_index(Table *tbl, Column *col, ClusterType cluster_type, Status *ret_status)
+ColumnIndex create_btree_index(Table *tbl, Column *col, ClusterType cluster_type)
 {
-	create_sorted_index(tbl, col, cluster_type, ret_status);
+	create_sorted_index(tbl, col, cluster_type);
 	col->index.type = BTREE;
 	return col->index;
 }
@@ -160,7 +162,7 @@ void create_btree(Table *tbl, Column *col)
 	for (size_t i = 0; i < tbl->rows / PAGE_SIZE; i += 1)
 	{
 		size_t last_page_element = i * PAGE_SIZE + ((PAGE_SIZE / (MAX_INT_LENGTH + 1)) - 1) * (MAX_INT_LENGTH + 1);
-		int last_element = atoi(sorted + last_page_element);
+		int last_element = _atoi(sorted + last_page_element);
 		btree[lowes_level_index + i] = last_element;
 	}
 
@@ -232,7 +234,7 @@ void create_btree2(Table *tbl, Column *col)
 		// get the last element of the page
 		size_t num_elements = ((i + 1) * PAGE_SIZE) / (MAX_INT_LENGTH + 1);
 		size_t last_page_element = (num_elements - 1) * (MAX_INT_LENGTH + 1);
-		int last_element = atoi(sorted + last_page_element);
+		int last_element = _atoi(sorted + last_page_element);
 		btree[btree_index] = last_element;
 	}
 	nodes_per_level[levels] += num_pages * sizeof(int) / PAGE_SIZE;
@@ -244,7 +246,7 @@ void create_btree2(Table *tbl, Column *col)
 	if (num_pages * sizeof(int) > PAGE_SIZE && num_pages % PAGE_SIZE != 0)
 	{
 		size_t last_page_element = tbl->rows * (MAX_INT_LENGTH + 1) - (MAX_INT_LENGTH + 1);
-		int last_element = atoi(sorted + last_page_element);
+		int last_element = _atoi(sorted + last_page_element);
 		btree[num_pages] = last_element;
 		btree[num_pages + 1] = -1; // this is to indicate the end of an incomplete node
 
@@ -319,7 +321,7 @@ void populate_index(Table *tbl, Column *col)
 }
 
 ColumnIndex create_index(
-	Table *tbl, Column *col, IndexType index_type, ClusterType cluster_type, Status *ret_status)
+	Table *tbl, Column *col, IndexType index_type, ClusterType cluster_type)
 {
 	ColumnIndex idx = {
 		.type = NO_INDEX,
@@ -328,18 +330,18 @@ ColumnIndex create_index(
 
 	if (index_type == SORTED)
 	{
-		idx = create_sorted_index(tbl, col, cluster_type, ret_status);
+		idx = create_sorted_index(tbl, col, cluster_type);
 	}
 	else if (index_type == BTREE)
 	{
-		idx = create_btree_index(tbl, col, cluster_type, ret_status);
+		idx = create_btree_index(tbl, col, cluster_type);
 	}
 
 	col->indexed = true;
 	col->index = idx;
-	serialize_data meta_data = serialize_column(col);
-	write(col->fd, meta_data.data, meta_data.size);
-	free(meta_data.data);
+	// serialize_data meta_data = serialize_column(col);
+	// write(col->fd, meta_data.data, meta_data.size);
+	// free(meta_data.data);
 
 	return idx;
 }
@@ -348,24 +350,21 @@ ColumnIndex create_index(
  * Here you will create a table object. The Status object can be used to return
  * to the caller that there was an error in table creation
  */
-Table *create_table(Db *db, const char *name, size_t num_columns, Status *ret_status)
+Table *create_table(Db *db, const char *name, size_t num_columns)
 {
-
-	// keep track of important activies incase of failure
-	retrack_props props = {
-		.to_free = NULL,
-		.outside = NULL,
-		.to_remove = NULL,
-		.to_close = NULL,
-	};
 
 	// default status to error and improve it to
 	// success if everything goes well
-	ret_status->code = ERROR;
+
+	if (db == NULL)
+	{
+		log_info("-- DB not found");
+		return NULL;
+	}
 
 	if (lookup_table(db, (char *)name))
 	{
-		ret_status->error_message = "Table already exists";
+		log_info("-- Table already exists");
 		return NULL;
 	}
 
@@ -373,11 +372,6 @@ Table *create_table(Db *db, const char *name, size_t num_columns, Status *ret_st
 
 	memcpy(table.name, name, MAX_SIZE_NAME);
 	char *file_path = catnstr(4, "dbdir/", db->name, ".", name);
-	if (!file_path || prepend(&props.to_free, file_path) != 0)
-	{
-		*ret_status = retrack(props, "System Failure: error allocating memory for internal use");
-		return NULL;
-	}
 
 	strcpy(table.file_path, file_path);
 	table.col_count = num_columns;
@@ -386,11 +380,6 @@ Table *create_table(Db *db, const char *name, size_t num_columns, Status *ret_st
 	// you can support flexible number of columns later
 	// the same way you did for tables
 	table.columns = calloc(num_columns, sizeof(Column));
-	if (!table.columns)
-	{
-		*ret_status = retrack(props, "System Failure: error allocating memory for columns");
-		return NULL;
-	}
 
 	if (db->tables_capacity == db->tables_size)
 	{
@@ -398,13 +387,6 @@ Table *create_table(Db *db, const char *name, size_t num_columns, Status *ret_st
 		db->tables_capacity += 1;
 		db->tables_capacity *= 2;
 		Table *new_tables = realloc(db->tables, db->tables_capacity * sizeof(Table));
-		if (!new_tables)
-		{
-			db->tables_capacity /= 2;
-			db->tables_capacity -= 1;
-			retrack(props, "System Failure: error allocating memory for tables");
-			return NULL;
-		}
 		db->tables = new_tables;
 	}
 
@@ -412,9 +394,7 @@ Table *create_table(Db *db, const char *name, size_t num_columns, Status *ret_st
 	db->tables_size++;
 
 	// success
-	ret_status->code = OK;
-	clean_up(props.to_free);
-	close_files(props.to_close);
+	free(file_path);
 
 	return &db->tables[db->tables_size - 1];
 }
@@ -425,36 +405,17 @@ Table *create_table(Db *db, const char *name, size_t num_columns, Status *ret_st
 Status create_db(const char *db_name)
 {
 
-	// keep track of important activies incase of failure
-	retrack_props props = {
-		.to_free = NULL,
-		.outside = NULL,
-		.to_remove = NULL,
-		.to_close = NULL,
-	};
-
-	// create a dir for the db
 	mkdir("dbdir", 0777);
 
-	// makesure db doesn't already exist
 	char *file_path = catnstr(2, "dbdir/", db_name);
-	if (!file_path || prepend(&props.to_free, file_path) != 0)
-	{
-		return retrack(props, "System Failure: error allocating memory for internal use");
-	}
-
+	// makesure db doesn't already exist
 	if (access(file_path, F_OK) == 0)
 	{
-		// DON"T KNOW WHAT THE EXCPECTED BEHAVIOUR IS
+		// load if it already exists
 		load_db(db_name);
-		return retrack(props, "--Database already exists");
 	}
 
 	Db *active_db = (Db *)malloc(sizeof(Db));
-	if (!active_db)
-	{
-		return retrack(props, "System Failure: error allocating memory for active_db");
-	}
 
 	memcpy(active_db->name, db_name, MAX_SIZE_NAME);
 	strcpy(active_db->file_path, file_path);
@@ -468,13 +429,12 @@ Status create_db(const char *db_name)
 	assert(current_db == NULL);
 	current_db = active_db;
 
-	clean_up(props.to_free);
-	close_files(props.to_close);
+	free(file_path);
 
 	return (Status){.code = OK};
 }
 
-Status load_db(const char *db_name)
+int load_db(const char *db_name)
 {
 	assert(current_db == NULL);
 
@@ -486,15 +446,15 @@ Status load_db(const char *db_name)
 	if (access(file_name, F_OK) == -1)
 	{
 		free(file_name);
-		return (Status){.code = ERROR, .error_message = "Database doesn't exist"};
+		log_info("-- DB not found");
+		return -1;
 	}
 
-	Status status;
 	current_db = malloc(sizeof(Db));
-	*current_db = deserialize_db(file_name, &status);
+	*current_db = deserialize_db(file_name);
 
 	free(file_name);
-	return status;
+	return 0;
 }
 
 void free_db()

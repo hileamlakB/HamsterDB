@@ -34,7 +34,7 @@ machine please look into this as a a source of error. */
 
 #include "common.h"
 #include "message.h"
-#include "utils.h"
+#include "Utils/utils.h"
 #include "thread_pool.h"
 
 #define DEFAULT_STDIN_BUFFER_SIZE 1024
@@ -73,7 +73,7 @@ int connect_client()
     return client_socket;
 }
 
-void communicate_server(int client_socket, message send_message, bool wait)
+void communicate_server(int client_socket, message send_message, bool wait, bool shutdown_immediately)
 {
 
     message recv_message;
@@ -124,6 +124,12 @@ void communicate_server(int client_socket, message send_message, bool wait)
             {
                 is_done = true;
             }
+
+            if (shutdown_immediately)
+            {
+                log_info("-- Server closed connection\n");
+                exit(0);
+            }
         }
         else
         {
@@ -151,21 +157,6 @@ void communicate_server(int client_socket, message send_message, bool wait)
     }
 }
 
-// flush_load - flushes at most one page size of column data from the load buffer
-// to backend
-void flush_load(int client_socet, char *msg, size_t size)
-{
-
-    message send_message;
-    send_message.status = OK_DONE;
-
-    send_message.length = size;
-
-    send_message.payload = msg;
-
-    communicate_server(client_socet, send_message, false);
-}
-
 typedef struct reader
 {
     char *read_map;
@@ -175,24 +166,20 @@ typedef struct reader
     size_t write_location;
 } reader;
 
-void load_file3(int client_socket, char *file_name)
+void load_file4(int client_socket, char *file_name)
 {
-    // not tested
+
+    int fd = open(file_name, O_RDONLY);
 
     struct stat st;
     stat(file_name, &st);
-
-    // Map file into memory using mmap
-    size_t size = st.st_size;
-    int fd = open(file_name, O_RDONLY);
-    char *file = (char *)mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+    int size = st.st_size;
+    char *file = (char *)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
 
     // Read the header
     String header = read_line(file);
-
-    // get the number of columns
-    size_t num_columns = 0;
-    for (size_t i = 0; i < header.len; i++)
+    int num_columns = 0;
+    for (int i = 0; i < (int)header.len; i++)
     {
         if (header.str[i] == ',')
         {
@@ -201,126 +188,37 @@ void load_file3(int client_socket, char *file_name)
     }
     num_columns += 1;
 
-    // extract column
-    char *column_names[num_columns];
-    for (size_t i = 0; i < num_columns; i++)
-    {
-        column_names[i] = strsep(&header.str, ",");
-    }
+    char file_size_str[12];
+    sprintf(file_size_str, "%d,", size);
 
-    // create different temporary files for each column
-    // and each thread
+    char *starter = catnstr(4, "load_start(", file_size_str, header.str, ")");
 
-    tmp_file tmp_files[num_columns];
-
-    for (size_t i = 0; i < num_columns; i++)
-    {
-        tmp_files[i] = create_tmp_file(
-            column_names[i],
-            size * (MAX_INT_LENGTH + 1),
-            true,
-            true, true);
-    }
-
-    // read the file and copy the data into the temporary files
-    size_t i = 0;
-    size_t write_location[num_columns];
-    for (size_t i = 0; i < num_columns; i++)
-    {
-        write_location[i] = sprintf(tmp_files[i].map, "load(%s,%012d,", column_names[i], 0);
-    }
-    while (i < size)
-    {
-
-        String line = read_line(file + i);
-        for (size_t j = 0; j < num_columns; j++)
-        {
-
-            zeropadd(strsep(&line.str, ","), tmp_files[j].map + write_location[j]);
-            tmp_files[j].map[write_location[j] + MAX_INT_LENGTH] = ',';
-            write_location[j] += MAX_INT_LENGTH + 1;
-        }
-
-        i += line.len + 1;
-        free(line.str);
-    }
-    // update size
-    for (size_t i = 0; i < num_columns; i++)
-    {
-        sprintf(tmp_files[i].map + strlen(column_names[i] + 1), "%012d", (int)(write_location[i] + 1));
-        tmp_files[i].map[write_location[i]] = ')';
-        write_location[i] += 1;
-    }
-    // flush the data to the backend
-    for (size_t i = 0; i < num_columns; i++)
-    {
-        flush_load(client_socket, tmp_files[i].map, write_location[i]);
-        // unmup an close temporary file
-        munmap(tmp_files[i].map, tmp_files[i].size);
-        close(tmp_files[i].fd);
-        free(tmp_files[i].file_name);
-    }
-}
-
-void load_file4(int client_socket, char *file_name)
-{
-    //  not tested
-    // sends the raw data to the backend in chunks page_size
-    const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
-
-    int fd = open(file_name, O_RDONLY);
-
-    struct stat st;
-    stat(file_name, &st);
-    size_t size = st.st_size;
-    char *file = (char *)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
-
-    // Read the header
-    String header = read_line(file);
-
-    // // get the number of columns
-    // size_t num_columns = 0;
-    // for (size_t i = 0; i < header.len; i++)
-    // {
-    //     if (header.str[i] == ',')
-    //     {
-    //         num_columns++;
-    //     }
-    // }
-    // num_columns += 1;
-
-    char *starter = catnstr(3, "load_start(", header.str, ")");
     communicate_server(client_socket,
                        (message){
                            .status = OK_DONE,
                            .length = header.len + 12,
                            .payload = starter},
-                       false);
+                       false, false);
 
-    size_t chunk_size = 8 * PAGE_SIZE;
-    size_t i = header.len + 1;
+    int i = header.len + 1;
     while (i < size)
     {
 
-        if (i + chunk_size > size)
+        int j = i + min(LOAD_BATCH_SIZE, size - i);
+
+        // find the last newline
+        while (j > i && file[j] != '\n')
         {
-            chunk_size = size - i;
+            j--;
         }
 
-        // find the closest new line
-        size_t last_index = i + chunk_size - 1;
-        while (file[last_index] != '\n' && file[last_index] != '\0')
-        {
-            chunk_size--;
-            last_index--;
-        }
         communicate_server(client_socket,
                            (message){
                                .status = OK_DONE,
-                               .length = chunk_size,
+                               .length = j - i,
                                .payload = file + i},
-                           false);
-        i += chunk_size;
+                           false, false);
+        i = j + 1;
     }
 
     communicate_server(client_socket,
@@ -328,7 +226,7 @@ void load_file4(int client_socket, char *file_name)
                            .status = OK_DONE,
                            .length = 10,
                            .payload = "load_end()"},
-                       false);
+                       false, false);
 
     // unmup an close temporary file
     munmap(file, size);
@@ -336,240 +234,6 @@ void load_file4(int client_socket, char *file_name)
     free(starter);
 }
 
-void load_file(int client_socket, char *file_name)
-{
-
-    const size_t PAGE_SIZE = 2 * (size_t)sysconf(_SC_PAGESIZE);
-
-    // Make sure the file exists
-    struct stat st;
-    int exists = stat(file_name, &st);
-    if (exists != 0)
-    {
-        log_err("File does not exist \n");
-        return;
-    }
-
-    // Map file into memory using mmap
-    size_t size = st.st_size;
-    int fd = open(file_name, O_RDONLY);
-    char *file = (char *)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
-
-    // get headers
-    String header = read_line(file);
-
-    // get the number of columns
-    size_t num_columns = 0;
-    for (size_t i = 0; i < header.len; i++)
-    {
-        if (header.str[i] == ',')
-        {
-            num_columns++;
-        }
-    }
-    num_columns += 1;
-
-    // extract column
-    char *column_names[num_columns];
-    size_t column_current[num_columns];
-    column_names[0] = header.str;
-
-    column_current[0] = 0; // keeps track of where the column name starts in the header buffer
-    size_t last = 1;
-    for (size_t i = 0; i < header.len; i++)
-    {
-        if (header.str[i] == ',')
-        {
-            header.str[i] = '\0';
-            //  set the location of each column index to 0
-            column_current[last] = 0;
-            column_names[last] = header.str + i + 1;
-            last++;
-        }
-    }
-
-    // for each column, create a buffer of size page_size
-    // and at the beginning of each buffer have the load( command
-    char colums[num_columns][PAGE_SIZE];
-    size_t starting_point[num_columns]; // keeps track of each columns starting point
-
-    for (size_t i = 0; i < num_columns; i++)
-    {
-
-        size_t len = sprintf(colums[i], "load(%s,%012d,", column_names[i], 0);
-        starting_point[i] = len; // for the size and the comma
-        column_current[i] = starting_point[i];
-    }
-
-    // in each cyle read page_size bytes
-    size_t loaded = header.len + 1;
-
-    // read the whole file
-    while (loaded < size)
-    {
-
-        // read a line
-        char *line = file + loaded;
-
-        // add ecah column data to the column array
-        size_t current_col = 0;
-        size_t last_read = 0;
-        size_t i = 0;
-
-        // read until the end of the line
-        while (line[i] != '\n' && current_col < num_columns - 1)
-        {
-
-            if (line[i] == ',')
-            {
-
-                size_t col_len = i - last_read; // the length of the single entry
-
-                // The flush function sends a single page at a time
-                // if an entry is longer than one page, some mechanism should be
-                // put in place to partition before sending
-                if (col_len + 1 > PAGE_SIZE)
-                {
-                    log_err("Column data is too large");
-                    // free(line.str);
-                    return;
-                }
-
-                // if writing is going to make it bigger than the columns
-                // capacity flush first
-                if (column_current[current_col] + MAX_INT_LENGTH > PAGE_SIZE)
-                {
-                    // flush the column to database if it is full
-
-                    char sz[MAX_INT_LENGTH + 1];
-                    sprintf(sz, "%012d", (int)(column_current[current_col] - starting_point[current_col]));
-
-                    memcpy(colums[current_col] + (starting_point[current_col] - 1 - MAX_INT_LENGTH), sz, MAX_INT_LENGTH);
-                    colums[current_col][column_current[current_col]] = ')';
-                    colums[current_col][column_current[current_col] + 1] = '\0';
-
-                    flush_load(client_socket, colums[current_col], column_current[current_col] + 1);
-                    column_current[current_col] = starting_point[current_col];
-                }
-
-                // copy a zeropadded string version of the number into the array
-                zeropadd(line + last_read, colums[current_col] + column_current[current_col]);
-
-                // since each entry is padded with fixed number of zeros
-                column_current[current_col] += MAX_INT_LENGTH;
-                colums[current_col][column_current[current_col]] = ',';
-                column_current[current_col] += 1;
-                current_col += 1;
-                last_read = i + 1;
-            }
-            i += 1;
-        }
-
-        // if this isn't the case, it means the file had a line with
-        // a wrong format and in that case it should be handled
-        assert(current_col == num_columns - 1);
-
-        if (column_current[current_col] + MAX_INT_LENGTH > PAGE_SIZE)
-        {
-            // flush the column to database if it is full
-            char sz[MAX_INT_LENGTH + 1];
-            sprintf(sz, "%012lu", column_current[current_col] - starting_point[current_col]);
-
-            memcpy(colums[current_col] + (starting_point[current_col] - 1 - MAX_INT_LENGTH), sz, MAX_INT_LENGTH);
-            colums[current_col][column_current[current_col]] = ')';
-            colums[current_col][column_current[current_col] + 1] = '\0';
-
-            flush_load(client_socket, colums[current_col], column_current[current_col] + 1);
-            column_current[current_col] = starting_point[current_col];
-        }
-
-        zeropadd(line + last_read, colums[current_col] + column_current[current_col]);
-
-        column_current[current_col] += MAX_INT_LENGTH;
-        colums[current_col][column_current[current_col]] = ',';
-        column_current[current_col] += 1;
-
-        // find the length of the last column
-        size_t last_col_len = 0;
-        while (line[i] != '\n')
-        {
-            last_col_len++;
-            i++;
-        }
-
-        loaded += last_read + last_col_len + 1; // including the new line character
-    }
-
-    // flush the remaining data to the database
-    for (size_t i = 0; i < num_columns; i++)
-    {
-
-        char sz[MAX_INT_LENGTH + 1];
-        sprintf(sz, "%012lu", column_current[i] - starting_point[i]);
-
-        memcpy(colums[i] + (starting_point[i] - 1 - MAX_INT_LENGTH), sz, MAX_INT_LENGTH);
-        colums[i][column_current[i]] = ')';
-        colums[i][column_current[i] + 1] = '\0';
-
-        flush_load(client_socket, colums[i], column_current[i] + 1);
-        column_current[i] = starting_point[i];
-    }
-
-    munmap(file, size);
-    close(fd);
-
-    char *complete_message = catnstr(3, "load(complete,", column_names[0], ")");
-    free(column_names[0]);
-
-    communicate_server(client_socket, (message){
-                                          .length = strlen(complete_message),
-                                          .payload = complete_message,
-                                      },
-                       false);
-    free(complete_message);
-}
-
-void load_file2(int client_socket, char *file_name)
-{
-    // read line by line and use realational_insert instead of flush_load
-
-    struct stat st;
-    int exists = stat(file_name, &st);
-    if (exists != 0)
-    {
-        log_err("File does not exist \n");
-        return;
-    }
-
-    // Map file into memory using mmap
-    size_t size = st.st_size;
-    int fd = open(file_name, O_RDONLY);
-    char *file = (char *)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
-
-    String header = read_line(file);
-    size_t red = header.len + 1;
-
-    char *db = strsep(&header.str, ".");
-    char *table = strsep(&header.str, ".");
-
-    char *table_header = catnstr(3, db, ".", table);
-    free(db);
-
-    while (red < size)
-    {
-        String line = read_line(file + red);
-        red += line.len + 1;
-
-        char *relationl_insert = catnstr(5, "relational_insert(", table_header, ",", line.str, ")");
-        free(line.str);
-        communicate_server(client_socket, (message){
-                                              .length = strlen(relationl_insert),
-                                              .payload = relationl_insert,
-                                          },
-                           false);
-        free(relationl_insert);
-    }
-}
 /**
  * Getting Started Hint:
  *      What kind of protocol or structure will you use to deliver your results from the server to the client?
@@ -646,19 +310,24 @@ int main(void)
                 }
                 file_name[j] = '\0';
 
-                load_file(client_socket, file_name);
+                load_file4(client_socket, file_name);
             }
 
             else
             {
                 bool wait_til_complete = false;
+                bool shutdown_right_away = false;
                 if (strncmp(read_buffer + i, "print", 5) == 0)
                 {
                     wait_til_complete = true;
                 }
+                else if (strncmp(read_buffer + i, "shutdown", 8) == 0)
+                {
+                    shutdown_right_away = true;
+                }
 
                 // send the message to the server
-                communicate_server(client_socket, send_message, wait_til_complete);
+                communicate_server(client_socket, send_message, wait_til_complete, shutdown_right_away);
             }
         }
     }

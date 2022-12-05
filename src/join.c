@@ -1,14 +1,18 @@
-
 #define _DEFAULT_SOURCE
-#include <string.h>
-#include "cs165_api.h"
-#include <assert.h>
-#include <unistd.h>
-#include "data_structures.h"
-
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <assert.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <errno.h>
+
+#include "cs165_api.h"
+#include <unistd.h>
+#include <Serializer/serialize.h>
+#include "data_structures.h"
 
 size_t get_size(Variable *var)
 {

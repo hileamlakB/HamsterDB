@@ -11,6 +11,8 @@ CC = gcc -std=c99 -g -ggdb3
 # Default optimization level
 O ?= 0
 
+# -fsanitize=memory 
+
 # Flags and other libraries
 override CFLAGS += -Wall -Wextra -pedantic -pthread -O$(O) -I$(INCLUDES)  
 LDFLAGS = -lpthread  -lm
@@ -56,10 +58,41 @@ $(DEPSDIR)/stamp $(BUILDSTAMP):
 # dependency on the right side of whichever one requires the file.
 ##
 
+COMMON_OBJ = utils.o\
+thread_pool.o 
+CLIENT_OBJ = 
+SERVER_OBJ = server.o\
+	parse.o\
+	db_manager.o\
+	client_context.o\
+	retrive.o \
+	var_pool.o \
+	tasks.o \
+	hash_table.o\
+	queue.o \
+	sort.o \
+	join.o \
+	serialize.o \
+	read_write.o \
+	load.o \
+	column_serializer.o\
+	column_methods.o\
+	parse_batch_execute.o\
+	parse_create.o\
+	parse_fetch.o\
+	parse_insert.o\
+	parse_join.o\
+	parse_operations.o\
+	parse_print.o\
+
+
+
+VPATH := Loader:Utils:Serializer:Parser
+
 client: client.o utils.o thread_pool.o 
 	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
-server: server.o parse.o utils.o db_manager.o client_context.o serialize.o read_write.o retrive.o var_pool.o tasks.o hash_table.o queue.o thread_pool.o sort.o join.o
+server: $(SERVER_OBJ) $(COMMON_OBJ)
 	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 clean:

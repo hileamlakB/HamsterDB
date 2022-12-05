@@ -10,7 +10,8 @@
 #include <errno.h>
 
 #include "cs165_api.h"
-#include "unistd.h"
+#include <unistd.h>
+#include <Serializer/serialize.h>
 
 // #define PAGE_SIZE ((size_t)sysconf(_SC_PAGESIZE))
 // #define NUM_COMMA_LEN (MAX_INT_LENGTH + 1)
@@ -133,19 +134,18 @@ void *select_section(void *arg)
     int *low = args->low;
     int *high = args->high;
     size_t read_size = args->read_size;
-    char *file = args->file;
+    int *file = args->file;
 
     size_t offset = args->offset;
 
     size_t index = 0;
     size_t result_size = 0;
 
-    while (file[index] != '\0' && index < read_size)
+    while (index < read_size)
     {
-        int num = zerounpadd(file + index, ',');
 
-        result_p[result_size] = offset + index / (MAX_INT_LENGTH + 1);
-        result_size += ((!low || num >= *low) && (!high || num < *high));
+        result_p[result_size] = offset + index;
+        result_size += ((!low || file[index] >= *low) && (!high || file[index] < *high));
 
         // expand result if needed
         if (result_size + 1 >= rcapacity)
@@ -163,7 +163,7 @@ void *select_section(void *arg)
         }
 
         // including separating comma
-        index += MAX_INT_LENGTH + 1;
+        index += 1;
     }
 
     if (result_size == 0)
@@ -193,14 +193,13 @@ Variable generic_select(select_args args)
 
     // makes sure you cut a file into sections
     // at meaningfull locaitons
-    const size_t PAGE_SIZE = 1 * ((size_t)sysconf(_SC_PAGESIZE) / (MAX_INT_LENGTH + 1)) * (MAX_INT_LENGTH + 1);
+    const size_t PAGE_SIZE = 4 * (size_t)sysconf(_SC_PAGESIZE); // experimental value
     // Variable *final_res = malloc(sizeof(Variable));
 
     // if file size is bigger than page size,
     // create multiple threads and later merge the result instead of
     // running it in one thread
-    if (args.read_size <= PAGE_SIZE ||
-        (args.low && args.high && ((size_t)*args.high - *args.low < PAGE_SIZE)))
+    if (args.read_size * sizeof(int) <= PAGE_SIZE)
     {
 
         select_section(&args);
@@ -215,7 +214,9 @@ Variable generic_select(select_args args)
     }
     else // (read_size > PAGE_SIZE )
     {
-        size_t num_threads = args.read_size / PAGE_SIZE;
+        size_t total_pages = args.read_size * sizeof(int);
+
+        size_t num_threads = total_pages / PAGE_SIZE;
         if (args.read_size % PAGE_SIZE)
         {
             num_threads++;
@@ -225,14 +226,16 @@ Variable generic_select(select_args args)
 
         for (size_t i = 0; i < num_threads; i++)
         {
+            size_t read_size = min(args.tbl->rows * sizeof(int) - (i - 1) * PAGE_SIZE, PAGE_SIZE);
+
             targs[i] = (select_args){
                 .low = args.low,
                 .high = args.high,
                 .col = args.col,
                 .tbl = args.tbl,
-                .file = args.file + i * PAGE_SIZE,
-                .read_size = PAGE_SIZE,
-                .offset = (i * PAGE_SIZE) / (MAX_INT_LENGTH + 1)};
+                .file = args.file + (i * PAGE_SIZE) / sizeof(int),
+                .read_size = read_size / sizeof(int),
+                .offset = (i * PAGE_SIZE) / (sizeof(int))};
 
             pthread_create(&threads[i], NULL, select_section, &targs[i]);
         }
@@ -280,24 +283,13 @@ Variable generic_select(select_args args)
 void *select_col(void *arg)
 {
     select_args *args = (select_args *)arg;
-    const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
 
-    Status status;
-    create_colf(args->tbl, args->col, &status);
+    map_col(args->tbl, args->col, 0);
 
     // mmap file for read
-    if (!args->col->read_map)
-    {
-        char *buffer = mmap(NULL,
-                            args->tbl->rows * (MAX_INT_LENGTH + 1),
-                            PROT_READ, MAP_SHARED,
-                            args->col->fd, args->col->meta_data_size * PAGE_SIZE);
 
-        args->col->read_map = buffer;
-        args->col->read_map_size = args->tbl->rows * (MAX_INT_LENGTH + 1);
-    }
-    args->file = args->col->read_map;
-    args->read_size = args->col->read_map_size;
+    args->file = args->col->data;
+    args->read_size = args->tbl->rows;
 
     Variable (*search_algorithm)(select_args) = choose_algorithm(*args);
     Variable *fin_result = malloc(sizeof(Variable));
@@ -427,7 +419,7 @@ void select_pos(Variable *posVec, Variable *valVec, char *handle, int *low, int 
     add_var(fin_result);
 }
 
-int generic_fetch(char *from, char *map, int *result, pos_vec vec)
+int generic_fetch(int *from, int *map, int *result, pos_vec vec)
 {
 
     int result_size = 0;
@@ -442,12 +434,12 @@ int generic_fetch(char *from, char *map, int *result, pos_vec vec)
         int value;
         if (map)
         {
-            int maped_index = atoi(map + position * (MAX_INT_LENGTH + 1));
-            value = atoi(from + maped_index * (MAX_INT_LENGTH + 1));
+            int maped_index = map[position];
+            value = from[maped_index];
         }
         else
         {
-            value = atoi(from + position * (MAX_INT_LENGTH + 1));
+            value = from[position];
         }
         result[result_size++] = value;
         index++;
@@ -456,7 +448,7 @@ int generic_fetch(char *from, char *map, int *result, pos_vec vec)
     return result_size;
 }
 
-int fetch_from_range(char *from, char *map, int *result, int low, int high)
+int fetch_from_range(int *from, int *map, int *result, int low, int high)
 {
     int result_size = 0;
     int position = low;
@@ -466,12 +458,12 @@ int fetch_from_range(char *from, char *map, int *result, int low, int high)
         int value;
         if (map)
         {
-            int maped_index = atoi(map + position * (MAX_INT_LENGTH + 1));
-            value = atoi(from + maped_index * (MAX_INT_LENGTH + 1));
+            int maped_index = map[position];
+            value = from[maped_index];
         }
         else
         {
-            value = atoi(from + position * (MAX_INT_LENGTH + 1));
+            value = from[position];
         }
         result[result_size++] = value;
         position += 1;
@@ -479,7 +471,7 @@ int fetch_from_range(char *from, char *map, int *result, int low, int high)
     return result_size;
 }
 
-void fetch_from_chain(char *from, char *index_map, Variable *var, char *var_name)
+void fetch_from_chain(int *from, int *index_map, Variable *var, char *var_name)
 {
 
     size_t max_size_result = 0;
@@ -515,14 +507,12 @@ void fetch_from_chain(char *from, char *index_map, Variable *var, char *var_name
 
 void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Status *status)
 {
-    const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
 
     assert(var->exists);
 
-    create_colf(table, column, status);
+    map_col(table, column, 0);
 
-    char *read_from = NULL, *index_map = NULL;
-    ;
+    int *read_from = NULL, *index_map = NULL;
 
     if (var->is_sorted && var->is_clustered)
     {
@@ -532,19 +522,9 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
     }
     else
     {
-        if (!column->read_map)
-        {
-            char *buffer = mmap(NULL, table->rows * (MAX_INT_LENGTH + 1), PROT_READ, MAP_SHARED, column->fd, column->meta_data_size * PAGE_SIZE);
-            if (buffer == MAP_FAILED)
-            {
-                log_err("Error mapping file for column read");
-                return;
-            }
-            column->read_map = buffer;
-            column->read_map_size = table->rows * (MAX_INT_LENGTH + 1);
-        }
+        map_col(table, column, 0);
 
-        read_from = column->read_map;
+        read_from = column->data;
 
         if (var->is_sorted && !var->is_clustered)
         {

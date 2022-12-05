@@ -12,8 +12,10 @@
 #include <string.h>
 
 #include <errno.h>
-#include "utils.h"
+#include "Utils/utils.h"
 #include "cs165_api.h"
+
+#include <Serializer/serialize.h>
 
 // compare two integers that are represented as a tuple
 // of two strings, where the first string is the integer
@@ -334,10 +336,10 @@ int extract_sorted(Table *tbl, Column *col)
     char *sorted_file = mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, fd_sorted_mk, 0);
 
     char *sorted_filename = catnstr(2, file_name, ".sorted");
-    char *map_filename = catnstr(2, file_name, ".map");
+    char *map_colname = catnstr(2, file_name, ".map");
 
     int fd_sorted = open(sorted_filename, O_RDWR | O_CREAT | O_TRUNC, 0666);
-    int fd_map = open(map_filename, O_RDWR | O_CREAT | O_TRUNC, 0666);
+    int fd_map = open(map_colname, O_RDWR | O_CREAT | O_TRUNC, 0666);
 
     lseek(fd_sorted, file_size / 2, SEEK_SET);
     write(fd_sorted, " ", 1);
@@ -370,7 +372,7 @@ int extract_sorted(Table *tbl, Column *col)
     munmap(map, file_size / 2);
 
     free(sorted_filename);
-    free(map_filename);
+    free(map_colname);
     free(sorted_mk);
 
     close(fd_sorted);
@@ -598,8 +600,6 @@ char **separate_tuple(Table *table, Column *idx_column, tmp_file tuple, size_t n
 void propagate_sort(Table *tbl, Column *idx_column)
 {
 
-    const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
-
     char *index_maps[tbl->col_count - 1];
 
     for (size_t i = 0, j = 0; i < tbl->col_count; i++)
@@ -609,22 +609,17 @@ void propagate_sort(Table *tbl, Column *idx_column)
             continue;
         }
 
-        Status col_stat;
-        create_colf(tbl, &tbl->columns[i], &col_stat);
-        if (col_stat.code != OK)
-        {
-            return;
-        }
+        map_col(tbl, &tbl->columns[i], 0);
 
-        if (!tbl->columns[i].read_map)
+        if (!tbl->columns[i].file)
         {
             struct stat st;
             fstat(tbl->columns[i].fd, &st);
 
-            tbl->columns[i].read_map = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, tbl->columns[i].fd, 0);
-            tbl->columns[i].read_map_size = st.st_size;
+            tbl->columns[i].file = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, tbl->columns[i].fd, 0);
+            tbl->columns[i].file_size = st.st_size;
         }
-        index_maps[j] = tbl->columns[i].read_map + tbl->columns[i].meta_data_size * PAGE_SIZE;
+        // index_maps[j] = tbl->columns[i].file + tbl->columns[i].meta_data_size * PAGE_SIZE;
         j++;
     }
 

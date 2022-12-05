@@ -133,6 +133,7 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
     {
         query_command += 10;
         dbo = parse_load_start(query_command, send_message);
+        free(query_command - 10);
     }
     else if (strncmp(query_command, "load", 4) == 0)
     {
@@ -152,6 +153,7 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
 
         dbo = malloc(sizeof(DbOperator));
         dbo->type = SHUTDOWN;
+        free(query_command);
     }
     else if (strncmp(query_command, "select", 6) == 0)
     {

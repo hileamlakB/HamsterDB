@@ -798,13 +798,14 @@ void handle_client(int client_socket)
             //    Corresponding database operator is executed over the query
             String result;
 
-            if (batch.mode)
+            if (batch.mode && query)
             {
                 assert(query);
                 if (query->type == BATCH_EXECUTE)
                 {
                     result = execute_DbOperator(query);
                     batch.mode = false;
+                    // free(query);
                 }
                 else
                 {
@@ -858,6 +859,7 @@ void handle_client(int client_socket)
                         free_db_operator(batch.queries[i]);
                     }
                     batch.num_queries = 0;
+                    free_db_operator(query);
                 }
                 else
                 {

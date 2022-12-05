@@ -5,11 +5,9 @@ DbOperator *parse_batch_query(char *query_command, message *send_message)
 {
     (void)send_message;
     (void)query_command;
-    DbOperator *dbo = malloc(sizeof(DbOperator));
-    dbo->type = BATCH_QUERY;
     batch.mode = true;
     batch.num_queries = 0;
-    return dbo;
+    return NULL;
 }
 
 DbOperator *parse_batch_execute(char *query_command, message *send_message)

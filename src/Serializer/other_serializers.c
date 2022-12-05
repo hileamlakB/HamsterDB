@@ -74,10 +74,10 @@ Table deserialize_table(char *table_path)
 serialize_data serialize_db(Db *db)
 {
 
-    size_t page_size = MAX_INT_LENGTH * 1 + strlen(db->name);
-    char *meta_data = malloc(page_size + strlen(db->name));
+    const size_t PAGE_SIZE = sysconf(_SC_PAGESIZE);
+    char *meta_data = malloc(PAGE_SIZE);
 
-    size_t printed = snprintf(meta_data, page_size, "%s.%zu.",
+    size_t printed = snprintf(meta_data, PAGE_SIZE, "%s.%zu.",
                               db->name,
                               db->tables_size);
 

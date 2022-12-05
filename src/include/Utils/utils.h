@@ -166,7 +166,7 @@ typedef struct tmp_file
     char *file_name;
     int fd;
     size_t size;
-    char *map;
+    void *map;
 } tmp_file;
 
 char *next_token(char **tokenizer, message_status *status);

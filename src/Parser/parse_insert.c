@@ -7,9 +7,10 @@
 #include <assert.h>
 #include <Parser/parse.h>
 
-DbOperator *parse_load_start(char *token, message *send_message)
+DbOperator *parse_load_start(char *query_string, message *send_message)
 {
 
+    char *token = query_string;
     // remove parenthesis
     token++;
     token[strlen(token) - 1] = '\0';

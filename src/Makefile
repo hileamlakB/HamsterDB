@@ -63,20 +63,15 @@ thread_pool.o
 CLIENT_OBJ = 
 SERVER_OBJ = server.o\
 	parse.o\
-	db_manager.o\
-	client_context.o\
-	retrive.o \
 	var_pool.o \
 	tasks.o \
 	hash_table.o\
 	queue.o \
 	sort.o \
 	join.o \
-	serialize.o \
-	read_write.o \
-	load.o \
+	other_serializers.o \
+	insert.o \
 	column_serializer.o\
-	column_methods.o\
 	parse_batch_execute.o\
 	parse_create.o\
 	parse_fetch.o\
@@ -84,10 +79,16 @@ SERVER_OBJ = server.o\
 	parse_join.o\
 	parse_operations.o\
 	parse_print.o\
+	instance_methods.o\
+	fetch.o\
+	select.o\
+	create_col.o\
+	create_table.o\
+	create_db.o\
+	create_index.o
 
 
-
-VPATH := Loader:Utils:Serializer:Parser
+VPATH := Insert:Utils:Serializer:Parser:Insert:Join:Others:Parallelization:Select:Varpool:Datastructures:Create
 
 client: client.o utils.o thread_pool.o 
 	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)

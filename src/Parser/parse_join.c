@@ -6,7 +6,6 @@
 #include <ctype.h>
 #include <assert.h>
 #include <Parser/parse.h>
-#include <client_context.h>
 
 // <vec_pos1_out>,<vec_pos2_out>=join(<vec_val1>,<vec_pos1>,<vec_val2>,<vec_pos2>, [hash,nested-loop,...])
 DbOperator *parse_join(char *handle, char *join_args)

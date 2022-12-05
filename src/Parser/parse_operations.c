@@ -6,7 +6,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <cs165_api.h>
-#include <client_context.h>
+
 #include <Parser/parse.h>
 
 DbOperator *parse_sum(char *handle, char *sum_arg)

@@ -6,7 +6,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <cs165_api.h>
-#include <client_context.h>
+
 #include <Parser/parse.h>
 
 DbOperator *parse_create_col(char *create_arguments)
@@ -70,8 +70,8 @@ DbOperator *parse_create_col(char *create_arguments)
 
 DbOperator *parse_create_db(char *create_arguments)
 {
-    char *token;
-    token = strsep(&create_arguments, ",");
+    char *token = strsep(&create_arguments, ",");
+
     // not enough arguments if token is NULL
     if (token == NULL)
     {

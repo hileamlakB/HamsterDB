@@ -6,7 +6,6 @@
 #include <ctype.h>
 #include <assert.h>
 #include <Parser/parse.h>
-#include <client_context.h>
 
 DbOperator *parse_load_start(char *token, message *send_message)
 {

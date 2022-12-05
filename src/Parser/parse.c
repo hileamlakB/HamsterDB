@@ -17,11 +17,9 @@
 #include "cs165_api.h"
 #include "parse.h"
 #include "Utils/utils.h"
-#include "client_context.h"
 #include "Loader/load.h"
 #include <cs165_api.h>
 #include <Parser/parse.h>
-#include <client_context.h>
 
 EntityAddress parse_column_name(char *token, Status *status)
 {

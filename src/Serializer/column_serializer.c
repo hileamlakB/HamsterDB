@@ -100,3 +100,9 @@ int remap_col(Table *tbl, Column *col, size_t new_size)
     }
     return 0;
 }
+
+void flush_col(Table *table, Column *column)
+{
+    map_col(table, column, 0);
+    unmap_col(column, true);
+}

@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <string.h>
 #include "Utils/utils.h"
-#include "client_context.h"
+
 #include <assert.h>
 
 // find variable in pool

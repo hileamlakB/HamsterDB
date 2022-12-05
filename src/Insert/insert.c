@@ -198,7 +198,7 @@ void prepare_load(DbOperator *query)
 
 void finish_load(DbOperator *query)
 {
-
+    (void)query;
     // wait for the linked list to be empty
 
     bload.done = true;
@@ -208,18 +208,11 @@ void finish_load(DbOperator *query)
     // wait for the writer thread to close
     pthread_join(bload.writer_thread, NULL);
 
-    (void)query;
-    // // wait for all the threads to finish
-    // for (size_t i = 0; i < bload.num_writig_threads; i++)
-    // {
-    //     pthread_join(bload.writing_threads[i], NULL);
-    // }
+    // load indexs
 
-    // bload.given_tickets = bload.current_ticket = 0;
-
-    // // free the writing threads
-    // free(bload.writing_threads);
-    // bload.writing_threads = NULL;
-    // bload.num_writig_threads = 0;
-    // bload.thread_capacity = 0;
+    Table *table = bload.table;
+    for (size_t i = 0; i < table->col_count; i++)
+    {
+        populate_index(table, &table->columns[i]);
+    }
 }

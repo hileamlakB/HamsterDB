@@ -32,7 +32,7 @@ int insert(Table *table, String values)
 
             int num = 0;
             int sign = 1;
-            while (values.str[index] != ',' && values.str[index] != '\n' && values.str[index] != '\0')
+            while (index < values.len && values.str[index] != ',' && values.str[index] != '\n' && values.str[index] != '\0')
             {
                 if (values.str[index] == ' ')
                 {

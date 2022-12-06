@@ -149,6 +149,10 @@ void nested_loop_join(DbOperator *query)
         }
     }
 
+    // resize the result arrays
+    oresult = realloc(oresult, sizeof(int) * result_size);
+    iresult = realloc(iresult, sizeof(int) * result_size);
+
     *outer_result = (Variable){
         .type = POSITION_VECTOR,
         .result = {

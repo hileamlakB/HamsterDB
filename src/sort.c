@@ -408,7 +408,11 @@ int sort_col(Table *tbl, Column *col)
     char *file_name = col->file_path;
 
     char *to_sort_col = catnstr(2, file_name, "_to_sort");
-    int fd_to_sort = open(to_sort_col, O_RDWR, 0666);
+    int fd_to_sort = open(to_sort_col, O_RDWR | O_CREAT, 0666);
+
+    // expand the file
+    lseek(fd_to_sort, tbl->rows * sizeof(int) * 2, SEEK_SET);
+    write(fd_to_sort, " ", 1);
 
     int *to_sort = mmap(NULL, tbl->rows * sizeof(int) * 2, PROT_READ | PROT_WRITE, MAP_SHARED, fd_to_sort, 0);
     // copy data to the to_sort file along with location
@@ -528,7 +532,7 @@ tmp_file create_tuple(size_t n, size_t tuple_size, int **tuple_elements)
 int **separate_tuple(Table *table, Column *idx_column, tmp_file tuple, size_t n)
 {
 
-    int **res = malloc(table->col_count * sizeof(int *));
+    int **res = calloc(table->col_count, sizeof(int *));
     int fds[table->col_count - 1];
     for (size_t i = 0; i < table->col_count; i++)
     {
@@ -564,6 +568,10 @@ int **separate_tuple(Table *table, Column *idx_column, tmp_file tuple, size_t n)
     // unmap and close all files
     for (size_t i = 0; i < table->col_count - 1; i++)
     {
+        if (&table->columns[i] == idx_column)
+        {
+            continue;
+        }
         close(fds[i]);
         munmap(res[i], n * sizeof(int));
     }

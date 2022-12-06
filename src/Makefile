@@ -11,10 +11,10 @@ CC = gcc -std=c99 -g -ggdb3
 # Default optimization level
 O ?= 0
 
-# -fsanitize=memory 
+#  -fsanitize=memory 
 
 # Flags and other libraries
-override CFLAGS += -Wall -Wextra -pedantic -pthread -O$(O) -I$(INCLUDES)  
+override CFLAGS += -Wall -Wextra -pedantic -pthread -O$(O) -I$(INCLUDES) 
 LDFLAGS = -lpthread  -lm
 LIBS =
 INCLUDES = include

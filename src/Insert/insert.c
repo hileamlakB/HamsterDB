@@ -1,7 +1,7 @@
 #include <cs165_api.h>
 #include <Serializer/serialize.h>
 #include "Utils/utils.h"
-#include <data_structures.h>
+#include "data_structures.h"
 #include "Loader/load.h"
 #include <stdatomic.h>
 #include <pthread.h>

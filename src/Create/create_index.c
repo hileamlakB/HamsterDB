@@ -14,6 +14,7 @@
 #include <Serializer/serialize.h>
 #include <sort.h>
 #include <Create/create.h>
+#include <Indexing/index.h>
 
 void populate_index(Table *tbl, Column *col)
 {
@@ -33,11 +34,11 @@ void populate_index(Table *tbl, Column *col)
         propagate_sort(tbl, col);
     }
 
-    // if (idx.type == BTREE)
-    // {
-    // 	// create btree index
-    // 	// create_btree2(tbl, col);
-    // }
+    if (idx.type == BTREE)
+    {
+        // create btree index
+        create_btree(tbl, col);
+    }
 }
 
 ColumnIndex create_index(
@@ -90,10 +91,4 @@ ColumnIndex create_btree_index(Table *tbl, Column *col, ClusterType cluster_type
     create_sorted_index(tbl, col, cluster_type);
     col->index.type = BTREE;
     return col->index;
-}
-
-void load_btree(Table *tble, Column *col)
-{
-    (void)tble;
-    (void)col;
 }

@@ -8,6 +8,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include <data_structures.h>
+
 int map_col(Table *tbl, Column *col, size_t writing_space)
 {
 
@@ -101,8 +103,35 @@ int remap_col(Table *tbl, Column *col, size_t new_size)
     return 0;
 }
 
+void flush_btree(Column *col)
+{
+    // create and open file to flush btree to
+    char *file_path = catnstr(3, col->file_path, ".", "btree");
+    int fd = open(file_path, O_RDWR | O_CREAT, 0666);
+
+    // expand and mmap file
+    lseek(fd, sizeof(serialized_node *) * 1000, SEEK_SET);
+    write(fd, " ", 1);
+    serialized_node **file = mmap(NULL, sizeof(serialized_node *) * 1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+    // serialize btree
+    bt_serialize(col->index.btree, file);
+
+    // unmap and close file
+    munmap(file, sizeof(serialized_node *) * 1000);
+    close(fd);
+    return;
+}
+
 void flush_col(Table *table, Column *column)
 {
-    map_col(table, column, 0);
-    unmap_col(column, true);
+    map_col(table, column, 0); // creates a file if it wasn't created
+
+    // if there is a btree associated with the column, flush it
+    if (column->indexed && column->index.type == BTREE)
+    {
+        flush_btree(column);
+    }
+
+    unmap_col(column, true); // closes the file
 }

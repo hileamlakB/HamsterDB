@@ -30,8 +30,10 @@ SOFTWARE.
 #include <stdio.h>
 #include <pthread.h>
 #include <stdatomic.h>
+#include "data_structures.h"
 #include <Utils/utils.h>
 #include "message.h"
+
 // Limits the size of a name in our database to 64 characters
 #define MAX_SIZE_NAME 64
 #define MAX_PATH_NAME 256 // path name at max = dir/db.table.column
@@ -125,8 +127,9 @@ typedef struct ColumnIndex
     IndexType type;
     ClusterType clustered;
 
-    // mmaped file
-    char *read_map;
+    // mmaped file for sorted index
+    int *sorted_file;
+    Btree_node *btree; // if btree indexed
 
 } ColumnIndex;
 
@@ -593,7 +596,6 @@ typedef struct serialize_data
 void generic_deserializer(void (*)(void *, char *, Status *), int, void *, Status *);
 
 serialize_data serialize_column(Column *);
-Column deserialize_column(char *, Status *);
 
 serialize_data serialize_table(Table *);
 Table deserialize_table(char *);

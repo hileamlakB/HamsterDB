@@ -353,13 +353,13 @@ String print_tuple(PrintOperator print_operator)
 {
     if (print_operator.type == SINGLE_FLOAT)
     {
-        char *str = malloc(sizeof(char) * MAX_INT_LENGTH);
+        char *str = malloc(sizeof(char) * MAX_INT_LENGTH * 2);
         size_t len = sprintf(str, "%.2f", print_operator.data.fvalue);
         return (String){.str = str, .len = len};
     }
     else if (print_operator.type == SINGLE_INT)
     {
-        char *str = malloc(sizeof(char) * MAX_INT_LENGTH);
+        char *str = malloc(sizeof(char) * MAX_INT_LENGTH * 2);
         size_t len = sprintf(str, "%ld", print_operator.data.ivalue);
         return (String){.str = str, .len = len};
     }
@@ -449,7 +449,7 @@ void sum(AvgOperator avg_operator)
     if (avg_operator.type == VARIABLE_O)
     {
         Variable *variable = avg_operator.variable;
-        long int sum = generic_sum(variable);
+        double sum = generic_sum(variable);
         Variable *fin_result = malloc(sizeof(Variable));
         *fin_result = (Variable){
             .type = INT_VALUE,

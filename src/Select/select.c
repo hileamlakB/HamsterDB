@@ -18,68 +18,78 @@ Variable btree_select(select_args args)
     return sorted_select(args);
 }
 
+int compare_int(const void *a, const void *b)
+{
+    if (*(int *)a < *(int *)b)
+    {
+        return -1;
+    }
+    else if (*(int *)a > *(int *)b)
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
 Variable sorted_select(select_args args)
 {
 
-    if (!args.col->index.read_map)
+    if (!args.col->index.sorted_file)
     {
         char *filename = catnstr(2, args.col->file_path, ".sorted");
         int fd = open(filename, O_RDONLY);
-        args.col->index.read_map = mmap(NULL, args.tbl->rows * (MAX_INT_LENGTH + 1), PROT_READ, MAP_PRIVATE, fd, 0);
+        args.col->index.sorted_file = mmap(NULL, args.tbl->rows * sizeof(int), PROT_READ, MAP_PRIVATE, fd, 0);
         free(filename);
     }
 
-    char *sorted_file = args.col->index.read_map;
+    int *sorted_file = args.col->index.sorted_file;
 
-    // map file
-
-    char *starting = sorted_file;
-    char *ending = sorted_file + args.tbl->rows * (MAX_INT_LENGTH + 1);
+    int *starting = sorted_file;
+    int *ending = sorted_file + args.tbl->rows;
 
     if (*args.low)
     {
-        char *key_str = malloc(MAX_INT_LENGTH + 1);
-        sprintf(key_str, "%012d", *args.low);
-        starting = closest_search(
-            key_str, sorted_file, args.tbl->rows,
-            sizeof(char[MAX_INT_LENGTH + 1]), compare_sints);
+        starting = closest_search(args.low,
+                                  sorted_file,
+                                  args.tbl->rows,
+                                  sizeof(int), compare_int);
 
         // make sure this is the first occurance of the value
-        while (starting > sorted_file && compare_sints(key_str, starting - sizeof(char[MAX_INT_LENGTH + 1])) == 0)
+        while (starting > sorted_file && compare_int(args.low, starting - 1) == 0)
         {
-            starting -= sizeof(char[MAX_INT_LENGTH + 1]);
+            starting -= 1;
         }
 
         // if the value isn't in the file, find the insertion point
-        while (compare_sints(starting, key_str) < 0)
+        while (compare_int(starting, args.low) < 0)
         {
-            starting += sizeof(char[MAX_INT_LENGTH + 1]);
+            starting += 1;
         }
-        free(key_str);
     }
 
     if (*args.high)
     {
-        char *key_str = malloc(MAX_INT_LENGTH + 1);
-        sprintf(key_str, "%012d", *args.high);
-        ending = closest_search(
-            key_str,
-            sorted_file,
-            args.tbl->rows, sizeof(char[MAX_INT_LENGTH + 1]), compare_sints);
+
+        ending = closest_search(args.high,
+                                sorted_file,
+                                args.tbl->rows,
+                                sizeof(int), compare_int);
+
         // make sure this isn't included  the last occurance of the value
-        while (ending != sorted_file && compare_sints(key_str, ending - sizeof(char[MAX_INT_LENGTH + 1])) == 0)
+        while (ending != sorted_file && compare_sints(args.high, ending - 1) == 0)
         {
-            ending -= sizeof(char[MAX_INT_LENGTH + 1]);
+            ending -= 1;
         }
 
-        char *max_end = sorted_file + (args.tbl->rows) * (MAX_INT_LENGTH + 1);
+        int *max_end = sorted_file + args.tbl->rows + 1;
         // if the value isn't in the file, find the insertion point
-        while (compare_sints(ending, key_str) < 0 && ending < max_end)
+        while (compare_sints(ending, args.high) < 0 && ending < max_end)
         {
-            ending += sizeof(char[MAX_INT_LENGTH + 1]);
+            ending += 1;
         }
-
-        free(key_str);
     }
 
     // return a pos_vec with the positions of the values in the range
@@ -92,8 +102,8 @@ Variable sorted_select(select_args args)
     strcpy(res.sorting_column, args.col->name);
     strcpy(res.sorting_column_path, args.col->file_path);
 
-    res.result.range[0] = (starting - sorted_file) / (MAX_INT_LENGTH + 1);
-    res.result.range[1] = (ending - sorted_file) / (MAX_INT_LENGTH + 1);
+    res.result.range[0] = starting - sorted_file;
+    res.result.range[1] = ending - sorted_file;
     return res;
 }
 

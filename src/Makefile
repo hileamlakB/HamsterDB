@@ -85,15 +85,20 @@ SERVER_OBJ = server.o\
 	create_col.o\
 	create_table.o\
 	create_db.o\
-	create_index.o
+	create_index.o\
+	btree.o\
+	btree_index.o\
 
 
-VPATH := Insert:Utils:Serializer:Parser:Insert:Join:Others:Parallelization:Select:Varpool:Datastructures:Create
+VPATH := Insert:Utils:Serializer:Parser:Insert:Join:Others:Parallelization:Select:Varpool:Datastructures:Create:Indexing
 
 client: client.o utils.o thread_pool.o 
 	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 server: $(SERVER_OBJ) $(COMMON_OBJ)
+	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
+
+btree_test: btree_test.o btree.o
 	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)
 
 clean:

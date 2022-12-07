@@ -74,4 +74,35 @@ node_array get_keys(hashtable *ht);
 int deallocate_ht(hashtable *ht, bool free_key, bool free_value); // the boolean is to determine if the key should be freed or not
 void print_ht(hashtable *ht);
 
+// btree.c
+/* create a new empty tree */
+#define FANOUT (10)
+
+typedef struct Btree_node
+{
+    int isLeaf;  /* is this a leaf node? */
+    int numKeys; /* how many keys does this node contain? */
+    int keys[FANOUT][2];
+    struct Btree_node *children[FANOUT + 1]; /* children[i] holds nodes < keys[i] */
+} Btree_node;
+typedef struct serialized_node
+{
+    int num_keys;
+    int is_leaf;
+    int keys[FANOUT][2];
+} serialized_node;
+
+void bt_free(Btree_node *btree);
+int bt_search(Btree_node *btree, int key);
+void bt_insert(Btree_node *btree, int key, int location);
+void bt_print(Btree_node *btree);
+
+Btree_node *bt_create(void);
+
+int retrive_location(Btree_node *btree, int key);
+int binary_search(int n, int a[FANOUT][2], int key);
+
+serialized_node **bt_serialize(Btree_node *btree, serialized_node **storage);
+Btree_node *bt_deserialize(serialized_node **s_node);
+
 #endif

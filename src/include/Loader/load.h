@@ -1,7 +1,7 @@
 #ifndef __LOAD_H__
 #define __LOAD_H__
 
-#include <data_structures.h>
+#include "data_structures.h"
 #include <cs165_api.h>
 
 typedef struct scheduled_write

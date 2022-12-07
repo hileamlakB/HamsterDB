@@ -157,15 +157,6 @@ void communicate_server(int client_socket, message send_message, bool wait, bool
     }
 }
 
-typedef struct reader
-{
-    char *read_map;
-    char **write_maps;
-    size_t num_columns;
-    size_t read_size;
-    size_t write_location;
-} reader;
-
 void load_file4(int client_socket, char *file_name)
 {
 

@@ -236,7 +236,7 @@ void external_sort(char *maped_file, int file_size)
     }
 }
 
-int compare_ints(const void *a, const void *b)
+int compare_int_loc_tuple(const void *a, const void *b)
 {
     // compare two 2 dimentsional integer arrays
 
@@ -266,7 +266,7 @@ int compare_ints(const void *a, const void *b)
 
 void simple_sort(int *maped_file, int file_size)
 {
-    qsort(maped_file, file_size, sizeof(int[2]), compare_ints);
+    qsort(maped_file, file_size, sizeof(int[2]), compare_int_loc_tuple);
 }
 // this function prepraes a nomral integer file to be sorted using the external
 // sort

@@ -418,11 +418,6 @@ void *closest_search(const void *key, const void *base,
 {
     // uses binary search to find the closest value in a sorted array
     // returns a pointer to the closest value
-
-    // if (compar(key, (const char *)base + (nmemb - 1) * size) > 0)
-    // {
-    //     return (void *)((const char *)base + nmemb * size);
-    // }
     size_t l, u, idx;
     const char *p;
     int r;

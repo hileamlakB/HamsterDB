@@ -112,7 +112,7 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
     {
         char *clusterd_sorted = catnstr(3, column->file_path, ".clustered.", var->sorting_column);
         int fd = open(clusterd_sorted, O_RDONLY);
-        read_from = mmap(NULL, table->rows * (MAX_INT_LENGTH + 1), PROT_READ, MAP_PRIVATE, fd, 0);
+        read_from = mmap(NULL, table->rows * sizeof(int), PROT_READ, MAP_PRIVATE, fd, 0);
     }
     else
     {
@@ -124,7 +124,7 @@ void fetch_col(Table *table, Column *column, Variable *var, char *var_name, Stat
         {
             char *map_name = catnstr(2, var->sorting_column_path, ".map");
             int fd = open(map_name, O_RDONLY);
-            index_map = mmap(NULL, table->rows * (MAX_INT_LENGTH + 1), PROT_READ, MAP_SHARED, fd, 0);
+            index_map = mmap(NULL, table->rows * sizeof(int), PROT_READ, MAP_SHARED, fd, 0);
             free(map_name);
         }
     }

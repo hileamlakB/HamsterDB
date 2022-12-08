@@ -12,6 +12,7 @@
 #include "cs165_api.h"
 #include <unistd.h>
 #include <Serializer/serialize.h>
+#include <sched.h>
 
 Variable btree_select(select_args args)
 {
@@ -197,8 +198,176 @@ void *select_section(void *arg)
 
     args->result = result_p;
     args->result_size = result_size;
+    *args->is_done = true;
 
     return NULL;
+}
+
+void *shared_scan_section(void *arg)
+{
+    batch_select_args *args = (batch_select_args *)arg;
+    int **result_p = malloc(sizeof(int *) * args->n);
+    size_t rcapacity[args->n];
+    size_t *result_size = malloc(sizeof(size_t) * args->n);
+    for (size_t i = 0; i < args->n; i++)
+    {
+        result_p[i] = malloc(sizeof(int) * initial_size);
+        rcapacity[i] = initial_size;
+        result_size[i] = 0;
+    }
+
+    size_t index = 0;
+
+    while (index < args->read_size)
+    {
+        // iterate through each query
+        for (size_t i = 0; i < args->n; i++)
+        {
+            int *low = args->low[i];
+            int *high = args->high[i];
+
+            // if the value is in the range, add it to the result
+            if ((!low || args->file[index] >= *low) &&
+                (!high || args->file[index] < *high))
+            {
+                result_p[i][result_size[i]] = args->offset + index;
+                result_size[i] += 1;
+            }
+
+            // expand result if needed
+            if (result_size[i] + 1 >= rcapacity[i])
+            {
+                rcapacity[i] *= 2;
+                result_p[i] = realloc(result_p[i], rcapacity[i] * sizeof(int));
+            }
+        }
+        index += 1;
+    }
+
+    // shrink result to the correct size
+    for (size_t i = 0; i < args->n; i++)
+    {
+        result_p[i] = realloc(result_p[i], result_size[i] * sizeof(int));
+    }
+    args->result = result_p;
+    args->result_size = result_size;
+    *args->is_done = true;
+
+    return NULL;
+}
+
+void shared_scan(batch_select_args common)
+{
+
+    const size_t PAGE_SIZE = 4 * (size_t)sysconf(_SC_PAGESIZE);
+
+    if (common.read_size * sizeof(int) <= PAGE_SIZE)
+    {
+
+        atomic_bool is_done = false;
+        common.is_done = &is_done;
+        shared_scan_section(&common);
+
+        for (size_t i = 0; i < common.n; i++)
+        {
+            Variable *var = malloc(sizeof(Variable));
+            *var = (Variable){
+                .type = POSITION_VECTOR,
+                .name = strdup(common.handle[i]),
+                .result.values.values = common.result[i],
+                .result.values.size = common.result_size[i],
+                .exists = true
+
+            };
+            add_var(var);
+        }
+    }
+    else
+    {
+        size_t total_pages = common.read_size * sizeof(int);
+        size_t num_threads = total_pages / PAGE_SIZE;
+        if (total_pages % PAGE_SIZE)
+        {
+            num_threads++;
+        }
+        pthread_t threads[num_threads];
+        batch_select_args targs[num_threads];
+        atomic_bool is_done[num_threads];
+
+        for (size_t i = 0; i < num_threads; i++)
+        {
+            size_t read_size = min(common.n * sizeof(int) - (i - 1) * PAGE_SIZE, PAGE_SIZE);
+
+            targs[i] = common;
+            targs[i].read_size = read_size / sizeof(int);
+            targs[i].offset = (i * PAGE_SIZE) / (sizeof(int));
+            targs[i].file = common.file + (i * PAGE_SIZE) / sizeof(int);
+            is_done[i] = false;
+            targs[i].is_done = &is_done[i];
+
+            pthread_create(&threads[i], NULL, shared_scan_section, &targs[i]);
+            pthread_detach(threads[i]);
+        }
+
+        linkedList head_chain[common.n];
+        linkedList *end_chain[common.n];
+        size_t total_size[common.n];
+
+        for (size_t i = 0; i < common.n; i++)
+        {
+            head_chain[i] = (linkedList){
+                .next = NULL,
+                .data = NULL,
+            };
+            end_chain[i] = &head_chain[i];
+            total_size[i] = 0;
+        }
+
+        // wait for all threads to finish
+        // and join answers
+        for (size_t i = 0; i < num_threads; i++)
+        {
+            // pthread_join(threads[i], NULL);
+            while (!is_done[i])
+            {
+                sched_yield();
+            }
+            for (size_t j = 0; j < common.n; j++)
+            {
+                if (targs[i].result_size[j])
+                {
+                    linkedList *new_node = malloc(sizeof(linkedList));
+                    new_node->next = NULL;
+
+                    pos_vec *new_vec = malloc(sizeof(pos_vec));
+                    new_vec->values = targs[i].result[j];
+                    new_vec->size = targs[i].result_size[j];
+                    new_node->data = new_vec;
+                    end_chain[j]->next = new_node;
+                    end_chain[j] = new_node;
+                    total_size[j] += targs[i].result_size[j];
+                }
+            }
+            free(targs[i].result);
+            free(targs[i].result_size);
+        }
+
+        // create vector chains
+        for (size_t i = 0; i < common.n; i++)
+        {
+
+            Variable *var = malloc(sizeof(Variable));
+            *var = (Variable){
+                .type = VECTOR_CHAIN,
+                .name = strdup(common.handle[i]),
+                .result.pos_vec_chain = head_chain[i].next,
+                .vec_chain_size = total_size[i],
+                .exists = true
+
+            };
+            add_var(var);
+        }
+    }
 }
 
 // returns position vector for all the elements that
@@ -218,7 +387,8 @@ Variable generic_select(select_args args)
     // running it in one thread
     if (args.read_size * sizeof(int) <= PAGE_SIZE)
     {
-
+        atomic_bool is_done = false;
+        args.is_done = &is_done;
         select_section(&args);
         return (Variable){
             .type = POSITION_VECTOR,
@@ -234,17 +404,19 @@ Variable generic_select(select_args args)
         size_t total_pages = args.read_size * sizeof(int);
 
         size_t num_threads = total_pages / PAGE_SIZE;
-        if (args.read_size % PAGE_SIZE)
+        if (total_pages % PAGE_SIZE)
         {
             num_threads++;
         }
         pthread_t threads[num_threads];
         select_args targs[num_threads];
+        atomic_bool is_done[num_threads];
 
         for (size_t i = 0; i < num_threads; i++)
         {
             size_t read_size = min(args.tbl->rows * sizeof(int) - (i - 1) * PAGE_SIZE, PAGE_SIZE);
 
+            is_done[i] = false;
             targs[i] = (select_args){
                 .low = args.low,
                 .high = args.high,
@@ -252,9 +424,11 @@ Variable generic_select(select_args args)
                 .tbl = args.tbl,
                 .file = args.file + (i * PAGE_SIZE) / sizeof(int),
                 .read_size = read_size / sizeof(int),
-                .offset = (i * PAGE_SIZE) / (sizeof(int))};
+                .offset = (i * PAGE_SIZE) / (sizeof(int)),
+                .is_done = &is_done[i]};
 
             pthread_create(&threads[i], NULL, select_section, &targs[i]);
+            pthread_detach(threads[i]);
         }
 
         linkedList head_chain = {
@@ -267,7 +441,10 @@ Variable generic_select(select_args args)
         // and join answers
         for (size_t i = 0; i < num_threads; i++)
         {
-            pthread_join(threads[i], NULL);
+            while (!is_done[i])
+            {
+                sched_yield();
+            }
             if (targs[i].result_size)
             {
                 linkedList *new_node = malloc(sizeof(linkedList));

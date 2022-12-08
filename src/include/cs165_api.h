@@ -651,6 +651,7 @@ void MinMax(MinMaxOperator, Status *);
 void join(DbOperator *query);
 
 String batch_execute(DbOperator **queries, size_t n, Status *status);
+String batch_execute2(DbOperator **queries, size_t n);
 Table *lookup_table(Db *, char *);
 Column *lookup_column(Table *, char *);
 
@@ -667,10 +668,32 @@ typedef struct select_args
     int *result;        // point to a location for result
     size_t result_size; // point to a location for result size
 
+    atomic_bool *is_done; // point to a location for is_done
+
 } select_args;
+
+typedef struct batch_select_args
+{
+
+    int *file;
+    size_t offset;
+    size_t read_size;
+    size_t n;
+
+    // number of batched args
+    char **handle;
+    int **low;
+    int **high;
+    int **result;
+    size_t *result_size;
+
+    atomic_bool *is_done;
+
+} batch_select_args;
 
 Variable generic_select(select_args);
 Variable sorted_select(select_args);
+void shared_scan(batch_select_args args);
 Variable btree_select(select_args);
 Variable (*choose_algorithm(select_args args))(select_args);
 

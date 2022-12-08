@@ -78,11 +78,20 @@ void print_ht(hashtable *ht);
 /* create a new empty tree */
 #define FANOUT (10)
 
+typedef struct key_loc_tuple
+{
+    int key;
+    int location;
+} key_loc_tuple;
+
+// we want MAX(sizeof(Btree_node)) = 4096
+// = 4 + 4 + 2 * fanout * 4 + (fanout + 1) * 8
+// thus fanout = 255
 typedef struct Btree_node
 {
     int isLeaf;  /* is this a leaf node? */
     int numKeys; /* how many keys does this node contain? */
-    int keys[FANOUT][2];
+    key_loc_tuple keys[FANOUT];
     struct Btree_node *children[FANOUT + 1]; /* children[i] holds nodes < keys[i] */
 } Btree_node;
 typedef struct serialized_node
@@ -100,7 +109,7 @@ void bt_print(Btree_node *btree);
 Btree_node *bt_create(void);
 
 int retrive_location(Btree_node *btree, int key);
-int binary_search(int n, int a[FANOUT][2], int key);
+int binary_search(int n, key_loc_tuple keys[FANOUT], int key);
 
 serialized_node **bt_serialize(Btree_node *btree, serialized_node **storage);
 Btree_node *bt_deserialize(serialized_node **s_node);

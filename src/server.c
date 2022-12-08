@@ -225,8 +225,8 @@ String execute_DbOperator(DbOperator *query)
     }
     else if (query->type == BATCH_EXECUTE)
     {
-        Status batch_status;
-        String result = batch_execute(batch.queries, batch.num_queries, &batch_status);
+
+        String result = batch_execute2(batch.queries, batch.num_queries);
         batch.mode = false;
         return result;
     }
@@ -304,6 +304,39 @@ void *execute_query(void *q_group)
     return NULL;
 }
 
+String batch_execute2(DbOperator **queries, size_t n)
+{
+    Table *tbl = queries[0]->operator_fields.select_operator.table;
+    Column *col = queries[0]->operator_fields.select_operator.column;
+
+    map_col(tbl, col, 0);
+
+    int **lows = malloc(sizeof(int *) * n);
+    int **highs = malloc(sizeof(int *) * n);
+    char **handles = malloc(sizeof(char *) * n);
+    for (size_t i = 0; i < n; i++)
+    {
+        lows[i] = queries[i]->operator_fields.select_operator.low;
+        highs[i] = queries[i]->operator_fields.select_operator.high;
+        handles[i] = queries[i]->operator_fields.select_operator.handler;
+    }
+
+    batch_select_args common = {
+        .file = col->data,
+        .n = n,
+        .low = lows,
+        .high = highs,
+        .handle = handles,
+        .read_size = tbl->rows,
+        .offset = 0,
+    };
+    shared_scan(common);
+
+    free(lows);
+    free(highs);
+    return empty_string;
+}
+
 String batch_execute(DbOperator **queries, size_t n, Status *status)
 {
 
@@ -329,6 +362,7 @@ String batch_execute(DbOperator **queries, size_t n, Status *status)
     {
         if (independent->array[i])
         {
+            // thread allocation becomes overwhalming when number of rows is approximatly > 10^6
             node *query_group = independent->array[i];
             pthread_create(&threads[threads_created], NULL, execute_query, (void *)query_group);
             threads_created += 1;

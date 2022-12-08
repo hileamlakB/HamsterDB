@@ -41,7 +41,7 @@ void create_btree(Table *tbl, Column *col)
     bt_insert(btree, last_num, PAGE_SIZE / sizeof(int) - 1);
 
     // insert all the values into the btree
-    for (size_t i = 0; i < tbl->rows; i += PAGE_SIZE / sizeof(int) - 1)
+    for (size_t i = PAGE_SIZE / sizeof(int) - 1; i < tbl->rows; i += PAGE_SIZE / sizeof(int) - 1)
     {
         int num = col->index.sorted_file[i];
         if (num != last_num)

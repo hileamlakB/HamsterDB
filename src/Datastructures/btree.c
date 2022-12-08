@@ -6,18 +6,18 @@
 #include <data_structures.h>
 #include <Utils/utils.h>
 
-int binary_search(int n, int a[FANOUT][2], int key)
+int binary_search(int n, key_loc_tuple keys[FANOUT], int key)
 {
     int left = -1, right = n, mid;
 
     while (left + 1 < right)
     {
         mid = (left + right) / 2;
-        if (a[mid][0] == key)
+        if (keys[mid].key == key)
         {
             return mid;
         }
-        else if (a[mid][0] < key)
+        else if (keys[mid].key < key)
         {
             left = mid;
         }
@@ -46,15 +46,15 @@ int retrive_location(Btree_node *btree, int key)
 
     pos = binary_search(btree->numKeys, btree->keys, key);
 
-    if (pos < btree->numKeys && btree->keys[pos][0] == key)
+    if (pos < btree->numKeys && btree->keys[pos].key == key)
     {
-        return btree->keys[pos][1];
+        return btree->keys[pos].location;
     }
     else
     {
         if (btree->isLeaf)
         {
-            return btree->keys[pos][1];
+            return btree->keys[pos].location;
         }
         return retrive_location(btree->children[pos], key);
     }
@@ -79,7 +79,7 @@ void bt_print(Btree_node *btree)
             int j;
             for (j = 0; j < node->numKeys; j++)
             {
-                printf("(%d, %d) ", node->keys[j][0], node->keys[j][1]);
+                printf("(%d, %d) ", node->keys[j].key, node->keys[j].location);
             }
             printf("| ");
             if (!node->isLeaf)
@@ -130,7 +130,7 @@ int bt_search(Btree_node *btree, int key)
 
     pos = binary_search(btree->numKeys, btree->keys, key);
 
-    if (pos < btree->numKeys && btree->keys[pos][0] == key)
+    if (pos < btree->numKeys && btree->keys[pos].key == key)
     {
         return 1;
     }
@@ -142,14 +142,15 @@ int bt_search(Btree_node *btree, int key)
 
 // insert a new key into a tree returns new right sibling if the node splits
 // TODO: IMPROVE insertion for sorted input by not searching for the position
-Btree_node *bt_insert_internal(Btree_node *btree, int key, int location, int *median) // median is the middle value in case of split
+Btree_node *bt_insert_internal(Btree_node *btree, int key, int location, key_loc_tuple *median) // median is the middle value in case of split
 {
-    int pos, *mid = malloc(sizeof(int) * 2);
+    int pos;
+    key_loc_tuple mid;
     Btree_node *right_node;
 
     pos = binary_search(btree->numKeys, btree->keys, key);
 
-    if (pos < btree->numKeys && btree->keys[pos][0] == key)
+    if (pos < btree->numKeys && btree->keys[pos].key == key)
     {
         // if they key is already in the tree, do nothing
         return NULL;
@@ -160,15 +161,15 @@ Btree_node *bt_insert_internal(Btree_node *btree, int key, int location, int *me
         // make a space for the new key by moving all keys >= key up one
         // if this ends up filling the node, we'll split it later
         memmove(&btree->keys[pos + 1], &btree->keys[pos], sizeof(*(btree->keys)) * (btree->numKeys - pos));
-        btree->keys[pos][0] = key;
-        btree->keys[pos][1] = location;
+        printf("pos: %d, value:%d\n", pos, btree->keys[pos].key);
+        btree->keys[pos] = (key_loc_tuple){key, location};
         btree->numKeys++;
     }
     else
     {
 
         /* insert in child */
-        right_node = bt_insert_internal(btree->children[pos], key, location, mid);
+        right_node = bt_insert_internal(btree->children[pos], key, location, &mid);
 
         // if the child split, we need to insert the median key
         if (right_node)
@@ -179,8 +180,7 @@ Btree_node *bt_insert_internal(Btree_node *btree, int key, int location, int *me
             /* new child goes in pos + 1*/
             memmove(&btree->children[pos + 2], &btree->children[pos + 1], sizeof(*(btree->keys)) * (btree->numKeys - pos));
 
-            btree->keys[pos][0] = mid[0];
-            btree->keys[pos][1] = mid[1];
+            btree->keys[pos] = (key_loc_tuple){key, location};
             btree->children[pos + 1] = right_node;
             btree->numKeys++;
         }
@@ -191,8 +191,8 @@ Btree_node *bt_insert_internal(Btree_node *btree, int key, int location, int *me
     {
         int half = btree->numKeys / 2;
 
-        (*((int(*)[2])median))[0] = btree->keys[half][0];
-        (*((int(*)[2])median))[1] = btree->keys[half][1];
+        median->key = btree->keys[half].key;
+        median->location = btree->keys[half].location;
 
         // make a new node for keys > median
         // and copy the keys and children over
@@ -221,9 +221,9 @@ void bt_insert(Btree_node *btree, int key, int location)
 {
     Btree_node *left_node;  /* new left child */
     Btree_node *right_node; /* new right child */
-    int *median = malloc(sizeof(int[2]));
+    key_loc_tuple median;
 
-    right_node = bt_insert_internal(btree, key, location, median);
+    right_node = bt_insert_internal(btree, key, location, &median);
 
     if (right_node)
     {
@@ -237,8 +237,8 @@ void bt_insert(Btree_node *btree, int key, int location)
         /* make root point to left_node and b2 */
         btree->numKeys = 1;
         btree->isLeaf = 0;
-        btree->keys[0][0] = median[0];
-        btree->keys[0][1] = median[1];
+        btree->keys[0].key = median.key;
+        btree->keys[0].location = median.location;
         btree->children[0] = left_node;
         btree->children[1] = right_node;
     }

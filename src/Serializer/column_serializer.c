@@ -110,9 +110,9 @@ void flush_btree(Column *col)
     int fd = open(file_path, O_RDWR | O_CREAT, 0666);
 
     // expand and mmap file
-    lseek(fd, sizeof(serialized_node *) * 1000, SEEK_SET);
+    lseek(fd, sizeof(serialized_node) * 1000, SEEK_SET);
     write(fd, " ", 1);
-    serialized_node **file = mmap(NULL, sizeof(serialized_node *) * 1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    serialized_node **file = mmap(NULL, sizeof(serialized_node) * 1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
     // serialize btree
     bt_serialize(col->index.btree, file);

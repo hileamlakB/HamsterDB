@@ -428,7 +428,7 @@ Variable generic_select(select_args args)
                 .is_done = &is_done[i]};
 
             pthread_create(&threads[i], NULL, select_section, &targs[i]);
-            pthread_detach(threads[i]);
+            // pthread_detach(threads[i]);
         }
 
         linkedList head_chain = {
@@ -441,10 +441,11 @@ Variable generic_select(select_args args)
         // and join answers
         for (size_t i = 0; i < num_threads; i++)
         {
-            while (!is_done[i])
-            {
-                sched_yield();
-            }
+            pthread_join(threads[i], NULL);
+            // while (!is_done[i])
+            // {
+            //     sched_yield();
+            // }
             if (targs[i].result_size)
             {
                 linkedList *new_node = malloc(sizeof(linkedList));

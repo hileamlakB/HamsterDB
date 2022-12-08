@@ -243,30 +243,30 @@ void bt_insert(Btree_node *btree, int key, int location)
     }
 }
 
-serialized_node **bt_serialize(Btree_node *btree, serialized_node **storage)
+serialized_node *bt_serialize(Btree_node *btree, serialized_node *storage)
 {
     // serializze node in a bfs fashion for easier retrival
-    Btree_node queue[1000]; // here assuming the max number of nodes is 1000 (arbitraryly choosen)
+    Btree_node *queue[1000]; // here assuming the max number of nodes is 1000 (arbitraryly choosen)
     int front = 0, rear = 0;
     int size = 0;
 
-    queue[rear++] = *btree;
-    while (front <= rear)
+    queue[rear++] = btree;
+    while (front < rear)
     {
         int level_length = rear - front;
         for (int i = 0; i < level_length; i++)
         {
-            Btree_node *node = &queue[front++];
-            storage[size]->num_keys = node->numKeys;
-            storage[size]->is_leaf = node->isLeaf;
-            memcpy(storage[size]->keys, node->keys, sizeof(node->keys));
+            Btree_node *node = queue[front++];
+            storage[size].num_keys = node->numKeys;
+            storage[size].is_leaf = node->isLeaf;
+            memcpy(storage[size].keys, node->keys, sizeof(node->keys));
             size++;
 
             if (!node->isLeaf)
             {
                 for (int j = 0; j <= node->numKeys; j++)
                 {
-                    queue[rear++] = *node->children[j];
+                    queue[rear++] = node->children[j];
                 }
             }
         }

@@ -83,7 +83,11 @@ void free_var_pool()
             }
         }
 
-        free(var->name);
+        if (var->name)
+        {
+            free(var->name);
+        }
+
         free(var);
         free(node);
         node = next;

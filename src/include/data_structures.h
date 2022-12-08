@@ -112,7 +112,7 @@ Btree_node *bt_create(void);
 int retrive_location(Btree_node *btree, int key);
 int binary_search(int n, key_loc_tuple keys[FANOUT], int key);
 
-serialized_node **bt_serialize(Btree_node *btree, serialized_node **storage);
+serialized_node *bt_serialize(Btree_node *btree, serialized_node *storage);
 Btree_node *bt_deserialize(serialized_node **s_node);
 
 #endif

@@ -76,7 +76,11 @@ void print_ht(hashtable *ht);
 
 // btree.c
 /* create a new empty tree */
-#define FANOUT (10)
+#define FANOUT (255)
+
+// we want MAX(sizeof(Btree_node)) = 4096
+// = 4 + 4 + 2 * fanout * 4 + (fanout + 1) * 8
+// thus fanout = 255
 
 typedef struct key_loc_tuple
 {
@@ -84,9 +88,6 @@ typedef struct key_loc_tuple
     int location;
 } key_loc_tuple;
 
-// we want MAX(sizeof(Btree_node)) = 4096
-// = 4 + 4 + 2 * fanout * 4 + (fanout + 1) * 8
-// thus fanout = 255
 typedef struct Btree_node
 {
     int isLeaf;  /* is this a leaf node? */
@@ -98,7 +99,7 @@ typedef struct serialized_node
 {
     int num_keys;
     int is_leaf;
-    int keys[FANOUT][2];
+    key_loc_tuple keys[FANOUT];
 } serialized_node;
 
 void bt_free(Btree_node *btree);

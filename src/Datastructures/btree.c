@@ -96,7 +96,7 @@ void bt_print(Btree_node *btree)
 
 Btree_node *bt_create(void)
 {
-    Btree_node *btree = malloc(sizeof(Btree_node *));
+    Btree_node *btree = malloc(sizeof(Btree_node));
 
     btree->isLeaf = 1;
     btree->numKeys = 0;
@@ -161,7 +161,6 @@ Btree_node *bt_insert_internal(Btree_node *btree, int key, int location, key_loc
         // make a space for the new key by moving all keys >= key up one
         // if this ends up filling the node, we'll split it later
         memmove(&btree->keys[pos + 1], &btree->keys[pos], sizeof(*(btree->keys)) * (btree->numKeys - pos));
-        printf("pos: %d, value:%d\n", pos, btree->keys[pos].key);
         btree->keys[pos] = (key_loc_tuple){key, location};
         btree->numKeys++;
     }

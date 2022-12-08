@@ -4,7 +4,7 @@
 
 #include "data_structures.h"
 
-int main(int argc, char **argv)
+int main()
 {
     Btree_node *btree;
     int i;
@@ -38,19 +38,7 @@ int main(int argc, char **argv)
     printf("%d\n", retrive_location(btree, 70));
 
     bt_print(btree);
-
-    // b = btree_create();
-    // for (i = 0; i < 10000000; i += 2)
-    // {
-    //     assert(btSearch(b, i) == 0);
-    //     btInsert(b, i);
-    //     assert(btSearch(b, i + 1) == 0);
-    //     assert(btSearch(b, i) == 1);
-    // }
-
-    // btPrintKeys(b);
-
-    // btDestroy(b);
+    bt_free(btree);
 
     return 0;
 }

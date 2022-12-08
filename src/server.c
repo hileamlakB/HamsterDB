@@ -299,8 +299,6 @@ void *execute_query(void *q_group)
     for (size_t i = 0; i < depth; i++)
     {
         pthread_join(threads[i], NULL);
-        // log_info("Thread %zu finished", i);
-        // add results to respctive vectors
     }
 
     return NULL;

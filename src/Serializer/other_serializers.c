@@ -63,6 +63,9 @@ Table deserialize_table(char *table_path)
     read(table_file, metadata, sz);
     cp2table(table_path, (void *)&table, metadata);
 
+    // close table file
+    close(table_file);
+
     return table;
 }
 
@@ -140,6 +143,8 @@ Db deserialize_db(char *db_path)
     read(db_file, metadata, PAGE_SIZE);
     cp2db((void *)&db, metadata);
 
+    close(db_file);
+
     return db;
 }
 
@@ -194,4 +199,5 @@ void flush_db(Db *db)
         flush_table(db->tables + i);
     }
     free(db_data.data);
+    close(file);
 }

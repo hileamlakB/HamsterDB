@@ -239,7 +239,7 @@ DbOperator *parse_create_tbl(char *create_arguments)
         return NULL; // QUERY_UNSUPPORTED
     }
     // turn the string column count into an integer, and check that the input is valid.
-    int column_cnt = atoi(col_cnt);
+    int column_cnt = _atoi(col_cnt);
     if (column_cnt < 1)
     {
         return NULL;

@@ -64,7 +64,7 @@ DbOperator *parse_select_pos(char *handle, char *select_argument)
     else
     {
         select_op->operator_fields.select_operator.low = malloc(sizeof(int));
-        *select_op->operator_fields.select_operator.low = atoi(low);
+        *select_op->operator_fields.select_operator.low = _atoi(low);
     }
 
     if (strncmp("null", high, 4) == 0)
@@ -74,7 +74,7 @@ DbOperator *parse_select_pos(char *handle, char *select_argument)
     else
     {
         select_op->operator_fields.select_operator.high = malloc(sizeof(int));
-        *select_op->operator_fields.select_operator.high = atoi(high);
+        *select_op->operator_fields.select_operator.high = _atoi(high);
     }
 
     select_op->operator_fields.select_operator.type = SELECT_POS;
@@ -173,7 +173,7 @@ DbOperator *parse_select(char *handle, char *select_argument)
     else
     {
         select_op->operator_fields.select_operator.low = malloc(sizeof(int));
-        *select_op->operator_fields.select_operator.low = atoi(low);
+        *select_op->operator_fields.select_operator.low = _atoi(low);
     }
 
     if (strncmp("null", high, 4) == 0)
@@ -183,7 +183,7 @@ DbOperator *parse_select(char *handle, char *select_argument)
     else
     {
         select_op->operator_fields.select_operator.high = malloc(sizeof(int));
-        *select_op->operator_fields.select_operator.high = atoi(high);
+        *select_op->operator_fields.select_operator.high = _atoi(high);
     }
 
     select_op->operator_fields.select_operator.type = SELECT_COL;

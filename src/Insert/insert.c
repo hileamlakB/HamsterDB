@@ -21,7 +21,8 @@ int insert_col(Table *table, Column *col, int value)
 // // insert to database
 int insert(Table *table, String values)
 {
-
+    // the size of the columns must be remaped before
+    // this function is called
     // log_info("table rows before insert: %d\n", table->rows);
     size_t index = 0;
     while (index < values.len)
@@ -158,29 +159,6 @@ void batch_load(DbOperator *query)
     // pthread_mutex_unlock(&bload.thread_lock);
 }
 
-// void *preprocess_load(void *data)
-// {
-//     scheduled_write *swrite = (scheduled_write *)data;
-//     // sleep and wait on a condition until ticket is reached
-//     pthread_mutex_lock(&bload.ticket_lock);
-//     while (bload.current_ticket != swrite->ticket)
-//     {
-//         pthread_cond_wait(&bload.ticket_cond, &bload.ticket_lock);
-//     }
-//     pthread_mutex_unlock(&bload.ticket_lock);
-
-//     // execute the load
-//     parallel_load(swrite);
-
-//     // increment the ticket and signal the next thread
-//     pthread_mutex_lock(&bload.ticket_lock);
-//     bload.current_ticket += 1;
-//     pthread_cond_signal(&bload.ticket_cond);
-//     pthread_mutex_unlock(&bload.ticket_lock);
-
-//     return NULL;
-// }
-
 void prepare_load(DbOperator *query)
 {
     // goes through each column and maps it to much incoming size
@@ -208,7 +186,7 @@ void finish_load(DbOperator *query)
     // wait for the writer thread to close
     pthread_join(bload.writer_thread, NULL);
 
-    // load indexs
+    // create indexs
 
     Table *table = bload.table;
     for (size_t i = 0; i < table->col_count; i++)

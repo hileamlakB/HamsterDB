@@ -93,7 +93,7 @@ void nested_loop_join(DbOperator *query)
             inner_chain_index = 0;
         }
         int outer_value = outer->result.values.values[i];
-        int outer_position;
+        size_t outer_position;
 
         if (outer_pos->type == POSITION_VECTOR)
         {
@@ -119,7 +119,7 @@ void nested_loop_join(DbOperator *query)
 
             int inner_value = inner->result.values.values[j];
 
-            int inner_position;
+            size_t inner_position;
             if (inner_pos->type == POSITION_VECTOR)
             {
                 inner_position = inner_pos->result.values.values[j];

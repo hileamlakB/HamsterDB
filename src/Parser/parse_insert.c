@@ -89,7 +89,7 @@ DbOperator *parse_load(char *query_command, message *send_message)
 
     dbo->operator_fields.load_operator.complete = false;
     dbo->operator_fields.load_operator.address = address;
-    dbo->operator_fields.load_operator.size = atoi(strsep(&query_command, ","));
+    dbo->operator_fields.load_operator.size = _atoi(strsep(&query_command, ","));
     dbo->operator_fields.load_operator.data = query_command;
 
     return dbo;

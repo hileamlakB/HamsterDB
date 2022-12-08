@@ -330,10 +330,10 @@ int zerounpadd(char *data, char sep)
     return num * sign;
 }
 
-int _atoi(const char *str)
+long long _atoi(const char *str)
 {
 
-    int result = 0;
+    long long result = 0;
     const char *p = str;
 
     int sign = 0;
@@ -398,8 +398,8 @@ tmp_file create_tmp_file(char *file_name, size_t size, bool mapped, bool unlinke
 // compare string ints
 int compare_sints(const void *a, const void *b)
 {
-    int a_int = atoi((char *)a);
-    int b_int = atoi((char *)b);
+    int a_int = _atoi((char *)a);
+    int b_int = _atoi((char *)b);
     if (a_int < b_int)
     {
         return -1;

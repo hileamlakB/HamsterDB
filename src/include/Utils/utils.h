@@ -159,7 +159,7 @@ char *zeropadd(char *, char *);
 // until reaching a separator character
 int zerounpadd(char *, char);
 
-int _atoi(const char *);
+long long _atoi(const char *);
 
 typedef struct tmp_file
 {

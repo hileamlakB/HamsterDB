@@ -164,7 +164,7 @@ void load_file4(int client_socket, char *file_name)
 
     struct stat st;
     stat(file_name, &st);
-    int size = st.st_size;
+    off_t size = st.st_size;
     char *file = (char *)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
 
     // Read the header
@@ -179,8 +179,8 @@ void load_file4(int client_socket, char *file_name)
     }
     num_columns += 1;
 
-    char file_size_str[12];
-    sprintf(file_size_str, "%d,", size);
+    char file_size_str[24];
+    sprintf(file_size_str, "%ld,", size);
 
     char *starter = catnstr(4, "load_start(", file_size_str, header.str, ")");
 
@@ -191,11 +191,11 @@ void load_file4(int client_socket, char *file_name)
                            .payload = starter},
                        false, false);
 
-    int i = header.len + 1;
+    off_t i = header.len + 1;
     while (i < size)
     {
 
-        int j = i + min(LOAD_BATCH_SIZE, size - i);
+        off_t j = i + min(LOAD_BATCH_SIZE, size - i);
 
         // find the last newline
         while (j > i && file[j] != '\n')
@@ -223,6 +223,7 @@ void load_file4(int client_socket, char *file_name)
     munmap(file, size);
     close(fd);
     free(starter);
+    free(header.str);
 }
 
 /**

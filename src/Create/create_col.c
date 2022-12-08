@@ -16,6 +16,7 @@
 
 Column *create_column(Table *table, char *name, Status *ret_status)
 {
+    ret_status->code = ERROR;
 
     if (!table)
     {

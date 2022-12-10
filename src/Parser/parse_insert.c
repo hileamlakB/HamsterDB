@@ -28,6 +28,7 @@ DbOperator *parse_load_start(char *query_string, message *send_message)
     dbo->operator_fields.parellel_load.load_size = incoming_size;
     bload.mode = true;
     bload.table = address.table;
+    bload.done = false;
 
     return dbo;
 }

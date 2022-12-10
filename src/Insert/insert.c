@@ -66,18 +66,6 @@ int insert(Table *table, String values)
     return 0;
 }
 
-// void *parallel_load(void *arg)
-// {
-
-//     scheduled_write *sw = (scheduled_write *)arg;
-
-//     insert(bload.table, sw->data);
-
-//     free(sw->data);
-//     free(sw);
-//     return NULL;
-// }
-
 void *batch_writer(void *args)
 {
     (void)args;

@@ -56,6 +56,7 @@ typedef struct hashtable
     size_t (*hash_function)(hash_element, size_t);
     size_t (*compare_function)(hash_element, hash_element);
     node **array;
+    pthread_mutex_t *locks;
     bool is_fat;
 } hashtable;
 

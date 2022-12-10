@@ -650,7 +650,7 @@ void MinMax(MinMaxOperator, Status *);
 
 void join(DbOperator *query);
 
-String batch_execute(DbOperator **queries, size_t n, Status *status);
+String batch_execute(DbOperator **queries, size_t n);
 String batch_execute2(DbOperator **queries, size_t n);
 Table *lookup_table(Db *, char *);
 Column *lookup_column(Table *, char *);

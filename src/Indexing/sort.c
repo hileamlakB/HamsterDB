@@ -529,7 +529,7 @@ tmp_file create_tuple(size_t n, size_t tuple_size, int **tuple_elements)
     return res;
 }
 
-int **separate_tuple(Table *table, Column *idx_column, tmp_file tuple, size_t n)
+void separate_tuple(Table *table, Column *idx_column, tmp_file tuple, size_t n)
 {
 
     int **res = calloc(table->col_count, sizeof(int *));
@@ -577,8 +577,6 @@ int **separate_tuple(Table *table, Column *idx_column, tmp_file tuple, size_t n)
     }
 
     free(res);
-
-    return res;
 }
 
 // propagate_sort, sorts all other columns based on

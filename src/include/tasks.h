@@ -39,7 +39,7 @@ typedef struct grouped_tasks
     tasks dependent;
 } grouped_tasks;
 
-grouped_tasks query_planner(DbOperator **db_ops, int num_ops, Status *status);
+grouped_tasks query_planner(DbOperator **db_ops, int num_ops);
 void free_grouped_tasks(grouped_tasks grouped_tasks);
 
 #endif

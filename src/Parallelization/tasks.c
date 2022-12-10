@@ -25,7 +25,7 @@ size_t hash_cmp_str(hash_element str1, hash_element str2)
     return strcmp((char *)str1, (char *)str2);
 }
 
-grouped_tasks query_planner(DbOperator **db_ops, int num_ops, Status *status)
+grouped_tasks query_planner(DbOperator **db_ops, int num_ops)
 {
     hashtable *independent;
     int result = create_ht(
@@ -37,7 +37,6 @@ grouped_tasks query_planner(DbOperator **db_ops, int num_ops, Status *status)
 
     if (result == -1)
     {
-        status->code = ERROR;
         return (grouped_tasks){
             .independent = NULL};
     };

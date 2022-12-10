@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <stdio.h>
+#include <pthread.h>
 
 // Improvment ideas
 // 1. sophisticated hash function
@@ -41,6 +42,16 @@ int create_ht(hashtable **ht, size_t size, size_t (*hash_function)(hash_element,
     (*ht)->hash_function = hash_function;
     (*ht)->compare_function = compare_function;
 
+    pthread_mutex_t *locks = calloc(size, sizeof(pthread_mutex_t));
+
+    // initialize the locks
+    for (size_t i = 0; i < size; i++)
+    {
+        pthread_mutex_init(&locks[i], NULL);
+    }
+
+    (*ht)->locks = locks;
+
     return 0;
 }
 
@@ -69,11 +80,15 @@ int put_ht(hashtable *ht, hash_element key, hash_element value)
     // increament the number of elements
     ht->count++;
 
+    // get the lock for the index
+    pthread_mutex_lock(&ht->locks[index]);
+
     // see if there was no element in its location
     if (!ht->array[index])
     {
         ht->array[index] = new_node;
         ht->array[index]->depth = 1;
+        pthread_mutex_unlock(&ht->locks[index]);
         return 0;
     }
 
@@ -81,6 +96,8 @@ int put_ht(hashtable *ht, hash_element key, hash_element value)
     new_node->depth = ht->array[index]->depth + 1;
     new_node->next = ht->array[index];
     ht->array[index] = new_node;
+
+    pthread_mutex_unlock(&ht->locks[index]);
 
     return 0;
 }

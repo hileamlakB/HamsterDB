@@ -226,7 +226,7 @@ String execute_DbOperator(DbOperator *query)
     else if (query->type == BATCH_EXECUTE)
     {
 
-        String result = batch_execute2(batch.queries, batch.num_queries);
+        String result = batch_execute(batch.queries, batch.num_queries);
         batch.mode = false;
         return result;
     }
@@ -334,24 +334,25 @@ String batch_execute2(DbOperator **queries, size_t n)
 
     free(lows);
     free(highs);
+    free(handles);
     return empty_string;
 }
 
-String batch_execute(DbOperator **queries, size_t n, Status *status)
+String batch_execute(DbOperator **queries, size_t n)
 {
 
     if (n == 0)
     {
-        status->code = OK;
+
         return empty_string;
     }
 
-    grouped_tasks gtasks = query_planner(queries, n, status);
+    grouped_tasks gtasks = query_planner(queries, n);
 
     hashtable *independent = gtasks.independent;
     if (independent->count == 0)
     {
-        status->code = ERROR;
+
         return failed_string;
     }
 

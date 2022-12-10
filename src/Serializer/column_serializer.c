@@ -117,6 +117,11 @@ void flush_btree(Column *col)
     // serialize btree
     bt_serialize(col->index.btree, file);
 
+    // free the btree
+    bt_free(col->index.btree);
+
+    free(file_path);
+
     // unmap and close file
     munmap(file, sizeof(serialized_node *) * 1000);
     close(fd);

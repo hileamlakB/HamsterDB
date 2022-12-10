@@ -84,7 +84,7 @@ void fetch_from_chain(int *from, int *index_map, Variable *var, char *var_name)
 
     // resize result
     int *new_result = realloc(result, result_size * sizeof(int));
-    if (new_result)
+    if (new_result && result_size > 0)
     {
         result = new_result;
     }

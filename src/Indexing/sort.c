@@ -576,6 +576,8 @@ int **separate_tuple(Table *table, Column *idx_column, tmp_file tuple, size_t n)
         munmap(res[i], n * sizeof(int));
     }
 
+    free(res);
+
     return res;
 }
 

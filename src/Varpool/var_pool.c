@@ -77,7 +77,7 @@ void free_var_pool()
         }
         if (var->type == POSITION_VECTOR || var->type == VALUE_VECTOR)
         {
-            if (var->result.values.values != NULL)
+            if (var->result.values.values)
             {
                 free(var->result.values.values);
             }

@@ -443,6 +443,7 @@ String print_tuple(PrintOperator print_operator)
                 }
 
                 printed = sprintf(result_i, "%d,", ((pos_vec *)lst[col]->data)->values[list_indexs[col]]);
+                list_indexs[col] += 1;
             }
             result_i += printed;
         }
@@ -1022,9 +1023,11 @@ int main(void)
 
 void shutdown_server(DbOperator *dbo)
 {
-
-    // cache everything to file
-    flush_db(current_db);
+    if (current_db)
+    {
+        // cache everything to file
+        flush_db(current_db);
+    }
 
     // free var pool
     free_var_pool();

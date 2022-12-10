@@ -149,21 +149,14 @@ void *select_section(void *arg)
     int *result_p = malloc(sizeof(int) * initial_size);
     size_t rcapacity = initial_size;
 
-    int *low = args->low;
-    int *high = args->high;
-    size_t read_size = args->read_size;
-    int *file = args->file;
-
-    size_t offset = args->offset;
-
     size_t index = 0;
     size_t result_size = 0;
 
-    while (index < read_size)
+    while (index < args->read_size)
     {
 
-        result_p[result_size] = offset + index;
-        result_size += ((!low || file[index] >= *low) && (!high || file[index] < *high));
+        result_p[result_size] = args->offset + index;
+        result_size += ((!args->low || args->file[index] >= *args->low) && (!args->high || args->file[index] < *args->high));
 
         // expand result if needed
         if (result_size + 1 >= rcapacity)
@@ -182,12 +175,6 @@ void *select_section(void *arg)
 
         // including separating comma
         index += 1;
-    }
-
-    if (result_size == 0)
-    {
-        free(result_p);
-        return NULL;
     }
 
     int *new_result = realloc(result_p, result_size * sizeof(int));
@@ -263,7 +250,6 @@ void shared_scan(batch_select_args common)
 
     if (common.read_size * sizeof(int) <= PAGE_SIZE)
     {
-
         atomic_bool is_done = false;
         common.is_done = &is_done;
         shared_scan_section(&common);
@@ -414,7 +400,7 @@ Variable generic_select(select_args args)
 
         for (size_t i = 0; i < num_threads; i++)
         {
-            size_t read_size = min(args.tbl->rows * sizeof(int) - (i - 1) * PAGE_SIZE, PAGE_SIZE);
+            size_t read_size = min(args.tbl->rows * sizeof(int) - i * PAGE_SIZE, PAGE_SIZE);
 
             is_done[i] = false;
             targs[i] = (select_args){
@@ -428,7 +414,7 @@ Variable generic_select(select_args args)
                 .is_done = &is_done[i]};
 
             pthread_create(&threads[i], NULL, select_section, &targs[i]);
-            // pthread_detach(threads[i]);
+            pthread_detach(threads[i]);
         }
 
         linkedList head_chain = {
@@ -441,11 +427,11 @@ Variable generic_select(select_args args)
         // and join answers
         for (size_t i = 0; i < num_threads; i++)
         {
-            pthread_join(threads[i], NULL);
-            // while (!is_done[i])
-            // {
-            //     sched_yield();
-            // }
+            // pthread_join(threads[i], NULL);
+            while (!is_done[i])
+            {
+                sched_yield();
+            }
             if (targs[i].result_size)
             {
                 linkedList *new_node = malloc(sizeof(linkedList));

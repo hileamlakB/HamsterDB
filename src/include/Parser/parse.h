@@ -36,6 +36,8 @@ DbOperator *parse_sub(char *handle, char *sub_arg);
 DbOperator *parse_avg(char *handle, char *avg_arg);
 DbOperator *parse_min_max(char *handle, char *min_max_arg, OperatorType type);
 
+DbOperator *parse_timer(char *timer_arguments);
+
 DbOperator *parse_print(char *print_argument);
 
 EntityAddress parse_column_name(char *token, Status *status);

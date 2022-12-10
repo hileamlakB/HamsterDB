@@ -460,6 +460,7 @@ typedef struct MinMaxOperator
 
 } MinMaxOperator;
 
+#define PRIME_SIZE 7919
 typedef enum join_type
 {
     NESTED_LOOP,

@@ -145,6 +145,29 @@ hash_elements get_ht(hashtable *ht, hash_element key)
     return res;
 }
 
+node *get_raw_ht(hashtable *ht, hash_element key)
+{
+    int index = ht->hash_function(key, ht->size);
+
+    // if there is no element in the location
+    if (!ht->array[index])
+    {
+        return NULL;
+    }
+
+    node *curr = ht->array[index];
+    while (curr)
+    {
+        if (ht->compare_function(curr->key, key) == 0)
+        {
+            return curr;
+        }
+        curr = curr->next;
+    }
+
+    return NULL;
+}
+
 // This method erases all key-value pairs with a given key from the hash table.
 // It returns an error code, 0 for success and -1 otherwise (e.g., if the hashtable is not allocated).
 int erase_ht(hashtable *ht, hash_element key)
@@ -210,6 +233,7 @@ int deallocate_ht(hashtable *ht, bool free_key, bool free_value)
         }
     }
     free(ht->array);
+    free(ht->locks);
     free(ht);
     return 0;
 }

@@ -39,8 +39,6 @@ size_t get_size(Variable *var)
 
 void nested_loop_join(DbOperator *query)
 {
-    Variable *outer_result = malloc(sizeof(Variable));
-    Variable *inner_result = malloc(sizeof(Variable));
 
     Variable *val1 = query->operator_fields.join_operator.val1;
     Variable *val2 = query->operator_fields.join_operator.val2;
@@ -150,8 +148,11 @@ void nested_loop_join(DbOperator *query)
     }
 
     // resize the result arrays
-    oresult = realloc(oresult, sizeof(int) * result_size);
-    iresult = realloc(iresult, sizeof(int) * result_size);
+    // oresult = realloc(oresult, sizeof(int) * result_size);
+    // iresult = realloc(iresult, sizeof(int) * result_size);
+
+    Variable *outer_result = malloc(sizeof(Variable));
+    Variable *inner_result = malloc(sizeof(Variable));
 
     *outer_result = (Variable){
         .type = POSITION_VECTOR,
@@ -211,61 +212,77 @@ size_t int_compare(hash_element a, hash_element b)
 
 void hash_join(DbOperator *query)
 {
-    Variable *left_result = calloc(1, sizeof(Variable));
-    Variable *right_result = calloc(1, sizeof(Variable));
-
     Variable *val1 = query->operator_fields.join_operator.val1;
     Variable *val2 = query->operator_fields.join_operator.val2;
 
     Variable *pos1 = query->operator_fields.join_operator.pos1;
     Variable *pos2 = query->operator_fields.join_operator.pos2;
 
-    hashtable *ht;
     size_t pos1_size = get_size(pos1);
     size_t pos2_size = get_size(pos2);
-    int size = max(pos1_size, pos2_size);
-    long int hash_table_size = find_closet_prime(size);
+
+    // choose teh same variable as the hashable one
+    Variable *hashed, *nhashed, *hashed_pos, *nhashed_pos;
+
+    if (pos1_size < pos2_size)
+    {
+        hashed = val1, hashed_pos = pos1;
+        nhashed = val2, nhashed_pos = pos2;
+    }
+    else
+    {
+        hashed = val2, hashed_pos = pos2;
+        nhashed = val1, nhashed_pos = pos1;
+    }
+
+    hashtable *ht;
+
+    size_t msize = min(pos1_size, pos2_size);
+    size_t mxsize = max(pos1_size, pos2_size);
+
+    // long int hash_table_size = find_closet_prime(size);
+    long int hash_table_size = PRIME_SIZE;
     create_ht(&ht, hash_table_size, int_hash, int_compare, true);
 
     // iterate throught the values and positions of the first variable and insert
     // them into the hastable
-    linkedList *left_chain, *right_chain;
-    size_t left_chain_index = 0, right_chain_index = 0;
+    linkedList *hashed_chain, *nhashed_chain;
+    size_t hashed_chain_index = 0, nhashed_chain_index = 0;
 
-    if (pos1->type == VECTOR_CHAIN)
+    if (hashed_pos->type == VECTOR_CHAIN)
     {
-        left_chain = pos1->result.pos_vec_chain;
-        left_chain_index = 0;
+        hashed_chain = hashed_pos->result.pos_vec_chain;
+        hashed_chain_index = 0;
     }
 
-    if (pos2->type == VECTOR_CHAIN)
+    if (nhashed_pos->type == VECTOR_CHAIN)
     {
-        right_chain = pos2->result.pos_vec_chain;
-        right_chain_index = 0;
+        nhashed_chain = nhashed_pos->result.pos_vec_chain;
+        nhashed_chain_index = 0;
     }
 
-    for (size_t i = 0; i < pos1_size; i++)
+    for (size_t i = 0; i < msize; i++)
     {
-        int value = val1->result.values.values[i];
+        int value = hashed->result.values.values[i];
         int position;
-        if (pos1->type == POSITION_VECTOR)
+        if (hashed_pos->type == POSITION_VECTOR)
         {
-            position = pos1->result.values.values[i];
+            position = hashed_pos->result.values.values[i];
         }
-        else if (pos1->type == RANGE)
+        else if (hashed_pos->type == RANGE)
         {
-            position = pos1->result.range[0] + i;
+            position = hashed_pos->result.range[0] + i;
         }
         else
         {
             assert(pos1->type == VECTOR_CHAIN);
-            if (left_chain_index >= ((pos_vec *)left_chain->data)->size)
+            if (hashed_chain_index >= ((pos_vec *)hashed_chain->data)->size)
             {
-                left_chain_index = 0;
-                left_chain = left_chain->next;
+                hashed_chain_index = 0;
+                hashed_chain = hashed_chain->next;
             }
-            position = ((pos_vec *)left_chain->data)->values[left_chain_index];
-            left_chain_index += 1;
+            position = ((pos_vec *)hashed_chain->data)->values[hashed_chain_index];
+            hashed_chain_index += 1;
         }
 
         int *key = malloc(sizeof(int));
@@ -279,33 +296,33 @@ void hash_join(DbOperator *query)
 
     // print_ht(ht);
 
-    int *lresult = malloc(sizeof(int) * size * size);
-    int *rresult = malloc(sizeof(int) * size * size);
+    int *lresult = malloc(sizeof(int) * pos1_size * pos2_size);
+    int *rresult = malloc(sizeof(int) * pos1_size * pos2_size);
     size_t l = 0, r = 0;
 
     // go through the second variable and check if the values are in the hashtable, if it is add it to results
-    for (size_t i = 0; i < pos2_size; i++)
+    for (size_t i = 0; i < mxsize; i++)
     {
-        int value = val2->result.values.values[i];
+        int value = nhashed->result.values.values[i];
         int position;
-        if (pos2->type == POSITION_VECTOR)
+        if (nhashed_pos->type == POSITION_VECTOR)
         {
-            position = pos2->result.values.values[i];
+            position = nhashed_pos->result.values.values[i];
         }
-        else if (pos2->type == RANGE)
+        else if (nhashed_pos->type == RANGE)
         {
-            position = pos2->result.range[0] + i;
+            position = nhashed_pos->result.range[0] + i;
         }
         else
         {
-            assert(pos2->type == VECTOR_CHAIN);
-            if (right_chain_index >= ((pos_vec *)right_chain->data)->size)
+            assert(nhashed_pos->type == VECTOR_CHAIN);
+            if (nhashed_chain_index >= ((pos_vec *)nhashed_chain->data)->size)
             {
-                right_chain_index = 0;
-                right_chain = right_chain->next;
+                nhashed_chain_index = 0;
+                nhashed_chain = nhashed_chain->next;
             }
-            position = ((pos_vec *)right_chain->data)->values[right_chain_index];
-            right_chain_index += 1;
+            position = ((pos_vec *)nhashed_chain->data)->values[nhashed_chain_index];
+            nhashed_chain_index += 1;
         }
 
         hash_elements results = get_ht(ht, &value);
@@ -318,6 +335,9 @@ void hash_join(DbOperator *query)
         }
         free(results.values);
     }
+
+    Variable *left_result = calloc(1, sizeof(Variable));
+    Variable *right_result = calloc(1, sizeof(Variable));
 
     *left_result = (Variable){
         .type = POSITION_VECTOR,

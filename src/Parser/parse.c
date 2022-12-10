@@ -210,6 +210,11 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
         query_command += 4;
         dbo = parse_join(handle, query_command);
     }
+    else if (strncmp(query_command, "timer", 5) == 0)
+    {
+        query_command += 5;
+        dbo = parse_timer(query_command);
+    }
 
     if (dbo == NULL)
     {

@@ -88,6 +88,7 @@ SERVER_OBJ = server.o\
 	create_index.o\
 	btree.o\
 	btree_index.o\
+	parse_timer.o\
 
 
 VPATH := Insert:Utils:Serializer:Parser:Insert:Join:Others:Parallelization:Select:Varpool:Datastructures:Create:Indexing

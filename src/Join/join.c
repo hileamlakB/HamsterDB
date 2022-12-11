@@ -435,7 +435,7 @@ void hash_join(DbOperator *query)
         put_ht(ht, key, value_ptr);
     }
 
-    // print_ht(ht);
+    print_ht(ht);
 
     int *lresult = malloc(sizeof(int) * size * size);
     int *rresult = malloc(sizeof(int) * size * size);

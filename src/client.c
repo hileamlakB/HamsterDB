@@ -180,14 +180,14 @@ void load_file4(int client_socket, char *file_name)
     num_columns += 1;
 
     char file_size_str[24];
-    sprintf(file_size_str, "%ld,", size);
+    sprintf(file_size_str, "%022ld,", size);
 
     char *starter = catnstr(4, "load_start(", file_size_str, header.str, ")");
 
     communicate_server(client_socket,
                        (message){
                            .status = OK_DONE,
-                           .length = header.len + 12,
+                           .length = header.len + 12 + 24,
                            .payload = starter},
                        false, false);
 

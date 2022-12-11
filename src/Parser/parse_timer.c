@@ -24,7 +24,7 @@ DbOperator *parse_timer(char *timer_arguments)
     else if (strncmp(timer_arguments, "end", 3) == 0)
     {
         global_timer.end = clock();
-        printf("%f\n", (double)(global_timer.end - global_timer.start) / CLOCKS_PER_SEC);
+        log_info("%f\n", (double)(global_timer.end - global_timer.start) / CLOCKS_PER_SEC);
     }
 
     return NULL;

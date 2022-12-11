@@ -774,7 +774,7 @@ void handle_client(int client_socket)
     int done = 0;
     int length = 0;
 
-    log_info("Connected to socket: %d.\n", client_socket);
+   // log_info("Connected to socket: %d.\n", client_socket);
 
     // Create two messages, one from which to read and one from which to receive
     message recv_message;
@@ -795,7 +795,7 @@ void handle_client(int client_socket)
 
         if (length < 0)
         {
-            log_err("Client connection closed!\n");
+            // log_err("Client connection closed!\n");
             exit(1);
         }
         else if (length == 0)
@@ -907,7 +907,7 @@ void handle_client(int client_socket)
         }
     } while (!done);
 
-    log_info("Connection closed at socket %d!\n", client_socket);
+    //log_info("Connection closed at socket %d!\n", client_socket);
     close(client_socket);
 }
 
@@ -923,11 +923,11 @@ int setup_server()
     size_t len;
     struct sockaddr_un local;
 
-    log_info("Attempting to setup server...\n");
+    // log_info("Attempting to setup server...\n");
 
     if ((server_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
     {
-        log_err("L%d: Failed to create socket.\n", __LINE__);
+       // log_err("L%d: Failed to create socket.\n", __LINE__);
         return -1;
     }
 
@@ -1004,7 +1004,7 @@ int main(void)
 
     while (true)
     {
-        log_info("Waiting for a connection %d ...\n", server_socket);
+        //log_info("Waiting for a connection %d ...\n", server_socket);
 
         struct sockaddr_un remote;
         socklen_t t = sizeof(remote);

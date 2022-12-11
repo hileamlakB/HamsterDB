@@ -19,6 +19,23 @@ int hash(int key, int size)
     return key % size;
 }
 
+size_t hash_string(hash_element str, size_t size)
+{
+    char *s = (char *)str;
+    // using the polynomial rolling hash function
+    const int p = 31;
+    // size_t m = 1e9 + 7;
+    size_t m = size;
+    size_t hash = 0;
+    long p_pow = 1;
+    for (size_t i = 0; s[i] != '\0'; i++)
+    {
+        hash = (hash + (s[i] - 'a' + 1) * p_pow) % m;
+        p_pow = (p_pow * p) % m;
+    }
+    return hash % size;
+}
+
 // Initialize the components of a hashtable.
 // The size parameter is the expected number of elements to be inserted.
 // This method returns an error code, 0 for success and -1 otherwise (e.g., if the parameter passed to the method is not null, if malloc fails, etc).
@@ -61,10 +78,6 @@ int put_ht(hashtable *ht, hash_element key, hash_element value)
 {
 
     assert(ht);
-    if (ht->count == ht->size)
-    {
-        return -1;
-    }
 
     int index = ht->hash_function(key, ht->size);
     node *new_node = (node *)malloc(sizeof(node));
@@ -99,6 +112,115 @@ int put_ht(hashtable *ht, hash_element key, hash_element value)
 
     pthread_mutex_unlock(&ht->locks[index]);
 
+    return 0;
+}
+
+int fat_put_ht(hashtable *ht, hash_element key, hash_element value)
+{
+
+    assert(ht);
+    if (ht->count == ht->size)
+    {
+        return -1;
+    }
+
+    int index = ht->hash_function(key, ht->size);
+    if (ht->array[index] == NULL)
+    {
+        ht->array[index] = (node *)malloc(sizeof(node));
+        ht->array[index]->key = key;
+        ht->array[index]->fat_val = (hash_elements){.values_size = 0, .capacity = 1, .values = malloc(sizeof(hash_element))};
+        ht->array[index]->fat_val.values[0] = value;
+        ht->array[index]->fat_val.values_size += 1;
+
+        ht->array[index]->depth = 1;
+        ht->count++;
+        return 0;
+    }
+
+    // check if the key is already in the list
+    node *curr = ht->array[index];
+    while (curr)
+    {
+        if (ht->compare_function(curr->key, key) == 0)
+        {
+            // if the fat_val is full
+            if (curr->fat_val.values_size == curr->fat_val.capacity)
+            {
+                curr->fat_val.capacity *= 2;
+                curr->fat_val.values = realloc(curr->fat_val.values, curr->fat_val.capacity * sizeof(hash_element));
+            }
+            curr->fat_val.values[curr->fat_val.values_size] = value;
+            curr->fat_val.values_size += 1;
+            return 0;
+        }
+        curr = curr->next;
+    }
+
+    // if the key is not in the list
+    node *new_node = (node *)malloc(sizeof(node));
+    new_node->key = key;
+    new_node->fat_val = (hash_elements){.values_size = 0, .capacity = 1, .values = malloc(sizeof(hash_element))};
+    new_node->fat_val.values[0] = value;
+    new_node->fat_val.values_size += 1;
+    new_node->depth = ht->array[index]->depth + 1;
+    new_node->next = ht->array[index];
+    ht->array[index] = new_node;
+    ht->count++;
+    return 0;
+}
+
+hash_elements fat_get_ht(hashtable *ht, hash_element key)
+{
+    assert(ht);
+    int index = ht->hash_function(key, ht->size);
+    node *curr = ht->array[index];
+    while (curr)
+    {
+        if (ht->compare_function(curr->key, key) == 0)
+        {
+
+            return curr->fat_val;
+        }
+        curr = curr->next;
+    }
+    return (hash_elements){
+        .values_size = 0,
+        .capacity = 0,
+        .values = NULL,
+    };
+}
+
+// This method frees all memory occupied by the hash table.
+// It returns an error code, 0 for success and -1 otherwise.
+int fat_deallocate_ht(hashtable *ht, bool free_key, bool free_value)
+{
+
+    for (size_t i = 0; i < ht->size; i++)
+    {
+        node *curr = ht->array[i];
+        while (curr)
+        {
+            node *to_free = curr;
+            curr = curr->next;
+            if (free_key)
+            {
+                free(to_free->key);
+            }
+            if (free_value)
+            {
+                for (size_t i = 0; i < to_free->fat_val.values_size; i++)
+                {
+                    free(to_free->fat_val.values[i]);
+                }
+            }
+            free(to_free->fat_val.values);
+            free(to_free);
+        }
+    }
+    free(ht->array);
+    free(ht->locks);
+    free(ht);
     return 0;
 }
 

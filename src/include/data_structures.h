@@ -67,8 +67,13 @@ typedef struct node_array
 
 } node_array;
 
+size_t hash_string(hash_element str, size_t size);
+
 int create_ht(hashtable **ht, size_t size, size_t (*hash_function)(hash_element, size_t), size_t (*compare_function)(hash_element, hash_element), bool fat);
 int put_ht(hashtable *ht, hash_element key, hash_element value);
+int fat_put_ht(hashtable *ht, hash_element key, hash_element value);
+hash_elements fat_get_ht(hashtable *ht, hash_element key);
+int fat_deallocate_ht(hashtable *ht, bool free_key, bool free_value);
 hash_elements get_ht(hashtable *ht, hash_element key);
 node *get_raw_ht(hashtable *ht, hash_element key);
 int erase_ht(hashtable *ht, hash_element key);

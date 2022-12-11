@@ -3,23 +3,6 @@
 #include "cs165_api.h"
 #include <string.h>
 
-size_t hash_string(hash_element str, size_t size)
-{
-    char *s = (char *)str;
-    // using the polynomial rolling hash function
-    const int p = 31;
-    // size_t m = 1e9 + 7;
-    size_t m = size;
-    size_t hash = 0;
-    long p_pow = 1;
-    for (size_t i = 0; s[i] != '\0'; i++)
-    {
-        hash = (hash + (s[i] - 'a' + 1) * p_pow) % m;
-        p_pow = (p_pow * p) % m;
-    }
-    return hash % size;
-}
-
 size_t hash_cmp_str(hash_element str1, hash_element str2)
 {
     return strcmp((char *)str1, (char *)str2);

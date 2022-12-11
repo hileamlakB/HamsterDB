@@ -558,7 +558,7 @@ typedef struct ParallelLoader
 extern Db *current_db;
 extern Column empty_column;
 extern Table empty_table;
-extern linkedList *var_pool;
+extern hashtable *var_pool;
 extern pthread_mutex_t var_pool_lock;
 extern batch_query batch;
 extern ParallelLoader bload;

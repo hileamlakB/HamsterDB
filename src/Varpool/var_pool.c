@@ -11,43 +11,63 @@
 #include <errno.h>
 #include <string.h>
 #include "Utils/utils.h"
+#include <data_structures.h>
 
 #include <assert.h>
 
 // find variable in pool
 // add value to pool
 
+hashtable *var_pool = NULL;
 pthread_mutex_t var_pool_lock;
+
+#define var_pool_size 127
+
+// // djb hash function
+// size_t hash_string(hash_element string, size_t size)
+// {
+//     char *str = (char *)string;
+//     unsigned long hash = 5381;
+//     int c;
+
+//     while ((c = *str++))
+//         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+//     return hash % size;
+// }
+
+// string compare
+size_t string_cmp(hash_element a, hash_element b)
+{
+    return strcmp((char *)a, (char *)b);
+}
 
 void add_var(Variable *var)
 {
 
-    linkedList *node = malloc(sizeof(linkedList));
-
-    node->data = (void *)var;
-
     pthread_mutex_lock(&var_pool_lock);
-    node->next = var_pool;
-    var_pool = node;
+    if (var_pool == NULL)
+    {
+        create_ht(&var_pool, var_pool_size, hash_string, string_cmp, false);
+    }
+
+    put_ht(var_pool, strdup(var->name), var);
     pthread_mutex_unlock(&var_pool_lock);
 }
 
 Variable *find_var(char *name)
 {
     pthread_mutex_lock(&var_pool_lock);
-    linkedList *node = var_pool;
-    while (node != NULL)
+    hash_elements results = get_ht(var_pool, name);
+    if (results.values_size == 0)
     {
-        Variable *var = (Variable *)node->data;
-        if (strcmp(var->name, name) == 0)
-        {
-            pthread_mutex_unlock(&var_pool_lock);
-            return var;
-        }
-        node = node->next;
+        pthread_mutex_unlock(&var_pool_lock);
+        return NULL;
     }
+
+    Variable *var = (Variable *)results.values[0]; // get the most recent version
     pthread_mutex_unlock(&var_pool_lock);
-    return NULL;
+    return var;
 }
 
 void free_linked_list(linkedList *node)
@@ -66,30 +86,39 @@ void free_linked_list(linkedList *node)
 
 void free_var_pool()
 {
-    linkedList *node = var_pool;
-    while (node != NULL)
+    if (!var_pool)
     {
-        linkedList *next = node->next;
-        Variable *var = (Variable *)node->data;
-        if (var->type == VECTOR_CHAIN)
+        return;
+    }
+    for (size_t i = 0; i < var_pool->size; i++)
+    {
+
+        node *lnode = var_pool->array[i];
+        while (lnode != NULL)
         {
-            free_linked_list(var->result.pos_vec_chain);
-        }
-        if (var->type == POSITION_VECTOR || var->type == VALUE_VECTOR)
-        {
-            if (var->result.values.values)
+            node *next = lnode->next;
+            Variable *var = (Variable *)lnode->val;
+            if (var->type == VECTOR_CHAIN)
             {
-                free(var->result.values.values);
+                free_linked_list(var->result.pos_vec_chain);
             }
-        }
+            if (var->type == POSITION_VECTOR || var->type == VALUE_VECTOR)
+            {
+                if (var->result.values.values)
+                {
+                    free(var->result.values.values);
+                }
+            }
 
-        if (var->name)
-        {
-            free(var->name);
-        }
+            if (var->name)
+            {
+                free(var->name);
+            }
 
-        free(var);
-        free(node);
-        node = next;
+            free(lnode->key);
+            free(lnode->val);
+            free(lnode);
+            lnode = next;
+        }
     }
 }

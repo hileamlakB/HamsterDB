@@ -1,13 +1,12 @@
 #include <cs165_api.h>
 #include <Serializer/serialize.h>
+#include <cs165_api.h>
+#include <string.h>
 
 size_t writing_space(Column *column)
 {
     return column->file_size - (column->end + sizeof(ColumnMetaData));
 }
-
-#include <cs165_api.h>
-#include <string.h>
 
 Table *lookup_table(Db *db, char *name)
 {

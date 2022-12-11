@@ -52,7 +52,6 @@ String failed_string = {
     .str = "Failed",
     .len = 6};
 Db *current_db;
-linkedList *var_pool;
 Column empty_column = {
     .fd = -1,
     .end = 0,

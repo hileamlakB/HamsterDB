@@ -16,7 +16,7 @@ grouped_tasks query_planner(DbOperator **db_ops, int num_ops)
         num_ops,
         &hash_string,
         &hash_cmp_str,
-        false);
+        false, free, free);
 
     if (result == -1)
     {

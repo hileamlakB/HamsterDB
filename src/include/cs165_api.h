@@ -636,6 +636,7 @@ void fetch_col(Table *, Column *, Variable *, char *, Status *);
 
 // var_pool.c
 void add_var(Variable *);
+void free_var(void *var);
 Variable *find_var(char *);
 void free_var_pool();
 

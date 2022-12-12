@@ -48,9 +48,11 @@ void add_var(Variable *var)
     pthread_mutex_lock(&var_pool_lock);
     if (var_pool == NULL)
     {
-        create_ht(&var_pool, var_pool_size, hash_string, string_cmp, false);
+        create_ht(&var_pool, var_pool_size, hash_string, string_cmp, false, free, free_var);
     }
 
+    // remove variable if it already exits
+    erase_ht(var_pool, var->name);
     put_ht(var_pool, strdup(var->name), var);
     pthread_mutex_unlock(&var_pool_lock);
 }
@@ -66,6 +68,7 @@ Variable *find_var(char *name)
     }
 
     Variable *var = (Variable *)results.values[0]; // get the most recent version
+    free(results.values);
     pthread_mutex_unlock(&var_pool_lock);
     return var;
 }
@@ -84,41 +87,34 @@ void free_linked_list(linkedList *node)
     }
 }
 
+void free_var(void *vars)
+{
+    Variable *var = (Variable *)vars;
+    // free var
+    if (var->type == VECTOR_CHAIN)
+    {
+        free_linked_list(var->result.pos_vec_chain);
+    }
+    if (var->type == POSITION_VECTOR || var->type == VALUE_VECTOR)
+    {
+        if (var->result.values.values)
+        {
+            free(var->result.values.values);
+        }
+    }
+
+    if (var->name)
+    {
+        free(var->name);
+    }
+    free(var);
+}
+
 void free_var_pool()
 {
     if (!var_pool)
     {
         return;
     }
-    for (size_t i = 0; i < var_pool->size; i++)
-    {
-
-        node *lnode = var_pool->array[i];
-        while (lnode != NULL)
-        {
-            node *next = lnode->next;
-            Variable *var = (Variable *)lnode->val;
-            if (var->type == VECTOR_CHAIN)
-            {
-                free_linked_list(var->result.pos_vec_chain);
-            }
-            if (var->type == POSITION_VECTOR || var->type == VALUE_VECTOR)
-            {
-                if (var->result.values.values)
-                {
-                    free(var->result.values.values);
-                }
-            }
-
-            if (var->name)
-            {
-                free(var->name);
-            }
-
-            free(lnode->key);
-            free(lnode->val);
-            free(lnode);
-            lnode = next;
-        }
-    }
+    deallocate_ht(var_pool, true, true);
 }

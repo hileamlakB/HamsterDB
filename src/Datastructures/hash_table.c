@@ -40,9 +40,9 @@ size_t hash_string(hash_element str, size_t size)
 // The size parameter is the expected number of elements to be inserted.
 // This method returns an error code, 0 for success and -1 otherwise (e.g., if the parameter passed to the method is not null, if malloc fails, etc).
 int create_ht(hashtable **ht, size_t size, size_t (*hash_function)(hash_element, size_t),
-              size_t (*compare_function)(hash_element, hash_element), bool fat)
+              size_t (*compare_function)(hash_element, hash_element), bool fat, void (*key_free_function)(hash_element), void (*val_free_function)(hash_element))
 {
-    (void)fat;
+
     *ht = malloc(sizeof(hashtable));
     if (*ht == NULL)
     {
@@ -58,6 +58,9 @@ int create_ht(hashtable **ht, size_t size, size_t (*hash_function)(hash_element,
     }
     (*ht)->hash_function = hash_function;
     (*ht)->compare_function = compare_function;
+    (*ht)->key_free_function = key_free_function;
+    (*ht)->val_free_function = val_free_function;
+    (*ht)->is_fat = fat;
 
     pthread_mutex_t *locks = calloc(size, sizeof(pthread_mutex_t));
 
@@ -76,7 +79,6 @@ int create_ht(hashtable **ht, size_t size, size_t (*hash_function)(hash_element,
 // It returns an error code, 0 for success and -1 otherwise (e.g., if malloc is called and fails).
 int put_ht(hashtable *ht, hash_element key, hash_element value)
 {
-
     assert(ht);
 
     int index = ht->hash_function(key, ht->size);
@@ -117,17 +119,12 @@ int put_ht(hashtable *ht, hash_element key, hash_element value)
 
 int fat_put_ht(hashtable *ht, hash_element key, hash_element value)
 {
-
     assert(ht);
-    if (ht->count == ht->size)
-    {
-        return -1;
-    }
 
     int index = ht->hash_function(key, ht->size);
     if (ht->array[index] == NULL)
     {
-        ht->array[index] = (node *)malloc(sizeof(node));
+        ht->array[index] = (node *)calloc(1, sizeof(node));
         ht->array[index]->key = key;
         ht->array[index]->fat_val = (hash_elements){.values_size = 0, .capacity = 1, .values = malloc(sizeof(hash_element))};
         ht->array[index]->fat_val.values[0] = value;
@@ -144,6 +141,7 @@ int fat_put_ht(hashtable *ht, hash_element key, hash_element value)
     {
         if (ht->compare_function(curr->key, key) == 0)
         {
+
             // if the fat_val is full
             if (curr->fat_val.values_size == curr->fat_val.capacity)
             {
@@ -152,6 +150,11 @@ int fat_put_ht(hashtable *ht, hash_element key, hash_element value)
             }
             curr->fat_val.values[curr->fat_val.values_size] = value;
             curr->fat_val.values_size += 1;
+
+            if (ht->key_free_function){
+                ht->key_free_function(key);
+            }
+
             return 0;
         }
         curr = curr->next;
@@ -190,12 +193,18 @@ hash_elements fat_get_ht(hashtable *ht, hash_element key)
         .values = NULL,
     };
 }
-
+void free_array(void *tofree)
+{
+    hash_elements *to_free = (hash_elements *)tofree;
+    for (size_t i = 0; i < to_free->values_size; i++)
+    {
+        free(to_free->values[i]);
+    }
+}
 // This method frees all memory occupied by the hash table.
 // It returns an error code, 0 for success and -1 otherwise.
 int fat_deallocate_ht(hashtable *ht, bool free_key, bool free_value)
 {
-
     for (size_t i = 0; i < ht->size; i++)
     {
         node *curr = ht->array[i];
@@ -205,14 +214,11 @@ int fat_deallocate_ht(hashtable *ht, bool free_key, bool free_value)
             curr = curr->next;
             if (free_key)
             {
-                free(to_free->key);
+                ht->key_free_function(to_free->key);
             }
             if (free_value)
             {
-                for (size_t i = 0; i < to_free->fat_val.values_size; i++)
-                {
-                    free(to_free->fat_val.values[i]);
-                }
+                ht->val_free_function(&to_free->fat_val);
             }
             free(to_free->fat_val.values);
             free(to_free);
@@ -267,29 +273,6 @@ hash_elements get_ht(hashtable *ht, hash_element key)
     return res;
 }
 
-node *get_raw_ht(hashtable *ht, hash_element key)
-{
-    int index = ht->hash_function(key, ht->size);
-
-    // if there is no element in the location
-    if (!ht->array[index])
-    {
-        return NULL;
-    }
-
-    node *curr = ht->array[index];
-    while (curr)
-    {
-        if (ht->compare_function(curr->key, key) == 0)
-        {
-            return curr;
-        }
-        curr = curr->next;
-    }
-
-    return NULL;
-}
-
 // This method erases all key-value pairs with a given key from the hash table.
 // It returns an error code, 0 for success and -1 otherwise (e.g., if the hashtable is not allocated).
 int erase_ht(hashtable *ht, hash_element key)
@@ -306,7 +289,7 @@ int erase_ht(hashtable *ht, hash_element key)
 
     while (curr)
     {
-        if (ht->compare_function(curr->key, key))
+        if (ht->compare_function(curr->key, key) == 0)
         {
             if (prev)
             {
@@ -319,6 +302,8 @@ int erase_ht(hashtable *ht, hash_element key)
 
             node *to_free = curr;
             curr = curr->next;
+            ht->key_free_function(to_free->key);
+            ht->val_free_function(to_free->val);
             free(to_free);
             ht->count--;
         }
@@ -335,7 +320,6 @@ int erase_ht(hashtable *ht, hash_element key)
 // It returns an error code, 0 for success and -1 otherwise.
 int deallocate_ht(hashtable *ht, bool free_key, bool free_value)
 {
-
     for (size_t i = 0; i < ht->size; i++)
     {
         node *curr = ht->array[i];
@@ -345,11 +329,11 @@ int deallocate_ht(hashtable *ht, bool free_key, bool free_value)
             curr = curr->next;
             if (free_key)
             {
-                free(to_free->key);
+                ht->key_free_function(to_free->key);
             }
             if (free_value)
             {
-                free(to_free->val);
+                ht->val_free_function(to_free->val);
             }
             free(to_free);
         }
@@ -369,6 +353,27 @@ void print_ht(hashtable *ht)
         while (curr)
         {
             printf("key: %d, val: %d, depth: %ld->", *((int *)curr->key), *((int *)curr->val), curr->depth);
+            curr = curr->next;
+        }
+        printf("\n");
+    }
+}
+
+// This method prints the contents of the hash table.
+void fat_print_ht(hashtable *ht)
+{
+    for (size_t i = 0; i < ht->size; i++)
+    {
+        node *curr = ht->array[i];
+        while (curr)
+        {
+            printf("key: %d, val_size: %ld, vals:", *((int *)curr->key), curr->fat_val.values_size);
+            for (size_t i = 0; i < curr->fat_val.values_size; i++)
+            {
+                printf(" %d,", *((int *)curr->fat_val.values[i]));
+            }
+
+            printf(" depth: %ld->", curr->depth);
             curr = curr->next;
         }
         printf("\n");

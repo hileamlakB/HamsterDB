@@ -97,7 +97,6 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
     {
         // handle exists, store here.
         *equals_pointer = '\0';
-        cs165_log(stdout, "FILE HANDLE: %s\n", handle);
         query_command = ++equals_pointer;
     }
     else

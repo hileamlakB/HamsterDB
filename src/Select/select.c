@@ -246,7 +246,7 @@ void *shared_scan_section(void *arg)
 void shared_scan(batch_select_args common)
 {
 
-    const size_t PAGE_SIZE = 4 * (size_t)sysconf(_SC_PAGESIZE);
+    const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
 
     if (common.read_size * sizeof(int) <= PAGE_SIZE)
     {
@@ -282,7 +282,7 @@ void shared_scan(batch_select_args common)
 
         for (size_t i = 0; i < num_threads; i++)
         {
-            size_t read_size = min(common.n * sizeof(int) - (i - 1) * PAGE_SIZE, PAGE_SIZE);
+            size_t read_size = min(common.read_size * sizeof(int) - i * PAGE_SIZE, PAGE_SIZE);
 
             targs[i] = common;
             targs[i].read_size = read_size / sizeof(int);
@@ -373,8 +373,7 @@ Variable generic_select(select_args args)
     // running it in one thread
     if (args.read_size * sizeof(int) <= PAGE_SIZE)
     {
-        atomic_bool is_done = false;
-        args.is_done = &is_done;
+
         select_section(&args);
         return (Variable){
             .type = POSITION_VECTOR,
@@ -382,8 +381,6 @@ Variable generic_select(select_args args)
             .result.values.values = args.result,
             .result.values.size = args.result_size,
             .exists = true};
-
-        // return final_res;
     }
     else // (read_size > PAGE_SIZE )
     {
@@ -477,6 +474,7 @@ void *select_col(void *arg)
 
     *fin_result = search_algorithm(*args);
     add_var(fin_result);
+    *args->is_done = true;
     return NULL;
 }
 

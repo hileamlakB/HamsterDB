@@ -89,9 +89,12 @@ SERVER_OBJ = server.o\
 	btree.o\
 	btree_index.o\
 	parse_timer.o\
+	execute.o\
+	print.o\
+	math_operations.o\
 
 
-VPATH := Insert:Utils:Serializer:Parser:Insert:Join:Others:Parallelization:Select:Varpool:Datastructures:Create:Indexing
+VPATH := Insert:Utils:Serializer:Parser:Insert:Join:Others:Parallelization:Select:Varpool:Datastructures:Create:Indexing:Engine:Printer
 
 client: client.o utils.o thread_pool.o 
 	$(CC) $(CFLAGS) $(DEPCFLAGS) -o $@ $^ $(LDFLAGS) $(LIBS)

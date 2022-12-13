@@ -3,6 +3,6 @@
 #include "cs165_api.h"
 #include "message.h"
 
-DbOperator *parse_command(char *query_command, message *send_message, int client, ClientContext *context);
+DbOperator *parse_command(char *query_command, message *send_message);
 
 #endif

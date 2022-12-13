@@ -14,6 +14,12 @@
 #include <Serializer/serialize.h>
 #include <Create/create.h>
 
+Column empty_column = {
+    .fd = -1,
+    .end = 0,
+    .data = NULL,
+};
+
 Column *create_column(Table *table, char *name, Status *ret_status)
 {
     ret_status->code = ERROR;

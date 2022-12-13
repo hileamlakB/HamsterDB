@@ -70,7 +70,7 @@ void *merge(void *sarg)
 
     size_t size_1 = arg->size1,
            size_2 = arg->size2,
-           size = (size_1 + size_2) * (MAX_INT_LENGTH + MAX_INT_LENGTH + 2);
+           size = (size_1 + size_2) * (sizeof(int[2]));
 
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
     size += PAGE_SIZE - (size - ((size / PAGE_SIZE) * PAGE_SIZE));
@@ -157,7 +157,7 @@ void external_sort(char *maped_file, int file_size)
     size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
     size_t num_runs = file_size / PAGE_SIZE + 1;
 
-    size_t num_ints = PAGE_SIZE / (MAX_INT_LENGTH + MAX_INT_LENGTH + 2);
+    size_t num_ints = PAGE_SIZE / sizeof(int[2]);
 
     sort_args args[num_runs];
     pthread_t threads[num_runs];
@@ -165,7 +165,7 @@ void external_sort(char *maped_file, int file_size)
     {
         num_ints = min(
             num_ints,
-            (file_size - i * PAGE_SIZE) / (MAX_INT_LENGTH + MAX_INT_LENGTH + 2));
+            (file_size - i * PAGE_SIZE) / (sizeof(int[2])));
 
         args[i] = (sort_args){
             .array = maped_file + i * PAGE_SIZE,
@@ -174,14 +174,16 @@ void external_sort(char *maped_file, int file_size)
             .is_sorted = false};
 
         pthread_create(&threads[i], NULL, sort_block, &args[i]);
-
-        // add_job(sort_block, &args[i]);
+        pthread_detach(threads[i]);
     }
 
     // wait for the sort threads to finish
     for (size_t i = 0; i < num_runs; i++)
     {
-        pthread_join(threads[i], NULL);
+        while (!args[i].is_sorted)
+        {
+            sched_yield();
+        }
     }
 
     if (num_runs == 1)
@@ -217,14 +219,15 @@ void external_sort(char *maped_file, int file_size)
                 .size2 = individual_run_sizes[i + 1],
                 .is_merged = &is_merged[j]};
             pthread_create(&mthreads[j], NULL, merge, &margs[j]);
-
-            // add_job(merge, &margs[j]);
+            pthread_detach(mthreads[j]);
         }
 
         for (size_t i = 0; i < num_runs / 2; i++)
         {
-
-            pthread_join(mthreads[i], NULL);
+            while (!is_merged[i])
+            {
+                sched_yield();
+            }
             individual_run_sizes[i] = margs[i].size1 + margs[i].size2;
         }
         if (odd)

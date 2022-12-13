@@ -467,6 +467,26 @@ long find_closet_prime(long int x)
     return ans;
 }
 
+bool min_op(int a, int b)
+{
+    return a < b;
+}
+
+bool max_op(int a, int b)
+{
+    return a > b;
+}
+
+int add_op(int a, int b)
+{
+    return a + b;
+}
+
+int sub_op(int a, int b)
+{
+    return a - b;
+}
+
 /* The following three functions will show output on the terminal
  * based off whether the corresponding level is defined.
  * To see log output, define LOG.

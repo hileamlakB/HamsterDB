@@ -6,6 +6,11 @@
 #include <stdatomic.h>
 #include <pthread.h>
 
+ParallelLoader bload = {
+    .mode = false,
+    .done = false,
+};
+
 int insert_col(Table *table, Column *col, int value)
 {
 

@@ -13,6 +13,8 @@
 #include <unistd.h>
 #include <Serializer/serialize.h>
 #include <Create/create.h>
+
+Table empty_table;
 /*
  * Here you will create a table object. The Status object can be used to return
  * to the caller that there was an error in table creation

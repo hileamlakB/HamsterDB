@@ -179,4 +179,9 @@ void *closest_search(const void *key, const void *base,
 
 long find_closet_prime(long int x);
 
+bool min_op(int a, int b);
+bool max_op(int a, int b);
+int add_op(int a, int b);
+int sub_op(int a, int b);
+
 #endif /* __UTILS_H__ */

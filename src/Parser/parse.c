@@ -72,22 +72,15 @@ EntityAddress parse_column_name(char *token, Status *status)
  * parses it into the appropriate query. Stores into send_message the
  * status to send back.
  * Returns a db_operator.
- *
- * Getting Started Hint:
- *      What commands are currently supported for parsing in the starter code distribution?
- *      How would you add a new command type to parse?
- *      What if such command requires multiple arguments?
  **/
-DbOperator *parse_command(char *query_command, message *send_message, int client_socket, ClientContext *context)
+DbOperator *parse_command(char *query_command, message *send_message)
 {
-    // a second option is to malloc the dbo here (instead of inside the parse commands). Either way, you should track the dbo
-    // and free it when the variable is no longer needed.
-    DbOperator *dbo = NULL; // = malloc(sizeof(DbOperator));
+
+    DbOperator *dbo = NULL;
 
     if (strncmp(query_command, "--", 2) == 0)
     {
         send_message->status = OK_DONE;
-        // The -- signifies a comment line, no operator needed.
         return NULL;
     }
 
@@ -104,9 +97,6 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
         handle = NULL;
     }
 
-    // by default, set the status to acknowledge receipt of command,
-    //   indication to client to now wait for the response from the server.
-    //   Note, some commands might want to relay a different status back to the client.
     send_message->status = OK_WAIT_FOR_RESPONSE;
     query_command = trim_whitespace(query_command);
     // check what command is given.
@@ -215,12 +205,5 @@ DbOperator *parse_command(char *query_command, message *send_message, int client
         dbo = parse_timer(query_command);
     }
 
-    if (dbo == NULL)
-    {
-        return dbo;
-    }
-
-    dbo->client_fd = client_socket;
-    dbo->context = context;
     return dbo;
 }

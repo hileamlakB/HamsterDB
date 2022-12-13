@@ -73,6 +73,9 @@ int connect_client()
     return client_socket;
 }
 
+// This function is used to send a message to the server and receive a response
+// in the case of load, it keeps the channel open until the server sends a
+// PRINT_COMPLETE message
 void communicate_server(int client_socket, message send_message, bool wait, bool shutdown_immediately)
 {
 
@@ -93,9 +96,10 @@ void communicate_server(int client_socket, message send_message, bool wait, bool
 
     bool is_done = false;
     bool print_newline = false;
-    // Always wait for server response (even if it is just an OK message)
+
     while (!is_done)
     {
+        // Always wait for server response (even if it is just an OK message)
         if ((len = recv(client_socket, &recv_message, sizeof(message), 0)) > 0)
         {
 
@@ -157,6 +161,8 @@ void communicate_server(int client_socket, message send_message, bool wait, bool
     }
 }
 
+// This function reads a file and sends it to the server
+// in chunks as described in LOAD_BATCH_SIZE
 void load_file4(int client_socket, char *file_name)
 {
 

@@ -18,6 +18,7 @@
 #define initial_size 1024
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 #define max(a, b) (((a) > (b)) ? (a) : (b))
+#define MILLION 10000000
 
 /**
  * Error codes used to indicate the outcome of an API call

@@ -15,10 +15,11 @@ DbOperator *parse_load_start(char *query_string, message *send_message)
     token++;
     token[strlen(token) - 1] = '\0';
 
-    // only the table name matters assuing the columns are in the same order
     size_t incoming_size = _atoi(strsep(&token, ","));
     char *name = strsep(&token, ",");
     Status status;
+
+    // only the table name matters assuming the columns are in the same order
     EntityAddress address = parse_column_name(name, &status);
 
     send_message->status = OK_DONE;

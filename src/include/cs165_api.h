@@ -189,6 +189,13 @@ typedef struct Table
     // this is an auto incrementing id
     size_t last_id;
     atomic_size_t rows; // number of tuples inserted
+
+    // table tuple file
+    int fd;
+    int *file;
+    size_t file_size;
+    bool is_persistent;
+
 } Table;
 
 /**

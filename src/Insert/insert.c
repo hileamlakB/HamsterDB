@@ -5,6 +5,11 @@
 #include "Loader/load.h"
 #include <stdatomic.h>
 #include <pthread.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 ParallelLoader bload = {
     .mode = false,
@@ -65,8 +70,21 @@ int insert(Table *table, String values)
             index++;
             table->columns[i].data[table->columns[i].end] = num;
             table->columns[i].end += 1;
+
+            if (table->is_persistent)
+            {
+                table->file[table->rows * table->col_count + i] = num;
+            }
         }
         table->rows += 1;
+        if (table->is_persistent && (table->rows + 1) * table->col_count * sizeof(int) > table->file_size)
+        {
+            table->file_size *= 2;
+            lseek(bload.table->fd, table->file_size, SEEK_SET);
+            write(bload.table->fd, " ", 1);
+            // remap the file
+            table->file = mmap(table->file, table->file_size, PROT_READ | PROT_WRITE, MAP_SHARED, table->fd, 0);
+        }
     }
     return 0;
 }
@@ -154,10 +172,28 @@ void batch_load(DbOperator *query)
 
 void prepare_load(DbOperator *query)
 {
+
     // goes through each column and maps it to much incoming size
     size_t incoming_size = query->operator_fields.parellel_load.load_size;
     for (size_t i = 0; i < bload.table->col_count; i++)
     {
+        if (bload.table->columns[i].indexed && bload.table->columns[i].index.clustered == CLUSTERED && bload.table->is_persistent != true)
+        {
+
+            bload.table->is_persistent = true;
+            // create a tuple file for the table
+            char *tuple_file_name = catnstr(2, bload.table->file_path, ".tuple");
+            bload.table->fd = open(tuple_file_name, O_CREAT | O_RDWR, 0666);
+            free(tuple_file_name);
+
+            // expand file
+            lseek(bload.table->fd, MILLION * sizeof(int) * bload.table->col_count, SEEK_SET);
+            write(bload.table->fd, " ", 1);
+
+            // map the tuple file
+            bload.table->file = mmap(NULL, MILLION * sizeof(int) * bload.table->col_count, PROT_READ | PROT_WRITE, MAP_SHARED, bload.table->fd, 0);
+            bload.table->file_size = MILLION * sizeof(int) * bload.table->col_count;
+        }
         remap_col(bload.table, bload.table->columns + i, incoming_size);
     }
 

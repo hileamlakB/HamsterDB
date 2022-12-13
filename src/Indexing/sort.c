@@ -16,6 +16,7 @@
 #include "cs165_api.h"
 
 #include <Serializer/serialize.h>
+#include <assert.h>
 
 // compare two integers that are represented as a tuple
 // of two strings, where the first string is the integer
@@ -446,39 +447,22 @@ int sort_col(Table *tbl, Column *col)
     return 0;
 }
 
-// reorders the file according to the map file
-tmp_file reorder(tmp_file tuple_file, Table *tbl, Column *idx_column)
+// create a reorder version of the file based on the idx maxp
+tmp_file reorder(Table *tbl, Column *idx_column)
 {
 
     // mmap map file
     char *file_path = catnstr(2, idx_column->file_path, ".map");
     int fd = open(file_path, O_RDONLY, 0666);
-    struct stat st;
-    fstat(fd, &st);
-    size_t file_size = st.st_size;
 
-    int *map = mmap(NULL, file_size, PROT_READ, MAP_SHARED, fd, 0);
-
-    // mmap tuple file
-    if (tuple_file.fd == -1)
-    {
-        tuple_file.fd = open(tuple_file.file_name, O_RDWR, 0666);
-    }
-
-    if (!tuple_file.map)
-    {
-        struct stat st2;
-        fstat(tuple_file.fd, &st2);
-        tuple_file.size = st2.st_size;
-
-        tuple_file.map = mmap(NULL, tuple_file.size, PROT_READ | PROT_WRITE, MAP_SHARED, tuple_file.fd, 0);
-    }
-    int *tmap = (int *)tuple_file.map;
+    int *map = mmap(NULL, tbl->rows * sizeof(int), PROT_READ, MAP_SHARED, fd, 0);
+    assert(tbl->file);
+    int *tmap = tbl->file;
 
     // create a new file to write the reordered file
     tmp_file reordered = create_tmp_file(
         "reordered_tuple",
-        tbl->rows * (tbl->col_count - 1) * sizeof(int),
+        tbl->rows * tbl->col_count * sizeof(int),
         true,
         true, true);
     int *rmap = (int *)reordered.map;
@@ -492,9 +476,9 @@ tmp_file reorder(tmp_file tuple_file, Table *tbl, Column *idx_column)
         int old_location = map[i];
 
         // copy the tuple to the new file
-        for (size_t j = 0; j < tbl->col_count - 1; j++)
+        for (size_t j = 0; j < tbl->col_count; j++)
         {
-            rmap[writing_location + j] = tmap[old_location * (tbl->col_count - 1) + j];
+            rmap[writing_location + j] = tmap[old_location * tbl->col_count + j];
         }
 
         i += 1;
@@ -502,7 +486,7 @@ tmp_file reorder(tmp_file tuple_file, Table *tbl, Column *idx_column)
     }
 
     free(file_path);
-    munmap(map, file_size);
+    munmap(map, tbl->rows * sizeof(int));
     close(fd);
 
     return reordered;
@@ -587,28 +571,8 @@ void separate_tuple(Table *table, Column *idx_column, tmp_file tuple, size_t n)
 void propagate_sort(Table *tbl, Column *idx_column)
 {
 
-    int *index_maps[tbl->col_count - 1];
-
-    for (size_t i = 0, j = 0; i < tbl->col_count; i++)
-    {
-        if (idx_column == &tbl->columns[i])
-        {
-            continue;
-        }
-
-        map_col(tbl, &tbl->columns[i], 0);
-        index_maps[j] = tbl->columns[i].data;
-        j++;
-    }
-
-    tmp_file tuple = create_tuple(tbl->rows, tbl->col_count - 1, index_maps);
-
-    tmp_file reordered = reorder(tuple, tbl, idx_column);
+    tmp_file reordered = reorder(tbl, idx_column);
     separate_tuple(tbl, idx_column, reordered, tbl->rows);
-
-    free(tuple.file_name);
-    munmap(tuple.map, tuple.size);
-    close(tuple.fd);
 
     free(reordered.file_name);
     munmap(reordered.map, reordered.size);

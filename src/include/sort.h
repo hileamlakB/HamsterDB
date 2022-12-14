@@ -24,6 +24,7 @@ typedef struct merge_args
     size_t size1;
     size_t size2;
     atomic_bool is_merged;
+    int *result;
 
 } merge_args;
 

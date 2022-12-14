@@ -183,6 +183,9 @@ void external_sort(int *maped_file, int file_size)
         pthread_detach(threads[i]);
     }
 
+    atomic_size_t *individual_run_sizes = malloc(sizeof(atomic_size_t) * num_runs);
+    int **runs = malloc(sizeof(int *) * num_runs);
+
     // wait for the sort threads to finish
     for (size_t i = 0; i < num_runs; i++)
     {
@@ -190,6 +193,9 @@ void external_sort(int *maped_file, int file_size)
         {
             sched_yield();
         }
+
+        individual_run_sizes[i] = args[i].size;
+        runs[i] = args[i].array;
     }
 
     if (num_runs == 1)
@@ -197,28 +203,23 @@ void external_sort(int *maped_file, int file_size)
         return;
     }
 
-    atomic_size_t *individual_run_sizes = malloc(sizeof(atomic_size_t) * num_runs);
-    for (size_t i = 0; i < num_runs; i++)
-    {
-        individual_run_sizes[i] = args[i].size;
-    }
-
-    size_t num_blocks = 1;
     while (num_runs > 1)
     {
 
         size_t odd = num_runs % 2;
-        merge_args margs[num_runs / 2];
-        pthread_t mthreads[num_runs / 2];
+        merge_args *margs = malloc(sizeof(merge_args) * num_runs / 2);
+        pthread_t *mthreads = malloc(sizeof(merge_args) * num_runs / 2);
+        int **new_runs = malloc(sizeof(int *) * num_runs / 2 + odd);
 
         for (size_t i = 0, j = 0; i < num_runs - (odd); i += 2, j++)
         {
             margs[j] = (merge_args){
-                .array1 = maped_file + i * (num_blocks * PAGE_SIZE),
+                .array1 = runs[i],
                 .size1 = individual_run_sizes[i],
-                .array2 = maped_file + (i + 1) * (num_blocks * PAGE_SIZE),
+                .array2 = runs[i + 1],
                 .size2 = individual_run_sizes[i + 1],
-                .is_merged = false};
+                .is_merged = false,
+            };
             pthread_create(&mthreads[j], NULL, merge, &margs[j]);
             pthread_detach(mthreads[j]);
         }
@@ -230,20 +231,23 @@ void external_sort(int *maped_file, int file_size)
                 sched_yield();
             }
             individual_run_sizes[i] = margs[i].size1 + margs[i].size2;
+            new_runs[i] = margs[i].result;
         }
+
         if (odd)
         {
             individual_run_sizes[num_runs / 2] = individual_run_sizes[num_runs - 1];
+            new_runs[num_runs / 2] = runs[num_runs - 1];
         }
+        free(runs);
+        runs = new_runs;
         num_runs = num_runs / 2 + odd;
-        num_blocks *= 2;
     }
 
     free(individual_run_sizes);
     free(args);
     free(threads);
 }
-
 void simple_sort(int *maped_file, int file_size)
 {
     qsort(maped_file, file_size, sizeof(int[2]), compare_int_loc_tuple);

@@ -124,19 +124,20 @@ Variable (*choose_algorithm(select_args args))(select_args)
         else if (idx.type == BTREE)
         {
 
+            return sorted_select;
             // if data range is small enough, use sorted search
             // other wise use btree
-            if (args.high && args.low)
-            {
+            // if (args.high && args.low)
+            // {
 
-                int range = *args.high - *args.low;
-                if (range < 100)
-                {
-                    return sorted_select;
-                }
-            }
+            //     int range = *args.high - *args.low;
+            //     if (range < 100)
+            //     {
+            //         return sorted_select;
+            //     }
+            // }
 
-            return btree_select;
+            // return sorted_select;
         }
     }
 

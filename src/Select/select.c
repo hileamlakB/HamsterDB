@@ -366,7 +366,7 @@ Variable generic_select(select_args args)
 
     // makes sure you cut a file into sections
     // at meaningfull locaitons
-    const size_t PAGE_SIZE = 4 * (size_t)sysconf(_SC_PAGESIZE); // experimental value
+    const size_t PAGE_SIZE = 8 * (size_t)sysconf(_SC_PAGESIZE); // experimental value
     // Variable *final_res = malloc(sizeof(Variable));
 
     // if file size is bigger than page size,

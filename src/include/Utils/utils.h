@@ -13,7 +13,7 @@
 #include <message.h>
 
 // 12 including negative sign
-#define LOAD_BATCH_SIZE 4096
+#define LOAD_BATCH_SIZE 1024
 #define MAX_INT_LENGTH 12
 #define MAX_THREADS 184320
 #define initial_size 1024

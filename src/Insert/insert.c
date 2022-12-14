@@ -69,6 +69,7 @@ int insert(Table *table, String values)
             num *= sign;
             index++;
             table->columns[i].data[table->columns[i].end] = num;
+            
             table->columns[i].end += 1;
 
             if (table->is_persistent)

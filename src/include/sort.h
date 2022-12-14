@@ -19,11 +19,11 @@ typedef struct sort_args
 
 typedef struct merge_args
 {
-    char *array1;
-    char *array2;
+    int *array1;
+    int *array2;
     size_t size1;
     size_t size2;
-    atomic_bool *is_merged;
+    atomic_bool is_merged;
 
 } merge_args;
 

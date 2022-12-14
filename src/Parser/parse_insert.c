@@ -31,6 +31,8 @@ DbOperator *parse_load_start(char *query_string, message *send_message)
     bload.table = address.table;
     bload.done = false;
 
+    
+
     return dbo;
 }
 

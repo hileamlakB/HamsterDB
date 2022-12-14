@@ -49,197 +49,6 @@ int compare_external_ints(const void *a, const void *b)
     return 1;
 }
 
-// compare two integers that are represented as a tuple
-// using the compare_external_ints function
-// and sort them using the qsort function
-void *sort_block(void *sarg)
-{
-    sort_args *arg = (sort_args *)sarg;
-    qsort(arg->array, arg->size, sizeof(char[MAX_INT_LENGTH + MAX_INT_LENGTH + 2]), arg->compare);
-    arg->is_sorted = true;
-    return NULL;
-}
-
-// merge two sorted runs and write them back to the first array
-void *merge(void *sarg)
-{
-    merge_args *arg = (merge_args *)sarg;
-    char *array_1 = (char *)arg->array1,
-         *p1 = array_1,
-         *array_2 = (char *)arg->array2,
-         *p2 = array_2;
-
-    size_t size_1 = arg->size1,
-           size_2 = arg->size2,
-           size = (size_1 + size_2) * (sizeof(int[2]));
-
-    const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
-    size += PAGE_SIZE - (size - ((size / PAGE_SIZE) * PAGE_SIZE));
-
-    tmp_file tmp = create_tmp_file("merge", size, true, true, true);
-
-    // map the file to memory
-    char *result = tmp.map;
-
-    while (
-        (size_t)(p1 - array_1) < size_1 * (MAX_INT_LENGTH + MAX_INT_LENGTH + 2) &&
-        (size_t)(p2 - array_2) < size_2 * (MAX_INT_LENGTH + MAX_INT_LENGTH + 2))
-    {
-        if (p1[0] == ' ')
-        {
-            p1 += 1;
-            continue;
-        }
-        if (p2[0] == ' ')
-        {
-            p2 += 1;
-            continue;
-        }
-        // the runs might create empty spaces so we need to skip them
-        if (compare_external_ints(p1, p2) < 0)
-        {
-            memcpy(result, p1, MAX_INT_LENGTH + MAX_INT_LENGTH + 2);
-            p1 += MAX_INT_LENGTH + MAX_INT_LENGTH + 2;
-        }
-        else
-        {
-            memcpy(result, p2, MAX_INT_LENGTH + MAX_INT_LENGTH + 2);
-            p2 += MAX_INT_LENGTH + MAX_INT_LENGTH + 2;
-        }
-        result += MAX_INT_LENGTH + MAX_INT_LENGTH + 2;
-    }
-
-    if ((size_t)(p1 - array_1) < size_1 * (MAX_INT_LENGTH + MAX_INT_LENGTH + 2))
-    {
-
-        memcpy(result, p1, size_1 * (MAX_INT_LENGTH + MAX_INT_LENGTH + 2) - (p1 - array_1));
-        result += size_1 * (MAX_INT_LENGTH + MAX_INT_LENGTH + 2) - (p1 - array_1);
-    }
-    else
-    {
-        memcpy(result, p2, size_2 * (MAX_INT_LENGTH + MAX_INT_LENGTH + 2) - (p2 - array_2));
-        result += size_2 * (MAX_INT_LENGTH + MAX_INT_LENGTH + 2) - (p2 - array_2);
-    }
-
-    size_t fill_size = size - ((size_1 + size_2) * (MAX_INT_LENGTH + MAX_INT_LENGTH + 2));
-
-    while (fill_size > 0)
-    {
-
-        *result = ' ';
-        result++;
-        fill_size--;
-    }
-
-    // copy the result back to the first array
-    free(tmp.file_name);
-    memcpy(array_1, tmp.map, size);
-    munmap(tmp.map, size);
-    close(tmp.fd);
-
-    *arg->is_merged = true;
-
-    return NULL;
-}
-
-// implemntation of parralized external two-way merge sort
-// the mapped_file to be sorted has to satisfy the following conditions:
-// 1. Contains numbers in the form n1,n1_loc,n2,n2_loc,...,nn,nn_loc
-// 2. The numbers should fit in a page (4KB), if the don't the page should be
-//    padded with the empty space the next number should start in the next page
-// 3. A page must be filled before going to the next page
-// NOTE: This function is for internal use only
-void external_sort(char *maped_file, int file_size)
-{
-
-    // create runs and sort them using the sort thread
-    // merge the runs
-
-    size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
-    size_t num_runs = file_size / PAGE_SIZE + 1;
-
-    size_t num_ints = PAGE_SIZE / sizeof(int[2]);
-
-    sort_args args[num_runs];
-    pthread_t threads[num_runs];
-    for (size_t i = 0; i < num_runs; i++)
-    {
-        num_ints = min(
-            num_ints,
-            (file_size - i * PAGE_SIZE) / (sizeof(int[2])));
-
-        args[i] = (sort_args){
-            .array = maped_file + i * PAGE_SIZE,
-            .size = num_ints,
-            .compare = compare_external_ints,
-            .is_sorted = false};
-
-        pthread_create(&threads[i], NULL, sort_block, &args[i]);
-        pthread_detach(threads[i]);
-    }
-
-    // wait for the sort threads to finish
-    for (size_t i = 0; i < num_runs; i++)
-    {
-        while (!args[i].is_sorted)
-        {
-            sched_yield();
-        }
-    }
-
-    if (num_runs == 1)
-    {
-        return;
-    }
-
-    atomic_size_t individual_run_sizes[num_runs];
-    for (size_t i = 0; i < num_runs; i++)
-    {
-        individual_run_sizes[i] = args[i].size;
-    }
-
-    // size_t pass = 1;
-
-    size_t num_blocks = 1;
-    while (num_runs > 1)
-    {
-
-        size_t odd = num_runs % 2;
-        merge_args margs[num_runs / 2];
-        atomic_bool is_merged[num_runs / 2];
-        pthread_t mthreads[num_runs / 2];
-
-        for (size_t i = 0, j = 0; i < num_runs - (odd); i += 2, j++)
-        {
-
-            is_merged[j] = false;
-            margs[j] = (merge_args){
-                .array1 = maped_file + i * (num_blocks * PAGE_SIZE),
-                .size1 = individual_run_sizes[i],
-                .array2 = maped_file + (i + 1) * (num_blocks * PAGE_SIZE),
-                .size2 = individual_run_sizes[i + 1],
-                .is_merged = &is_merged[j]};
-            pthread_create(&mthreads[j], NULL, merge, &margs[j]);
-            pthread_detach(mthreads[j]);
-        }
-
-        for (size_t i = 0; i < num_runs / 2; i++)
-        {
-            while (!is_merged[i])
-            {
-                sched_yield();
-            }
-            individual_run_sizes[i] = margs[i].size1 + margs[i].size2;
-        }
-        if (odd)
-        {
-            individual_run_sizes[num_runs / 2] = individual_run_sizes[num_runs - 1];
-        }
-        num_runs = num_runs / 2 + odd;
-        num_blocks *= 2;
-    }
-}
-
 int compare_int_loc_tuple(const void *a, const void *b)
 {
     // compare two 2 dimentsional integer arrays
@@ -266,6 +75,173 @@ int compare_int_loc_tuple(const void *a, const void *b)
     }
 
     return 0;
+}
+
+// compare two integers that are represented as a tuple
+// using the compare_external_ints function
+// and sort them using the qsort function
+void *sort_block(void *sarg)
+{
+    sort_args *arg = (sort_args *)sarg;
+    qsort(arg->array, arg->size, sizeof(int[2]), arg->compare);
+    arg->is_sorted = true;
+    return NULL;
+}
+
+// merge two sorted runs and write them back to the first array
+void *merge(void *sarg)
+{
+    merge_args *arg = (merge_args *)sarg;
+    int *array_1 = arg->array1,
+        *array_2 = arg->array2;
+
+    size_t size_1 = arg->size1,
+           size_2 = arg->size2,
+           size = (size_1 + size_2) * (sizeof(int[2]));
+
+    // const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
+    // size += PAGE_SIZE - (size - ((size / PAGE_SIZE) * PAGE_SIZE));
+
+    tmp_file tmp = create_tmp_file("merge", size, true, true, true);
+
+    // map the file to memory
+    int *result = (int *)tmp.map;
+    size_t p1 = 0, p2 = 0;
+
+    while (p1 < size_1 && p2 < size_2)
+    {
+
+        if (compare_int_loc_tuple(array_1 + (2 * p1), array_2 + (2 * p2)) < 0)
+        {
+            memcpy(result, array_1 + p1 * 2, sizeof(int[2]));
+            p1 += 1;
+        }
+        else
+        {
+            memcpy(result, array_2 + p2 * 2, sizeof(int[2]));
+            p2 += 1;
+        }
+        result += 2;
+    }
+
+    if (p1 < size_1)
+    {
+
+        memcpy(result, array_1 + p1 * 2, (size_1 - p1) * sizeof(int[2]));
+        result += (size_1 - p1) * 2;
+    }
+    else
+    {
+        memcpy(result, array_2 + p2 * 2, (size_2 - p2) * sizeof(int[2]));
+        result += (size_1 - p2) * 2;
+    }
+
+    // copy the result back to the first array
+    free(tmp.file_name);
+    memcpy(array_1, tmp.map, size);
+    munmap(tmp.map, size);
+    close(tmp.fd);
+
+    arg->is_merged = true;
+
+    return NULL;
+}
+
+// implemntation of parralized external two-way merge sort
+// the mapped_file to be sorted has to satisfy the following conditions:
+// 1. Contains numbers in the form n1,n1_loc,n2,n2_loc,...,nn,nn_loc
+
+// NOTE: This function is for internal use only
+void external_sort(int *maped_file, int file_size)
+{
+
+    // create runs and sort them using the sort and merge threads
+    size_t PAGE_SIZE = 4 * sysconf(_SC_PAGESIZE);
+    size_t num_runs = file_size / PAGE_SIZE;
+    if (file_size % PAGE_SIZE != 0)
+    {
+        num_runs++;
+    }
+
+    size_t num_ints = PAGE_SIZE / sizeof(int[2]);
+
+    sort_args *args = malloc(sizeof(sort_args) * num_runs);
+    pthread_t *threads = malloc(sizeof(pthread_t) * num_runs);
+    for (size_t i = 0; i < num_runs; i++)
+    {
+        num_ints = min(
+            num_ints,
+            (file_size - i * PAGE_SIZE) / (sizeof(int[2])));
+
+        args[i] = (sort_args){
+            .array = maped_file + i * PAGE_SIZE,
+            .size = num_ints,
+            .compare = compare_int_loc_tuple,
+            .is_sorted = false};
+
+        pthread_create(&threads[i], NULL, sort_block, &args[i]);
+        pthread_detach(threads[i]);
+    }
+
+    // wait for the sort threads to finish
+    for (size_t i = 0; i < num_runs; i++)
+    {
+        while (!args[i].is_sorted)
+        {
+            sched_yield();
+        }
+    }
+
+    if (num_runs == 1)
+    {
+        return;
+    }
+
+    atomic_size_t *individual_run_sizes = malloc(sizeof(atomic_size_t) * num_runs);
+    for (size_t i = 0; i < num_runs; i++)
+    {
+        individual_run_sizes[i] = args[i].size;
+    }
+
+    size_t num_blocks = 1;
+    while (num_runs > 1)
+    {
+
+        size_t odd = num_runs % 2;
+        merge_args margs[num_runs / 2];
+        pthread_t mthreads[num_runs / 2];
+
+        for (size_t i = 0, j = 0; i < num_runs - (odd); i += 2, j++)
+        {
+            margs[j] = (merge_args){
+                .array1 = maped_file + i * (num_blocks * PAGE_SIZE),
+                .size1 = individual_run_sizes[i],
+                .array2 = maped_file + (i + 1) * (num_blocks * PAGE_SIZE),
+                .size2 = individual_run_sizes[i + 1],
+                .is_merged = false};
+            pthread_create(&mthreads[j], NULL, merge, &margs[j]);
+            pthread_detach(mthreads[j]);
+        }
+
+        for (size_t i = 0; i < num_runs / 2; i++)
+        {
+            while (!margs[i].is_merged)
+            {
+                sched_yield();
+            }
+            individual_run_sizes[i] = margs[i].size1 + margs[i].size2;
+        }
+        if (odd)
+        {
+            individual_run_sizes[num_runs / 2] = individual_run_sizes[num_runs - 1];
+        }
+        num_runs = num_runs / 2 + odd;
+        num_blocks *= 2;
+    }
+
+    free(individual_run_sizes);
+    free(args);
+    free(threads);
 }
 
 void simple_sort(int *maped_file, int file_size)
@@ -406,7 +382,7 @@ int extract_sorted(Table *tbl, Column *col)
 int sort_col(Table *tbl, Column *col)
 {
 
-    // thread_pool_init(5);
+    // thread_pool_init(1000);
 
     map_col(tbl, col, 0);
     char *file_name = col->file_path;
@@ -428,7 +404,7 @@ int sort_col(Table *tbl, Column *col)
 
     simple_sort(to_sort, tbl->rows);
 
-    // external_sort(to_sort, file_size);
+    // external_sort(to_sort, tbl->rows * sizeof(int[2]));
 
     munmap(to_sort, tbl->rows * sizeof(int));
     close(fd_to_sort);
@@ -445,51 +421,6 @@ int sort_col(Table *tbl, Column *col)
     // destroy_thread_pool();
 
     return 0;
-}
-
-// create a reorder version of the file based on the idx maxp
-tmp_file reorder(Table *tbl, Column *idx_column)
-{
-
-    // mmap map file
-    char *file_path = catnstr(2, idx_column->file_path, ".map");
-    int fd = open(file_path, O_RDONLY, 0666);
-
-    int *map = mmap(NULL, tbl->rows * sizeof(int), PROT_READ, MAP_SHARED, fd, 0);
-    assert(tbl->file);
-    int *tmap = tbl->file;
-
-    // create a new file to write the reordered file
-    tmp_file reordered = create_tmp_file(
-        "reordered_tuple",
-        tbl->rows * tbl->col_count * sizeof(int),
-        true,
-        true, true);
-    int *rmap = (int *)reordered.map;
-
-    // reorder the file and write it to the new file
-    size_t i = 0;
-    size_t writing_location = 0;
-    while (i < tbl->rows)
-    {
-
-        int old_location = map[i];
-
-        // copy the tuple to the new file
-        for (size_t j = 0; j < tbl->col_count; j++)
-        {
-            rmap[writing_location + j] = tmap[old_location * tbl->col_count + j];
-        }
-
-        i += 1;
-        writing_location += tbl->col_count - 1;
-    }
-
-    free(file_path);
-    munmap(map, tbl->rows * sizeof(int));
-    close(fd);
-
-    return reordered;
 }
 
 // create a tuple of multiple files
@@ -571,10 +502,63 @@ void separate_tuple(Table *table, Column *idx_column, tmp_file tuple, size_t n)
 void propagate_sort(Table *tbl, Column *idx_column)
 {
 
-    tmp_file reordered = reorder(tbl, idx_column);
-    separate_tuple(tbl, idx_column, reordered, tbl->rows);
+    // open the map file
+    char *file_path = catnstr(2, idx_column->file_path, ".map");
+    int fd = open(file_path, O_RDONLY, 0666);
+    int *map = mmap(NULL, tbl->rows * sizeof(int), PROT_READ, MAP_SHARED, fd, 0);
+    free(file_path);
 
-    free(reordered.file_name);
-    munmap(reordered.map, reordered.size);
-    close(reordered.fd);
+    // open the tuple file
+    assert(tbl->file);
+    int *tmap = tbl->file;
+
+    int **res = calloc(tbl->col_count, sizeof(int *));
+    int fds[tbl->col_count - 1];
+    for (size_t i = 0; i < tbl->col_count; i++)
+    {
+        if (&tbl->columns[i] == idx_column)
+        {
+            continue;
+        }
+        // create the clustered files related to each non index column
+        char *file_name = catnstr(3, tbl->columns[i].file_path, ".clustered.", idx_column->name);
+        int fd = open(file_name, O_RDWR | O_CREAT | O_TRUNC, 0666);
+        lseek(fd, tbl->rows * sizeof(int), SEEK_SET);
+        write(fd, " ", 1);
+
+        fds[i] = fd;
+        res[i] = mmap(NULL, tbl->rows * sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        free(file_name);
+    }
+
+    size_t i = 0;
+    while (i < tbl->rows)
+    {
+
+        int old_location = map[i];
+
+        // copy the tuple to the new files
+        for (size_t j = 0; j < tbl->col_count; j++)
+        {
+            if (&tbl->columns[j] == idx_column)
+            {
+                continue;
+            }
+            res[j][i] = tmap[old_location * tbl->col_count + j];
+        }
+
+        i += 1;
+    }
+
+    for (size_t i = 0; i < tbl->col_count; i++)
+    {
+        if (&tbl->columns[i] == idx_column)
+        {
+            continue;
+        }
+        munmap(res[i], tbl->rows * sizeof(int));
+        close(fds[i]);
+    }
+
+    free(res);
 }

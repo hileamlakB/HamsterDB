@@ -69,8 +69,17 @@ int insert(Table *table, String values)
             num *= sign;
             index++;
             table->columns[i].data[table->columns[i].end] = num;
-            
             table->columns[i].end += 1;
+
+            if (table->columns[i].metadata->max < num)
+            {
+                table->columns[i].metadata->max = num;
+            }
+            if (table->columns[i].metadata->min > num)
+            {
+                table->columns[i].metadata->min = num;
+            }
+            table->columns[i].metadata->sum += num;
 
             if (table->is_persistent)
             {

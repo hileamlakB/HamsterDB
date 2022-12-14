@@ -136,9 +136,10 @@ typedef struct ColumnIndex
 typedef struct ColumnMetaData
 {
     // metadata
-    size_t min[2];
-    size_t max[2];
-    size_t sum[2];
+    double min;
+    double max;
+    double sum;
+    // size_t sum[2];
 } ColumnMetaData;
 
 typedef struct Column

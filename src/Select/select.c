@@ -17,6 +17,53 @@
 Variable btree_select(select_args args)
 {
     return sorted_select(args);
+    ColumnIndex idx = args.col->index;
+    assert(idx.type == BTREE);
+
+    int lowest, highest;
+    if (!args.low)
+    {
+        lowest = 0;
+    }
+    else
+    {
+        int lowest_position = retrive_location(idx.btree, *args.low);
+        while (lowest_position > 0 && args.col->data[lowest_position - 1] == *args.low)
+        {
+            lowest_position -= 1;
+        }
+        lowest = lowest_position;
+    }
+
+    if (!args.high)
+    {
+        highest = args.tbl->rows;
+    }
+    else
+    {
+        int highest_position = retrive_location(idx.btree, *args.high);
+
+        // make sure the highest number isn't included in the list
+        while (highest_position > 0 && args.col->data[highest_position - 1] == *args.high)
+        {
+            highest_position -= 1;
+        }
+        highest = highest_position;
+    }
+
+    // return a pos_vec with the positions of the values in the range
+    Variable res = (Variable){
+        .type = RANGE,
+        .name = strdup(args.handle),
+        .exists = true,
+        .is_sorted = true,
+        .is_clustered = (args.col->index.clustered == CLUSTERED)};
+    strcpy(res.sorting_column, args.col->name);
+    strcpy(res.sorting_column_path, args.col->file_path);
+
+    res.result.range[0] = lowest;
+    res.result.range[1] = highest;
+    return res;
 }
 
 int compare_int(const void *a, const void *b)
@@ -126,18 +173,15 @@ Variable (*choose_algorithm(select_args args))(select_args)
 
             return sorted_select;
             // if data range is small enough, use sorted search
-            // other wise use btree
-            // if (args.high && args.low)
-            // {
+            // other wise use btree this assumes unifrom distribution
+            double data_range = args.col->metadata->max - args.col->metadata->min;
+            double query_range = (args.high) ? (double)*args.high : args.col->metadata->max - (args.low ? (double)*args.low : args.col->metadata->min);
+            if (query_range / data_range < .25)
+            {
+                return sorted_select;
+            }
 
-            //     int range = *args.high - *args.low;
-            //     if (range < 100)
-            //     {
-            //         return sorted_select;
-            //     }
-            // }
-
-            // return sorted_select;
+            return btree_select;
         }
     }
 

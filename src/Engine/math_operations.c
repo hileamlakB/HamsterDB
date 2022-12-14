@@ -62,44 +62,44 @@ void sum(AvgOperator avg_operator)
     else if (avg_operator.type == COLUMN_O)
     {
 
-        Table *table = avg_operator.address.table;
+        // Table *table = avg_operator.address.table;
         Column *column = avg_operator.address.col;
 
         // check if sum is already calculated
-        if (column->metadata->sum[0] == 1)
-        {
-            // handle new inserts and and new loads
-            Variable *fin_result = malloc(sizeof(Variable));
-            *fin_result = (Variable){
-                .type = INT_VALUE,
-                .result.ivalue = column->metadata->sum[1],
-                .name = strdup(handler),
-                .exists = true};
-            add_var(fin_result);
-            return;
-        }
-
-        map_col(table, column, 0);
-
-        double sum = 0;
-        size_t index = 0;
-        while (index < table->rows)
-        {
-            sum += column->data[index];
-            index++;
-        }
-
-        column->metadata->sum[0] = 1;
-        column->metadata->sum[1] = sum;
-
+        // if (column->metadata->sum[0] == 1)
+        // {
+        // handle new inserts and and new loads
         Variable *fin_result = malloc(sizeof(Variable));
         *fin_result = (Variable){
             .type = INT_VALUE,
-            .result.ivalue = sum,
+            .result.ivalue = column->metadata->sum,
             .name = strdup(handler),
             .exists = true};
-
         add_var(fin_result);
+        return;
+        // }
+
+        // map_col(table, column, 0);
+
+        // double sum = 0;
+        // size_t index = 0;
+        // while (index < table->rows)
+        // {
+        //     sum += column->data[index];
+        //     index++;
+        // }
+
+        // column->metadata->sum[0] = 1;
+        // column->metadata->sum[1] = sum;
+
+        // Variable *fin_result = malloc(sizeof(Variable));
+        // *fin_result = (Variable){
+        //     .type = INT_VALUE,
+        //     .result.ivalue = sum,
+        //     .name = strdup(handler),
+        //     .exists = true};
+
+        // add_var(fin_result);
     }
 }
 

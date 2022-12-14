@@ -31,6 +31,8 @@ int map_sorted(Table *tbl, Column *col)
 // Function: create_btree - creats a btree for a sorted column
 void create_btree(Table *tbl, Column *col)
 {
+
+    return;
     const size_t PAGE_SIZE = (size_t)sysconf(_SC_PAGESIZE);
     map_sorted(tbl, col);
 
@@ -56,7 +58,7 @@ void create_btree(Table *tbl, Column *col)
 
 void load_btree(Column *col)
 {
-
+    return;
     assert(col->indexed && col->index.type == BTREE);
 
     char *btree_filename = catnstr(2, col->file_path, ".btree");

@@ -105,6 +105,7 @@ int remap_col(Table *tbl, Column *col, size_t new_size)
 
 void flush_btree(Column *col)
 {
+    return;
     // create and open file to flush btree to
     char *file_path = catnstr(3, col->file_path, ".", "btree");
     int fd = open(file_path, O_RDWR | O_CREAT, 0666);

@@ -85,7 +85,6 @@ ColumnIndex create_sorted_index(Table *tbl, Column *col, ClusterType cluster_typ
     return idx;
 }
 
-// unimplemented
 ColumnIndex create_btree_index(Table *tbl, Column *col, ClusterType cluster_type)
 {
     create_sorted_index(tbl, col, cluster_type);

@@ -150,8 +150,6 @@ void communicate_server(int client_socket, message send_message, bool wait, bool
             {
                 exit(0);
             }
-
-            exit(1);
         }
     }
 

@@ -84,14 +84,14 @@ void communicate_server(int client_socket, message send_message, bool wait, bool
     if (send(client_socket, &(send_message), sizeof(message), 0) == -1)
     {
         log_err("Failed to send message header.");
-        exit(1);
+        exit(5);
     }
 
     // Send the payload (query) to server
     if (send(client_socket, send_message.payload, send_message.length, 0) == -1)
     {
         log_err("Failed to send query payload.");
-        exit(1);
+        exit(4);
     }
 
     bool is_done = false;
@@ -150,8 +150,6 @@ void communicate_server(int client_socket, message send_message, bool wait, bool
             {
                 exit(0);
             }
-
-            exit(1);
         }
     }
 
@@ -244,7 +242,7 @@ int main(void)
     int client_socket = connect_client();
     if (client_socket < 0)
     {
-        exit(1);
+        exit(8);
     }
 
     message send_message;

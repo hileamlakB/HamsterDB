@@ -52,7 +52,7 @@ int connect_client()
     size_t len;
     struct sockaddr_un remote;
 
-    log_info("-- Attempting to connect...\n");
+    // log_info("-- Attempting to connect...\n");
 
     if ((client_socket = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
     {
@@ -69,7 +69,7 @@ int connect_client()
         return -1;
     }
 
-    log_info("-- Client connected at socket: %d.\n", client_socket);
+    // log_info("-- Client connected at socket: %d.\n", client_socket);
     return client_socket;
 }
 
@@ -131,7 +131,7 @@ void communicate_server(int client_socket, message send_message, bool wait, bool
 
             if (shutdown_immediately)
             {
-                log_info("-- Server closed connection\n");
+                // log_info("-- Server closed connection\n");
                 exit(0);
             }
         }
@@ -143,7 +143,8 @@ void communicate_server(int client_socket, message send_message, bool wait, bool
             }
             else
             {
-                log_info("-- Server closed connection\n");
+                // log_info("-- Server closed connection\n");
+                exit(10);
             }
 
             if (strncmp(send_message.payload, "shutdown", 8) == 0)

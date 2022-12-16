@@ -148,7 +148,7 @@ DbOperator *parse_select(char *handle, char *select_argument)
     Table *table = lookup_table(current_db, tbl_name);
     if (!table)
     {
-        cs165_log(stdout, "Query unsupported. Bad table name\n");
+        cs165_log(stdout, "Parse Select:Query unsupported. Bad table name\n");
         return NULL;
     }
 
@@ -222,7 +222,7 @@ DbOperator *parse_fetch(char *handle, char *fetch_arguments)
     Table *table = lookup_table(current_db, tbl_name);
     if (!table)
     {
-        cs165_log(stdout, "Query unsupported. Bad table name\n");
+        cs165_log(stdout, "Parse fetch:Query unsupported. Bad table name\n");
         return NULL;
     }
 

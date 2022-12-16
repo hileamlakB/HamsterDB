@@ -38,7 +38,7 @@ SOFTWARE.
 #define MAX_SIZE_NAME 64
 #define MAX_PATH_NAME 256 // path name at max = dir/db.table.column
 #define HANDLE_MAX_SIZE 64
-#define MAX_BATCH_OPERATIONS 200
+#define MAX_BATCH_OPERATIONS 4096
 
 /**
  * EXTRA

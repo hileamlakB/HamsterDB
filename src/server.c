@@ -201,6 +201,7 @@ void handle_client(int client_socket)
                 {
                     result = execute_DbOperator(query);
                     batch.mode = false;
+                    // batch.num_queries = 0;
                 }
                 else
                 {

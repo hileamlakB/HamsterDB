@@ -32,6 +32,11 @@ void populate_index(Table *tbl, Column *col)
     {
         // use the map to organize the the rest of the columns
         propagate_sort(tbl, col);
+
+        // remove the tuple file
+        char *tuple_file = catnstr(2, tbl->file_path, ".tuple");
+        remove(tuple_file);
+        free(tuple_file);
     }
 
     if (idx.type == BTREE)

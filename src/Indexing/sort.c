@@ -413,14 +413,13 @@ int sort_col(Table *tbl, Column *col)
     munmap(to_sort, tbl->rows * sizeof(int));
     close(fd_to_sort);
 
-    if (true)
+    if (extract_sorted(tbl, col) < 0)
     {
-        if (extract_sorted(tbl, col) < 0)
-        {
-            return -1;
-        }
+        return -1;
     }
 
+    // delete to_sort file
+    remove(to_sort_col);
     free(to_sort_col);
     // destroy_thread_pool();
 

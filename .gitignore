@@ -1,6 +1,11 @@
 student_outputs
 generated_data
-
+todo
+experiment
+Archive
+dbdir
+.vscode
+project_tests/*
 # Object files
 obj/*
 *.o

@@ -662,14 +662,18 @@ shutdown
 
 # Todo
 
-[-] Implement updates
-[-] Implement Delets
-[-] Implement Grace Join
-[-] Improve design based on Inputs 
-[-] Implement SIMDS
+[ ] Implement updates
+[ ] Implement Delets
+[ ] Implement Grace Join
+[ ] Improve design based on Inputs 
+[ ] Implement SIMDS
 
 
 # Credit 
+Hileamlak Yitayew
+
+My professors (Stratos Idreos)
+TAs (Hao Jiang, Utku Sirin, Subarna Chatterjee, Sanket Purandare)
 
 
 
